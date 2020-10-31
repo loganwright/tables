@@ -6,5 +6,9 @@ final class MishMashTests: XCTestCase {
         let atLeastItsNot = "hodgepodge"
         XCTAssert(!Mish.mash.contains(atLeastItsNot))
     }
+
+    func testGo() {
+        go()
+    }
 }
 
