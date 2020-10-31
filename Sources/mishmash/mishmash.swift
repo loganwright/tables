@@ -1,3 +1,8 @@
-struct mishmash {
-    var text = "Hello, World!"
+
+struct Mish {
+    static let mash = "mishmash!"
+}
+
+func asdf() {
+    
 }

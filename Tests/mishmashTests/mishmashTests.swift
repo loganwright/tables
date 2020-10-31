@@ -1,15 +1,10 @@
 import XCTest
 @testable import mishmash
 
-final class mishmashTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(mishmash().text, "Hello, World!")
+final class MishMashTests: XCTestCase {
+    func testMishMash() {
+        let atLeastItsNot = "hodgepodge"
+        XCTAssert(!Mish.mash.contains(atLeastItsNot))
     }
-
-    static var allTests = [
-        ("testExample", testExample),
-    ]
 }
+
