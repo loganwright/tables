@@ -132,10 +132,10 @@ extension KeyPath where Root: NSObject {
 }
 
 fileprivate func _key() -> Never { fatalError() }
-
-@objc class KeySet: NSObject {
-    var id: String { _key() }
-}
+//
+//@objc class KeySet: NSObject {
+//    var id: String { _key() }
+//}
 
 @dynamicMemberLookup
 class KeyAggregator<T: NSObject> {
@@ -252,11 +252,12 @@ struct Attribute<T> {
 //    static var template: Self { get }
 //}
 //
-final class JSONKeys {
+open class JSONKeys {
     @Attribute(key: "id") var id: String = ""
     @Attribute(key: "age") var age: Int = 0
 //    init() {}
-    static let template = JSONKeys()
+    static var template: Self { Self.init() }
+    public required init() {}
 }
 
 extension JSON {
@@ -284,13 +285,103 @@ extension JSON {
             self[attribute.key] = newValue.json
         }
     }
+
+    subscript<KeyedBy: KeySet>(dynamicMember key: KeyPath<KeySetOptions, KeyedBy>) -> Cover<KeyedBy> {
+        get {
+            return Cover<KeyedBy>(self)
+//            let attribute = JSONKeys.template[keyPath: key]
+//            // bumpy for now, smooth out lataa
+//            return try! C(json: self[attribute.key]!)
+        }
+//        set {
+//            let attribute = JSONKeys.template[keyPath: key]
+//            // bumpy for now, smooth out lataa
+//            self[attribute.key] = newValue.json
+//        }
+    }
 }
 
+extension Attribute {
+    // just a rename to disambiguate too much 'key'
+    var name: String { key }
+}
+
+@dynamicMemberLookup
+class Cover<KeyedBy: KeySet> {
+    let keySet: KeyedBy
+    var wrapped: JSON
+    init(_ wrapped: JSON) {
+        self.keySet = KeyedBy.template
+        self.wrapped = wrapped
+    }
+
+    subscript<U: Codable>(dynamicMember key: KeyPath<KeyedBy, Attribute<U>>) -> U {
+        get {
+            let attribute = keySet[keyPath: key]
+            let js = self.wrapped[attribute.name] ?? .null
+            return try! U(json: js)
+        }
+        set {
+            let attribute = keySet[keyPath: key]
+            self.wrapped[attribute.name] = newValue.json
+        }
+    }
+}
+
+protocol KeySet {
+    static var template: Self { get }
+}
+//extension JSONKeys: KeySet {}
+
+struct UserKeys: KeySet {
+    @Attribute(key: "name") var name: String = ""
+    @Attribute(key: "age") var age: Int = -1
+
+    static var template: UserKeys = .init()
+}
+
+struct LifespanKeys: KeySet {
+    @Attribute(key: "createdAt") var createdAt: Date = Date(timeIntervalSince1970: 0)
+    @Attribute(key: "updatedAt") var updatedAt: Date? = nil
+    static var template: LifespanKeys = .init()
+}
+
+
+class KeySetOptions {
+    let userKeys: UserKeys = UserKeys()
+    let lifeKeys: LifespanKeys = LifespanKeys()
+}
+
+func wontRun() -> Never { fatalError() }
+
+// extending
+struct ColorKeys: KeySet {
+    @Attribute(key: "bgColor") var bg: String = ""
+    @Attribute(key: "favoriteColor") var favorite: String = ""
+    static var template: ColorKeys = .init()
+}
+extension KeySetOptions {
+    var colorKeys: ColorKeys { wontRun() }
+}
+
+
 func propertyAttaching() {
+//    let f = Flip(grib: 98, slib: "")
+//    Partial(f, paths: \.grib)
+
     let kers = \JSONKeys.$age
     var blerb = JSON.emptyObj
+    blerb.userKeys.$age = 42
+    blerb.lifeKeys.$createdAt = Date()
+//    print(blerb.lifeKeys.$createdAt)
+    print(blerb.userKeys.$age)
+    print(blerb.userKeys.$age)
+    blerb.colorKeys.$bg = "#ffffaa"
+    print(blerb.colorKeys.$bg)
+    print()
     blerb.$id = "abc.123"
     blerb.$age = 14
+//    blerb
     print("blerb: \(blerb.$id), \(blerb.$age)")
     let aggregatedKeysType = Template<Sleepy & Derpy>.Keys.self
     print(aggregatedKeysType)
@@ -314,14 +405,14 @@ func propertyAttaching() {
     let c = \One.id
     let d = \One.id
     print("1 match: \(c == d)")
-    let e = \One.base
-    let f = \Keyyyys.base
-    print("2 match: \(e == f)")
+//    let e = \One.base
+//    let f = \Keyyyys.base
+//    print("2 match: \(e == f)")
 
 
     let _a = NSExpression(forKeyPath: a)
     let _c = NSExpression(forKeyPath: c)
-    let _e = NSExpression(forKeyPath: e)
+//    let _e = NSExpression(forKeyPath: e)
 //    let kpz = \Derpy.$isDerp
 //    let foo = Template<Sleepy & Derpy>(.obj([:])).isDerp
 
