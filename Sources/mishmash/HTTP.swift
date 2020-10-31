@@ -1,17 +1,4 @@
 import Foundation
-protocol RequestAttribute {}
-
-@_functionBuilder
-struct RequestBuilder {
-//    func buildBlock
-}
-
-struct Request {
-    let headers: [String: String]
-    let path: String
-    let query: String?
-    let body: Data?
-}
 
 func setter<Object: AnyObject, Value>(
     for object: Object,
@@ -427,6 +414,11 @@ struct Oaavnw {
     }
 }
 
+struct A<Root> {
+    let key: String
+    let path: PartialKeyPath<Root>
+}
+
 @_functionBuilder
 struct SchemaBuilder<Root> {
 //    static func buildBlock(_ paths: PartialKeyPath<Root>) -> [Int] {
@@ -440,6 +432,15 @@ struct SchemaBuilder<Root> {
     static func buildBlock(_ paths: Write<Root>) -> [Int] {
         fatalError()
     }
+
+    static func buildBlock(_ paths: (String, PartialKeyPath<Root>)...) -> [Int] {
+        fatalError()
+    }
+
+    static func buildBlock(_ paths: SchemaEntry<Root>...) -> [Int] {
+        fatalError()
+    }
+
 }
 
 struct Write<Root> {
@@ -463,7 +464,36 @@ struct Obbi: Codable {
     let ownsShirt: Bool
 }
 
+struct SchemaEntry<Root> {
+    init(key: String, _ path: PartialKeyPath<Root>) {
+
+    }
+}
+
+extension Decodable where Self: Encodable {
+    static func key<Value>(_ k: String, _ path: KeyPath<Self, Value>) -> (String, PartialKeyPath<Self>) {
+        return (k, path)
+    }
+}
+
+protocol GeneralKeys {
+    var createdAt: Date { get set }
+}
+
+@dynamicMemberLookup
+struct Node<KeyedBy> {
+//    var backing
+    subscript<V>(dynamicMember key: KeyPath<KeyedBy, V>) -> V {
+        fatalError()
+    }
+}
+
+extension GeneralKeys {}
+
 func asdfsadfsd() {
+
+    var node = Node<GeneralKeys>()
+    node.createdAt
 
     let ob = Obbi(name: "obbbbi", ownsShirt: true)
 //    ob.encodeSchema {
@@ -475,8 +505,18 @@ func asdfsadfsd() {
     Obbi.encodeSchema {
         \Obbi.name.js
 //        Write(key: "name", \.name)
+
     }
 
+    Obbi.encodeSchema {
+        Obbi.key("asfd", \.ownsShirt)
+    }
+
+    Obbi.encodeSchema {
+        SchemaEntry(key: "shirt", \Obbi.ownsShirt)
+    }
+
+    let a = Obbi.key("asfd", \.ownsShirt)
 
 
     let o = Oaavnw(count: 10)
@@ -555,17 +595,17 @@ func asdfsadfsd() {
     print(blogger.title)
     print(blogger.url)
 
-    var a = Valued(id: "a")
-    let rid = \Reffed.id
-    let vid = \Valued.id
-
-    let stringCount = \String.count
-    let result = a[keyPath: vid.appending(path: stringCount)]
-    print(result)
-
-    let setter = test_setter(for: &a, keyPath: \.id)
-    print(a.id)
-    setter("b")
-    print(a.id)
-    print("")
+//    var a = Valued(id: "a")
+//    let rid = \Reffed.id
+//    let vid = \Valued.id
+//
+//    let stringCount = \String.count
+//    let result = a[keyPath: vid.appending(path: stringCount)]
+//    print(result)
+//
+//    let setter = test_setter(for: &a, keyPath: \.id)
+//    print(a.id)
+//    setter("b")
+//    print(a.id)
+//    print("")
 }

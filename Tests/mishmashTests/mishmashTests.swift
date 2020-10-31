@@ -10,5 +10,12 @@ final class MishMashTests: XCTestCase {
     func testGo() {
         go()
     }
+
+    func testKeyPaths() {
+        struct Ob {
+            let a: String
+        }
+        
+    }
 }
 

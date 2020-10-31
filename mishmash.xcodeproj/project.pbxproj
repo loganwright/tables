@@ -24,6 +24,10 @@
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
+		80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD9B254D23BF00EFA52F /* Request.swift */; };
+		80F3CDAB254D24EC00EFA52F /* http-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDA1254D24AD00EFA52F /* http-tests.swift */; };
+		80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDB0254D3BC400EFA52F /* JSON.swift */; };
+		80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */; };
 		OBJ_24 /* mishmash.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_9 /* mishmash.swift */; };
 		OBJ_31 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_6 /* Package.swift */; };
 		OBJ_42 /* XCTestManifests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_12 /* XCTestManifests.swift */; };
@@ -52,13 +56,17 @@
 		80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctionBuilders.swift; sourceTree = "<group>"; };
 		80F3CD8E254CE50B00EFA52F /* HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTP.swift; sourceTree = "<group>"; };
 		80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPathListable.swift; sourceTree = "<group>"; };
+		80F3CD9B254D23BF00EFA52F /* Request.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Request.swift; sourceTree = "<group>"; };
+		80F3CDA1254D24AD00EFA52F /* http-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "http-tests.swift"; sourceTree = "<group>"; };
+		80F3CDB0254D3BC400EFA52F /* JSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSON.swift; sourceTree = "<group>"; };
+		80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Codable+Extensions.swift"; sourceTree = "<group>"; };
 		OBJ_12 /* XCTestManifests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestManifests.swift; sourceTree = "<group>"; };
 		OBJ_13 /* mishmashTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mishmashTests.swift; sourceTree = "<group>"; };
 		OBJ_17 /* mishmash */ = {isa = PBXFileReference; lastKnownFileType = folder; path = mishmash; sourceTree = SOURCE_ROOT; };
 		OBJ_18 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		OBJ_6 /* Package.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		OBJ_9 /* mishmash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mishmash.swift; sourceTree = "<group>"; };
-		"mishmash::mishmash::Product" /* mishmash.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = mishmash.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		"mishmash::mishmash::Product" /* mishmash.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = mishmash.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		"mishmash::mishmashTests::Product" /* mishmashTests.xctest */ = {isa = PBXFileReference; lastKnownFileType = file; path = mishmashTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -94,6 +102,7 @@
 			children = (
 				OBJ_12 /* XCTestManifests.swift */,
 				OBJ_13 /* mishmashTests.swift */,
+				80F3CDA1254D24AD00EFA52F /* http-tests.swift */,
 			);
 			name = mishmashTests;
 			path = Tests/mishmashTests;
@@ -136,6 +145,9 @@
 				80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */,
 				80F3CD8E254CE50B00EFA52F /* HTTP.swift */,
 				80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */,
+				80F3CD9B254D23BF00EFA52F /* Request.swift */,
+				80F3CDB0254D3BC400EFA52F /* JSON.swift */,
+				80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */,
 			);
 			name = mishmash;
 			path = Sources/mishmash;
@@ -227,6 +239,9 @@
 			files = (
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
 				OBJ_24 /* mishmash.swift in Sources */,
+				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
+				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
+				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
 				80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */,
 			);
@@ -245,6 +260,7 @@
 			buildActionMask = 0;
 			files = (
 				OBJ_42 /* XCTestManifests.swift in Sources */,
+				80F3CDAB254D24EC00EFA52F /* http-tests.swift in Sources */,
 				OBJ_43 /* mishmashTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
