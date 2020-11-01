@@ -115,9 +115,9 @@ open class Keyyyys {
     var base: Int = 0
 }
 
-class One: Keyyyys {
-    var id = "id"
-}
+//class One: Keyyyys {
+//    var id = "id"
+//}
 
 //extension JSON {
 //    subscript(dynamicMember key: KeyPath<AttachKeys>) -> String {

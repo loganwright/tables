@@ -81,6 +81,7 @@ final class Ref<S: Schema> {
 
     /// whether or not the reference has changed since it came from the database
     fileprivate(set) var isDirty: Bool = false
+    fileprivate(set) var exists: Bool = false
 
 //    var exists: Bool {
 //        /// TODO: we want to more or less set ids automatically?
@@ -124,43 +125,107 @@ final class Ref<S: Schema> {
 
     // MARK: Relations
 
+    subscript<ChildSchema: Schema>(dynamicMember key: KeyPath<S, Child<ChildSchema>>) -> Ref<ChildSchema>? {
+        get {
+            guard let idKey = S.template._primaryKey else {
+                fatalError("child attribute only available on schema with a primary key")
+            }
+            // we must have an id for sth to be our child
+            guard let id = backing[idKey.name] else { return nil }
+
+            let foreignKey = S.template[keyPath: key].foreignKey
+//            let column = S.template[keyPath: id]
+//            guard let value = backing[column.name] else { return nil }
+            return db.getOne(where: foreignKey, matches: id)
+        }
+//        set {
+//            let child = S.template[keyPath: key]
+//            guard let new = newValue else {
+//                backing[child.name] = nil
+//                return
+//            }
+//
+//            guard let id = new.backing[child.foreignKey] else {
+//                fatalError("new child hasn't been saved yet")
+//            }
+//
+//            backing[child.name] = id
+//
+//        }
+    }
+
     ///
     /// for now, the only relations supported are one-to-one where the link MUST be optional
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
-
-    subscript<Link: Schema>(dynamicMember key: KeyPath<S, Column<Link?>>) -> Ref<Link>? {
+    subscript<ParentSchema: Schema>(dynamicMember key: KeyPath<S, Parent<ParentSchema>>) -> Ref<ParentSchema>? {
         get {
-            let column = S.template[keyPath: key]
-            guard let foreignId = backing[column.key]?.string else { return nil }
+            let parent_id = S.template[keyPath: key]
+            guard let foreignId = backing[parent_id.key]?.string else { return nil }
             return db.load(id: foreignId)
         }
         set {
+            Log.info("setting parent")
+            // parentKey
             /// maybe just check that it exists?
-            let column = S.template[keyPath: key]
-            guard let foreignKey = Link.template._primaryKey else { fatalError("primary key required for relations") }
+            let localKey = S.template[keyPath: key]
+            let foreignKey = localKey.foreignKey
             guard let new = newValue else {
-                backing[column.key] = nil
+                backing[localKey.name] = nil
                 return
             }
-            guard let foreignId = new.backing[foreignKey.key] else {
-                /// make sure to have saved first
-                fatalError("foreignKey: \(foreignKey.key) not set on: \(new)")
+
+            guard let foreignValue = new.backing[foreignKey] else {
+                fatalError("Object: \(new) not ready to be saved.. missing: \(foreignKey)")
             }
-            backing[column.key] = foreignId
+
+            backing[localKey.name] = foreignValue
+//
+//            guard let new = newValue else {
+//                backing[parent_id.name] = nil
+//                return
+//            }
+//
+//            guard let foreignId = new.backing[parent_id.name] else {
+//                /// make sure to have saved first
+//                fatalError("foreignKey: \(parent_id.name) not set on: \(new)")
+//            }
+//
+//            backing[parent_id.name] = new.backing[ParentSchema.template._primaryKey!.name]
         }
     }
 
+//    subscript<Link: Schema>(dynamicMember key: KeyPath<S, Column<Link?>>) -> Ref<Link>? {
+//        get {
+//            let column = S.template[keyPath: key]
+//            guard let foreignId = backing[column.key]?.string else { return nil }
+//            return db.load(id: foreignId)
+//        }
+//        set {
+//            /// maybe just check that it exists?
+//            let column = S.template[keyPath: key]
+//            guard let foreignKey = Link.template._primaryKey else { fatalError("primary key required for relations") }
+//            guard let new = newValue else {
+//                backing[column.key] = nil
+//                return
+//            }
+//            guard let foreignId = new.backing[foreignKey.key] else {
+//                /// make sure to have saved first
+//                fatalError("foreignKey: \(foreignKey.key) not set on: \(new)")
+//            }
+//            backing[column.key] = foreignId
+//        }
+//    }
 
-    subscript<Link: Schema>(dynamicMember key: KeyPath<S, Column<[Link]>>) -> [Ref<Link>] {
+
+    subscript<Foreign: Schema>(dynamicMember key: KeyPath<S, Column<[Foreign]>>) -> [Ref<Foreign>] {
         get {
             let column = S.template[keyPath: key]
-            let ids = backing[column.key]?
+            let ids = backing[column.name]?
                 .array?
                 .compactMap(\.string)
                 ?? []
-
-            fatalError()
+            return db.load(ids: ids)
 //            return database.load(ids: ids)
         }
         set {
@@ -173,11 +238,11 @@ final class Ref<S: Schema> {
 //            }
 
             let column = S.template[keyPath: key]
-            guard let foreignKey = Link.template._primaryKey else { fatalError("primary key required for relations") }
+            guard let foreignKey = Foreign.template._primaryKey else { fatalError("primary key required for relations") }
             backing[column.key] = newValue.compactMap { $0.backing[foreignKey.name].json } .json
             // try to get this back to stronger keypaths, maybe w other protocol
             // backing[column.key] = newValue.map(\.id)
-            fatalError()
+//            fatalError()
         }
     }
 
@@ -236,6 +301,10 @@ final class Ref<S: Schema> {
 //            dirty = true
 //        }
 //    }
+}
+
+extension Ref {
+
 }
 
 @dynamicMemberLookup
@@ -312,28 +381,25 @@ struct _Column<C: Codable> {
 import SQLKit
 
 class SQLColumn {
-    fileprivate(set) var key: String
-    /// I can never decide
-    var name: String {
-        get { key }
-        set { key = newValue }
+    /// can't decide on naming, going back and forth :/
+    var key: String {
+        get { name }
+        set { name = newValue }
     }
-    let type: SQLDataType
-    let constraints: [SQLColumnConstraintAlgorithm]
+    open var name: String
+    open var type: SQLDataType
+    open var constraints: [SQLColumnConstraintAlgorithm]
 
+    open var shouldSerialize = true
 
-    /// I will maybe try to set from the introspected label, ie:
-    /// `var name = Column<String()` would infer `"name"` as the key
-    var unsafe_testing_inferKey: String? = nil
-
-    init(_ key: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
-        self.key = key
+    init(_ name: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
+        self.name = name
         self.type = type
         self.constraints = constraints
     }
 
-    convenience init(_ key: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
-        self.init(key, type, constraints)
+    convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
+        self.init(name, type, constraints)
     }
 }
 
@@ -375,9 +441,9 @@ extension Optional: OptionalProtocol {}
 func replacedDynamically() -> Never { fatalError() }
 
 
-protocol PrimaryKeyType {}
-extension String: PrimaryKeyType {}
-extension Int: PrimaryKeyType {}
+protocol PrimaryKeyValue: DatabaseValue {}
+extension String: PrimaryKeyValue {}
+extension Int: PrimaryKeyValue {}
 
 class PrimaryKeyBase: SQLColumn {
     enum KeyType: Equatable {
@@ -413,7 +479,7 @@ class PrimaryKeyBase: SQLColumn {
 }
 
 @propertyWrapper
-class PrimaryKey<RawType: PrimaryKeyType>: PrimaryKeyBase {
+class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     var wrappedValue: RawType? { replacedDynamically() }
 
     init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
@@ -580,40 +646,258 @@ extension Column where Value: OptionalProtocol, Value.Wrapped: Schema {
 //        self.init(key, type: IDType.sqltype, constraints: constraints + defaults)
 //    }
 
-    convenience init<PK>(_ key: String = "",
-                         foreignKey: KeyPath<Value.Wrapped, PrimaryKey<PK>>,
-                         _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        let foreignColumn = Value.Wrapped.template[keyPath: foreignKey]
-        let defaults: [SQLColumnConstraintAlgorithm] = [
-            .references(Value.Wrapped.table,
-                        foreignColumn.key,
-                        onDelete: .setNull,
-                        onUpdate: .cascade)
-        ]
-        self.init(key, foreignColumn.keyType.sqltype, constraints + defaults)
+//    convenience init<PK>(_ key: String = "",
+//                         foreignKey: KeyPath<Value.Wrapped, PrimaryKey<PK>>,
+//                         _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+//        let foreignColumn = Value.Wrapped.template[keyPath: foreignKey]
+//        let defaults: [SQLColumnConstraintAlgorithm] = [
+//            .references(Value.Wrapped.table,
+//                        foreignColumn.key,
+//                        onDelete: .setNull,
+//                        onUpdate: .cascade)
+//        ]
+//        self.init(key, foreignColumn.keyType.sqltype, constraints + defaults)
+//        fatalError()
+//    }
+}
+
+// MARK: Relationships
+extension SQLColumnConstraintAlgorithm {
+    /// working around inline foreign key support
+    static func inlineForeignKey(name: String) -> SQLColumnConstraintAlgorithm {
+        return .custom(SQLRawExecute(", FOREIGN KEY (\"\(name)\")"))
     }
 }
 
-// MARK: One to Many
 
-extension Column where Value: Sequence, Value.Element: Schema {
-    convenience init<PK>(_ key: String = "",
-                         containsForeignKey foreignKey: KeyPath<Value.Element, PrimaryKey<PK>>,
-                         _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        let foreignColumn = Value.Element.template[keyPath: foreignKey]
-        let defaults: [SQLColumnConstraintAlgorithm] = [
-            .references(Value.Element.table,
-                        foreignColumn.key,
-                        onDelete: .setNull,
-                        onUpdate: .cascade)
-        ]
+@propertyWrapper
+class Parent<ParentSchema: Schema>: Column<ParentSchema?> {
 
-        self.init(key,
-                  /// will be an array of id's which we store as text, regardless if those are 'Int' or 'UUID'
-                  .text,
-                  constraints + defaults)
+    private var _foreignKey: () -> String
+    var foreignKey: String { _foreignKey() }
+    let linkedParentKeyPath: PartialKeyPath<ParentSchema>
+    override var wrappedValue: ParentSchema? { replacedDynamically() }
+
+    private var _constraints: LazyHandler<[SQLColumnConstraintAlgorithm]>!
+
+    override var constraints: [SQLColumnConstraintAlgorithm] {
+        get {
+            return _constraints.get() + super.constraints
+        }
+        set {
+            super.constraints = newValue
+        }
+    }
+
+
+    init(_ name: String = "",
+         references foreign: KeyPath<ParentSchema, PrimaryKey<Int>>,
+         onDelete: SQLForeignKeyAction? = nil,
+         onUpdate: SQLForeignKeyAction? = nil) {
+        self._foreignKey = {
+            ParentSchema.template[keyPath: foreign].name
+        }
+        self.linkedParentKeyPath = foreign
+        super.init(name, Int.sqltype, [])
+
+
+        self._constraints = LazyHandler { [weak self] in
+            guard let welf = self else { fatalError() }
+            let foreign = ParentSchema.make()[keyPath: foreign]
+            print("references: \(ParentSchema.table).\(foreign.name)")
+            print("foreign: \(welf.name)")
+            let defaults: [SQLColumnConstraintAlgorithm] = [
+                .inlineForeignKey(name: welf.name),
+                .references(ParentSchema.table,
+                            foreign.name,
+                            onDelete: onDelete,
+                            onUpdate: onUpdate)
+            ]
+            return defaults
+        }
+    }
+
+    init(_ name: String = "",
+         references foreign: KeyPath<ParentSchema, PrimaryKey<String>>,
+         onDelete: SQLForeignKeyAction? = nil,
+         onUpdate: SQLForeignKeyAction? = nil) {
+        self._foreignKey = {
+            ParentSchema.template[keyPath: foreign].name
+        }
+        self.linkedParentKeyPath = foreign
+
+//        let foreign = ParentSchema.template[keyPath: foreign]
+//        let defaults: [SQLColumnConstraintAlgorithm] = [
+//            .references(ParentSchema.table,
+//                        foreign.name,
+//                        onDelete: onDelete,
+//                        onUpdate: onUpdate)
+//        ]
+        super.init(name, String.sqltype, [])
+
+        self._constraints = LazyHandler { [weak self] in
+            guard let welf = self else { fatalError() }
+            let foreign = ParentSchema.template[keyPath: foreign]
+            print("references: \(ParentSchema.table).\(foreign.name)")
+            print("foreign: \(welf.name)")
+            let defaults: [SQLColumnConstraintAlgorithm] = [
+                .inlineForeignKey(name: welf.name),
+                .references(ParentSchema.table,
+                            foreign.name,
+                            onDelete: onDelete,
+                            onUpdate: onUpdate)
+            ]
+
+            return defaults
+        }
     }
 }
+
+class LazyHandler<T> {
+    private var _cache: T? = nil
+    private var getter: () -> T
+    init(getter: @escaping () -> T) {
+        self.getter = getter
+    }
+
+    func get() -> T {
+        if let _cache = _cache { return _cache }
+        else {
+            let new = getter()
+            _cache = new
+            return new
+        }
+    }
+
+    func set(_ t: T) {
+        _cache = t
+    }
+
+}
+
+//
+///// for types that are aggregated from data, and are not stored
+///// for example, a
+//class EphemeralColumn<C>: Column<C> {}
+
+
+
+/// this child type is more like a One to One with parent, parent can also have children one to many, possibly make this more clear````
+@propertyWrapper
+class Child<ChildSchema: Schema>: Column<ChildSchema?> {
+
+    override var wrappedValue: ChildSchema? { replacedDynamically() }
+    private var _constraints: LazyHandler<[SQLColumnConstraintAlgorithm]>!
+
+    override var constraints: [SQLColumnConstraintAlgorithm] {
+        get {
+            return _constraints.get() + super.constraints
+        }
+        set {
+            super.constraints = newValue
+        }
+    }
+
+    /// more lazyness, around distributing to avoid circular inits on schema
+    var _foreignKey: () -> String
+    var foreignKey: String {
+        _foreignKey()
+    }
+
+    /**
+     */
+    init<ParentSchema: Schema>(_ key: String = "", referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+        self._foreignKey = {
+            ChildSchema.template[keyPath: reference].name
+        }
+        super.init(key, .text, [])
+        /// hacky way  to keep it out of stuff
+        shouldSerialize = false
+
+        /// the child and parent are making circular references, and 'lazy' keyword doesn't work
+        /// ths can be improved, but trying to get working for now
+        self._constraints = LazyHandler { [weak self] in
+            guard let welf = self else { return [] }
+
+            //        let foreign = ParentSchema.template[keyPath: foreign]
+            let foreign = ChildSchema.template[keyPath: reference]
+            print("references: \(ChildSchema.table).\(foreign.name)")
+            print(welf.name)
+            welf._log(foreign)
+//            let defaults: [SQLColumnConstraintAlgorithm] = [
+//                .inlineForeignKey(name: welf.name),
+//                .references(ChildSchema.table,
+//                            foreign.name,
+//                            onDelete: nil,
+//                            onUpdate: nil)
+//            ]
+//            return defaults
+            return []
+        }
+    }
+
+    func _log<ParentSchema: Schema>(_ parentRef: Parent<ParentSchema>) {
+        print(parentRef)
+        print(parentRef.foreignKey)
+        print(parentRef.linkedParentKeyPath)
+        print()
+    }
+}
+
+
+@propertyWrapper
+class Children<ChildSchema: Schema>: Column<[ChildSchema]> {
+    override var wrappedValue: [ChildSchema] { replacedDynamically() }
+
+    init<ParentSchema: Schema>(_ key: String = "", foreign: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+        /// not going to actually really store this key
+        // should I try not to store anything?
+        super.init(key, .text, [])
+    }
+}
+
+
+//extension Column where Value: Sequence, Value.Element: Schema {
+//    convenience init<Parent: Schema>(_ key: String = "",
+//                                         _ parent: KeyPath<Parent, PrimaryKey<Int>>,
+//                                         matches foreignKey: KeyPath<Value.Element, Column<Parent?>>,
+//                                         _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+//
+//        fatalError()
+//        let foreignColumn = Value.Element.template[keyPath: foreignKey]
+//        Log.info("disabling foreign key constraints")
+//        let defaults: [SQLColumnConstraintAlgorithm] = [
+//            .references(Value.Element.table,
+//                        foreignColumn.key,
+//                        onDelete: .setNull,
+//                        onUpdate: .cascade)
+//        ]
+//
+//        self.init(key,
+//                  /// will be an array of id's which we store as text, regardless if those are 'Int' or 'UUID'
+//                  .text,
+//                  constraints + defaults)
+//    }
+//
+////    convenience init<PK>(_ key: String = "",
+////                         foreignKey: KeyPath<Value.Element, PrimaryKey<PK>>,
+////                         matching
+////                         matches: KeyPath<Value.Element, Column>
+////                         _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+////        let foreignColumn = Value.Element.template[keyPath: foreignKey]
+////        let defaults: [SQLColumnConstraintAlgorithm] = [
+////            .references(Value.Element.table,
+////                        foreignColumn.key,
+////                        onDelete: .setNull,
+////                        onUpdate: .cascade)
+////        ]
+////
+////        self.init(key,
+////                  /// will be an array of id's which we store as text, regardless if those are 'Int' or 'UUID'
+////                  .text,
+////                  constraints + defaults)
+////    }
+//}
 
 extension Schema {
     func unsafe_getColumns() -> [SQLColumn] {
@@ -861,7 +1145,9 @@ struct Table {
     }
 
     init(_ schema: Schema.Type) {
-        let columns = schema.init().unsafe_getColumns()
+        /// ideally, all schema instances would use 'template' but here we need
+        /// to set again
+        let columns = schema.init().unsafe_getColumns().filter(\.shouldSerialize)
         self.init(schema.table, columns)
     }
 }
@@ -887,12 +1173,118 @@ private var seequel_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
+struct GenericDialect: SQLDialect {
+    var supportsAutoIncrement: Bool = true
+
+    var name: String = "generic sql"
+
+    var supportsIfExists: Bool = true
+
+    var supportsReturning: Bool = true
+
+    var identifierQuote: SQLExpression {
+        return SQLRaw("`")
+    }
+
+    var literalStringQuote: SQLExpression {
+        return SQLRaw("'")
+    }
+
+    func bindPlaceholder(at position: Int) -> SQLExpression {
+        return SQLRaw("?")
+    }
+
+    func literalBoolean(_ value: Bool) -> SQLExpression {
+        switch value {
+        case true: return SQLRaw("true")
+        case false: return SQLRaw("false")
+        }
+    }
+
+    var enumSyntax: SQLEnumSyntax = .inline
+
+    var autoIncrementClause: SQLExpression {
+        return SQLRaw("AUTOINCREMENT")
+    }
+
+    var autoIncrementFunction: SQLExpression? = nil
+
+    var supportsDropBehavior: Bool = false
+
+    var triggerSyntax = SQLTriggerSyntax()
+
+    var alterTableSyntax = SQLAlterTableSyntax(alterColumnDefinitionClause: SQLRaw("MODIFY"), alterColumnDefinitionTypeKeyword: nil)
+
+    mutating func setTriggerSyntax(create: SQLTriggerSyntax.Create = [], drop: SQLTriggerSyntax.Drop = []) {
+        self.triggerSyntax.create = create
+        self.triggerSyntax.drop = drop
+    }
+}
+
+
+final class TestDatabase: SQLDatabase {
+    let logger: Logger
+    let eventLoop: EventLoop
+    var results: [String]
+    var dialect: SQLDialect {
+        self._dialect
+    }
+    var _dialect: GenericDialect
+
+    init() {
+        self.logger = .init(label: "rabblerabble.bluearlbj")
+        self.eventLoop = EmbeddedEventLoop()
+        self.results = []
+        self._dialect = GenericDialect()
+    }
+
+    func execute(sql query: SQLExpression, _ onRow: @escaping (SQLRow) -> ()) -> EventLoopFuture<Void> {
+        var serializer = SQLSerializer(database: self)
+        query.serialize(to: &serializer)
+        results.append(serializer.sql)
+        print(serializer.sql)
+        return self.eventLoop.makeSucceededFuture(())
+    }
+}
+
+final class Logging: SQLDatabase {
+    var db: SQLDatabase
+    let logger: Logger
+    let eventLoop: EventLoop
+    var results: [String]
+    var dialect: SQLDialect {
+        self._dialect
+    }
+    var _dialect: GenericDialect
+
+    init(_ db: SQLDatabase) {
+        self.db = db
+        self.logger = .init(label: "rabblerabble.bluearlbj")
+        self.eventLoop = EmbeddedEventLoop()
+        self.results = []
+        self._dialect = GenericDialect()
+    }
+
+    func execute(sql query: SQLExpression, _ onRow: @escaping (SQLRow) -> ()) -> EventLoopFuture<Void> {
+        var serializer = SQLSerializer(database: db)
+        query.serialize(to: &serializer)
+        results.append(serializer.sql)
+        print(serializer.sql)
+        return self.eventLoop.makeSucceededFuture(())
+    }
+}
+
+var logging: Logging?
 final class SeeQuel {
 
     static let shared: SeeQuel = SeeQuel(storage: .file(path: seequel_directory.path))
 
-    private var db: SQLDatabase {
-        return self.connection.sql()
+//    private var db: SQLDatabase = TestDatabase()
+    private var db: SQLDatabase { self.connection.sql()
+//        if logging === nil {
+//            logging = Logging(self.connection.sql())
+//        }
+//        return logging!
     }
 
     private let eventLoopGroup: EventLoopGroup
@@ -918,8 +1310,57 @@ final class SeeQuel {
         guard !connect.isClosed else { return }
         let _ = connect.close()
     }
+
+    func _getAll(from table: String,
+                 limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
+        try self.db.select()
+            .columns(columns)
+            .from(table)
+            .all(decoding: JSON.self)
+            .wait()
+    }
 }
 
+struct SchemaProperty {
+    let label: String
+    let columntype: Any.Type
+    let val: Any
+
+    let isLazy: Bool
+
+    init(_ mangled: String, _ val: Any) {
+        let lazyMangledPrefix = "$__lazy_storage_$_"
+        if mangled.hasPrefix(lazyMangledPrefix) {
+            self.isLazy = true
+            self.label = String(mangled.dropFirst(lazyMangledPrefix.count))
+        } else {
+            if mangled.contains("$") { Log.warn("unhandled special case") }
+            self.isLazy = false
+            self.label = mangled
+        }
+
+        let t = Swift.type(of: val)
+        print("value is type: \(t)")
+        self.columntype = t
+        self.val = val
+    }
+}
+
+extension Schema {
+    static func _validate() throws {
+        let propertyList = template.unsafe_getProperties()
+        
+    }
+
+    func unsafe_propertyList() -> [SchemaProperty] {
+        Mirror(reflecting: self).children.compactMap { child in
+            guard let label = child.label else { fatalError("expected a label for template property") }
+            let columntype = "\(type(of: child.value))"
+            return SchemaProperty(label, child.value)
+//            return (label, "\(type(of: child.value))", child.value)
+        }
+    }
+}
 struct SQLRawExecute: SQLExpression {
     let raw: String
     init(_ raw: String) {
@@ -953,9 +1394,16 @@ protocol Database {
 
     func prepare(_ table: Table) throws
     func prepare(_ tables: [Table]) throws
+
+    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
+    func orig_getOne<S: Schema, T: Encodable>(where keyPath: KeyPath<S, Column<T>>, matches: T) -> Ref<S>?
 }
 
 extension Database {
+    func save<S>(_ refs: [Ref<S>]) {
+        refs.forEach(save)
+    }
+
     func prepare(_ tables: [Table]) throws {
         try tables.forEach(prepare)
     }
@@ -976,6 +1424,34 @@ extension Database {
 //}
 
 extension SeeQuel: Database {
+//    func getOne<S: Schema, T: Encodable>(where: T, matches: KeyPath<S, Column<T>>) -> Ref<S>? {
+//        return getOne(where: matches, matches: `where`)
+//    }
+
+    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>? {
+        let backing = try! self.db.select()
+            .columns(["*"])
+            .where(SQLIdentifier(key), .equal, matches)
+            .from(S.table)
+            .first(decoding: [String: JSON].self)
+            .wait()
+        guard let unwrap = backing else { return nil }
+        return Ref<S>(unwrap, self)
+    }
+
+    func orig_getOne<S: Schema, T: Encodable>(where keyPath: KeyPath<S, Column<T>>, matches: T) -> Ref<S>? {
+        // let columns = S.template.unsafe_getColumns().map(\.name)
+        let column = S.template[keyPath: keyPath]
+        let backing = try! self.db.select()
+            .columns(["*"])
+            .where(SQLIdentifier(column.name), .equal, matches)
+            .from(S.table)
+            .first(decoding: [String: JSON].self)
+            .wait()
+        guard let unwrap = backing else { return nil }
+        return Ref<S>(unwrap, self)
+    }
+
     func prepare(_ table: Table) throws {
         Log.warn("todo: validate template")
         Log.warn("todo: check if table exists")
@@ -986,7 +1462,9 @@ extension SeeQuel: Database {
             prepare = prepare.column(column.key, type: column.type, column.constraints)
         }
 
-        try prepare.run().wait()
+        let results = try prepare.run().wait()
+        print(results)
+        print("")
     }
 
     func save(to table: String, _ body: [String : JSON]) {
@@ -997,17 +1475,20 @@ extension SeeQuel: Database {
     }
 
     func save<S>(_ ref: Ref<S>) where S : Schema {
-        let primary = S.template._primaryKey
-        if let primary = primary {
-            guard ref.backing[primary.key] == nil else { fatalError("ref already exists") }
-            switch primary.keyType {
+        let idKey = S.template._primaryKey
+        // todo: fix this, if object isn't primary keyed, then
+        // can save, it's ok, otherwise will crash if it's unique keyed
+        let shouldSave = idKey == nil
+        let needsId = idKey != nil && ref.backing[idKey!.name] == nil
+        if needsId, let id = idKey {
+            switch id.keyType {
             case .uuid:
                 /// uuid not auto generated, needs to be made
-                ref.backing[primary.key] = UUID().json
+                ref.backing[id.key] = UUID().json
             case .incrementing:
                 // set automatically after save by sql
 //                incrementing = true
-            break
+                break
             }
         }
 
@@ -1017,36 +1498,12 @@ extension SeeQuel: Database {
             .wait()
 
         guard
-            let pk = primary,
+            needsId,
+            let pk = idKey,
             pk.keyType == .incrementing
             else { return }
         let id = unsafe_lastInsertedRowId()
         ref.backing[pk.key] = id.json
-//        if let primary = ref._pkintid {
-//            guard ref.backing[primary.key] == nil else { fatalError("ref already exists") }
-//            switch primary.keyType {
-//            case .uuid:
-//                /// uuid not auto generated, needs to be made
-//                ref.backing[primary.key] = UUID().json
-//            case .incrementing:
-//                // set automatically after save by sql
-////                incrementing = true
-//            break
-//            }
-//        }
-//        let raw = SQLRawExecute("select last_insert_rowid();")
-//        var id: Int = -1
-////        try! db.select().execute
-//        try! db.execute(sql: raw) { (row) in
-//            print("metadata: \(row)")
-//            let raw = try! row.decode(model: [String: JSON].self)
-//            id = raw.values.first!.int!
-////            id.append(next)
-//        } .wait()
-//        print("saved id: \(id)")
-////        let rowId = try! self.db.select()
-////        print(result)
-//        print()
     }
 
     private func unsafe_lastInsertedRowId() -> Int {
@@ -1063,16 +1520,19 @@ extension SeeQuel: Database {
     }
 
     func load<S>(id: String) -> Ref<S>? where S : Schema {
-        let columns = S.template.unsafe_getColumns().map(\.name)
+//        let columns = S.template.unsafe_getColumns().map(\.name)
         guard let pk = S.template._primaryKey?.name else { fatalError("missing primary key") }
         let backing = try! self.db.select()
-            .columns(columns)
+            .columns(["*"])
             .where(SQLIdentifier(pk), .equal, id)
             .from(S.table)
             .first(decoding: [String: JSON].self)
             .wait()
         guard let unwrap = backing else { return nil }
-        return Ref<S>(unwrap, self)
+        // move to higher layer
+        let ref = Ref<S>(unwrap, self)
+        ref.exists = true
+        return ref
     }
 
     func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
@@ -1303,14 +1763,14 @@ private func _unsafe_getProperties<S: Schema>(template: S) -> [(label: String, t
     }
 }
 
-@_functionBuilder
-struct PreparationBuilder<S: Schema> {
-    static func buildBlock(_ paths: PartialKeyPath<S>...) {
-        let temp = S.template
-        let loaded = paths.map { temp[keyPath: $0] }
-        print("loaded: \(loaded)")
-    }
-}
+//@_functionBuilder
+//struct PreparationBuilder<S: Schema> {
+//    static func buildBlock(_ paths: PartialKeyPath<S>...) {
+//        let temp = S.template
+//        let loaded = paths.map { temp[keyPath: $0] }
+//        print("loaded: \(loaded)")
+//    }
+//}
 
 //@_functionBuilder
 //struct ColumnBuilder<S: Schema> {
@@ -1318,12 +1778,12 @@ struct PreparationBuilder<S: Schema> {
 //
 //    }
 //}
-
-extension Schema {
-    static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
-
-    }
-}
+//
+//extension Schema {
+//    static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
+//
+//    }
+//}
 
 func testDatabaseStuff() {
     let huprops = _unsafe_getProperties(template: Human.template)
