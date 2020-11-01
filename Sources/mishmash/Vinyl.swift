@@ -71,9 +71,14 @@ final class Ref<S: Schema> {
 //    }
     let database: Database
 
-    init(_ raw: [String: JSON] = [:], database: Database) {
+    init(_ raw: [String: JSON], _ database: Database) {
         self.backing = raw
         self.database = database
+    }
+
+    /// this is a new object, restrict this creation
+    convenience init(_ database: Database) {
+        self.init([:], database)
     }
 
     subscript<C: Codable>(dynamicMember key: KeyPath<S, Column<C>>) -> C {
@@ -751,11 +756,40 @@ extension SeeQuel: Database {
 
 extension SeeQuel {
     func save<S>(_ ref: Ref<S>) where S : Schema {
-        notImplemented()
+        try! self.db.insert(into: S.table)
+            .model(ref.backing)
+            .run()
+            .wait()
+
+        let raw = SQLRawExecute("select last_insert_rowid();")
+        var id: Int = -1
+//        try! db.select().execute
+        try! db.execute(sql: raw) { (row) in
+            print("metadata: \(row)")
+            let raw = try! row.decode(model: [String: JSON].self)
+            id = raw.values.first!.int!
+//            id.append(next)
+        } .wait()
+        print("saved id: \(id)")
+//        let rowId = try! self.db.select()
+//        print(result)
+        print()
     }
+
     func load<S>(id: String) -> Ref<S>? where S : Schema {
-        notImplemented()
+        let columns = S.unsafe_getColumns().map(\.key)
+        Log.warn("hammering w primary key, filter this at runtime better generics for models with primary key")
+        let pk = S._primaryKey()!
+        let backing = try! self.db.select()
+            .columns(columns)
+            .where(SQLIdentifier(pk), .equal, id)
+            .from(S.table)
+            .first(decoding: [String: JSON].self)
+            .wait()
+        guard let unwrap = backing else { return nil }
+        return Ref<S>(unwrap, self)
     }
+
     func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
         notImplemented()
     }
@@ -795,6 +829,18 @@ extension SeeQuel {
     }
 }
 
+struct SQLRawExecute: SQLExpression {
+    let raw: String
+    init(_ raw: String) {
+        self.raw = raw
+    }
+
+    public func serialize(to serializer: inout SQLSerializer) {
+        serializer.write(raw)
+    }
+}
+
+
 private struct SQLTableSchema: SQLExpression {
     let table: String
 
@@ -803,11 +849,7 @@ private struct SQLTableSchema: SQLExpression {
     }
 
     public func serialize(to serializer: inout SQLSerializer) {
-//        self.left.serialize(to: &serializer)
         serializer.write("pragma table_info(\(table));")
-//        self.op.serialize(to: &serializer)
-//        serializer.write(" ")
-//        self.right.serialize(to: &serializer)
     }
 }
 
@@ -839,13 +881,13 @@ final class TestDB: Database {
     func load<S>(id: String) -> Ref<S>? where S : Schema {
         guard let table = tables[S.table] else { return nil }
         guard let backing = table[id] else { return nil }
-        return Ref(backing, database: self)
+        return Ref(backing, self)
     }
 
     /// warn if missing ids?
     func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
         guard let table = tables[S.table] else { fatalError() }
-        return ids.compactMap { table[$0] } .map { Ref($0, database: self) }
+        return ids.compactMap { table[$0] } .map { Ref($0, self) }
     }
 }
 
@@ -1066,13 +1108,13 @@ func testDatabaseStuff() {
 //
 //    joe.friends = [joe, jan]
 
-    let bobo = Ref<Pet>(database: db)
+    let bobo = Ref<Pet>(db)
     bobo.name = "bobo"
     try! bobo.save()
-    let spike = Ref<Pet>(database: db)
+    let spike = Ref<Pet>(db)
     spike.name = "spike"
     try! spike.save()
-    let dolly = Ref<Pet>(database: db)
+    let dolly = Ref<Pet>(db)
     dolly.name = "dolly"
     try! dolly.save()
 

@@ -73,13 +73,39 @@ final class DBTests: XCTestCase {
 
         let w_meta = try db.unsafe_table_meta("weapon")
         XCTAssertEqual(w_meta.count, 2)
-        XCTAssertEqual(w_meta.map(\.name).sorted(), ["id", "power"])
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Weapon.unsafe_getColumns().map(\.key).sorted())
+
+        let h_meta = try db.unsafe_table_meta(Hero.table)
+        print(h_meta)
+        print()
+    }
+
+    func testSave() throws {
+        let db = SeeQuel(storage: .memory)
+        try db.prepare {
+            Weapon.self
+            Food.self
+            Hero.self
+        }
+
+        var sword = Ref<Weapon>(db)
+        sword.damage = 83
+        try sword.save()
+
+        let hero = Ref<Hero>(db)
+        hero.name = "hiro"
+        hero.nickname = "the good one"
+        hero.age = 120
+        hero.weapon = sword
+        try hero.save()
+
+        print()
     }
 }
 
 struct Weapon: Schema {
     var id = IDColumn<Int>()
-    var power = Column<Int>("power")
+    var damage = Column<Int>("damage")
 }
 
 struct Food: Schema {

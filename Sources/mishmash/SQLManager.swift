@@ -227,13 +227,13 @@ final class SQLManager {
                  whereKey key: String,
                  contains value: String,
                  limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
-        let d = try self.db.select()
-            .columns(columns)
-            .where(SQLIdentifier(key), .like, "%\(value)%")
-            .from(table)
-            .all()
-//            .all(decoding: JSON.self)
-            .wait()
+//        let d = try self.db.select()
+//            .columns(columns)
+//            .where(SQLIdentifier(key), .like, "%\(value)%")
+//            .from(table)
+//            .all()
+////            .all(decoding: JSON.self)
+//            .wait()
         return try self.db.select()
             .columns(columns)
             .where(SQLIdentifier(key), .like, "%\(value)%")
