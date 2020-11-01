@@ -72,7 +72,7 @@ final class DBTests: XCTestCase {
         XCTAssert(prepared.count == 3)
 
         let w_meta = try db.unsafe_table_meta("item")
-        XCTAssertEqual(w_meta.count, 2)
+        XCTAssertEqual(w_meta.count, 3)
         XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.unsafe_getColumns().map(\.name).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
@@ -128,23 +128,21 @@ final class DBTests: XCTestCase {
         hero.name = "hiro"
         hero.nickname = "the good one"
         hero.age = 120
-        XCTFail("uncast")
-        let e = sword.equippedBy
-        print(e)
-        try hero.save()
-        sword.equippedBy = hero
-        hero.equipped = sword
+
 
         XCTAssertNil(hero.id)
-//        try hero.save()
+        try hero.save()
+        /// 1 to 1, both have a parent relationship
+        sword.equippedBy = hero
+        hero.equipped = sword
+        try hero.save()
+
         XCTAssertFalse(hero.isDirty)
         XCTAssertNotNil(hero.id)
 
         let _hero: Ref<Hero>? = db.load(id: hero.id!)
         XCTAssertNotNil(_hero)
         XCTAssertEqual(_hero?.id, hero.id)
-        let props = Hero.template.unsafe_propertyList()
-        XCTFail("uncomment: \(props)")
         XCTAssertEqual(_hero?.equipped?.id, sword.id)
     }
 
@@ -169,13 +167,14 @@ final class DBTests: XCTestCase {
         try one.save()
 
         XCTAssert(one.many.isEmpty)
-        many.forEach { indi in
+        try! many.forEach { indi in
             indi.oneyy = one
+            try indi.save()
         }
-        XCTAssert(one.many.isEmpty)
+        XCTAssert(!one.many.isEmpty)
 
         let two: Ref<One>  = db.load(id: "1")!
-        XCTFail("make the map work again")
+        XCTAssert(two.many.count == one.many.count)
     }
 }
 

@@ -144,7 +144,7 @@ final class Ref<S: Schema> {
         set {
             let parentColumn = S.template[keyPath: key]
             let parentIdKey = parentColumn.parentIdKey.name
-            let associatedParentIdKey = parentColumn.name
+            let associatedParentIdKey = parentColumn.associatedParentIdKey
 
             guard let parent = newValue else {
                 backing[associatedParentIdKey] = nil
@@ -154,23 +154,26 @@ final class Ref<S: Schema> {
             guard let parentIdValue = parent.backing[parentIdKey] else {
                 fatalError("Object: \(parent) not ready to be linked.. missing: \(parentIdKey)")
             }
-//            print(newValue![keyPath: ParentSchema.template[keyPath: localKey.linkedParentKeyPath]])
-            backing[parentColumn.name] = parentIdValue
+
+            // we are the child, taking note of our parent
+            backing[associatedParentIdKey] = parentIdValue
         }
     }
 
     subscript<ChildSchema: Schema>(dynamicMember key: KeyPath<S, Child<ChildSchema>>) -> Ref<ChildSchema>? {
         get {
-            guard let idKey = S.template._primaryKey else {
-                fatalError("child attribute only available on schema with a primary key")
-            }
-            // we must have an id for sth to be our child
-            guard let id = backing[idKey.name] else { return nil }
+            // we are parent, seeking detached children
+            let childColumn = S.template[keyPath: key]
+            let associatedParentIdKey = childColumn.associatedParentIdKey
+//            let associatedParentIdKeyPath = childColumn.associatedParentIdKeyPath
 
-            let parentIdKey = S.template[keyPath: key].parentIdKey.name
-//            let column = S.template[keyPath: id]
-//            guard let value = backing[column.name] else { return nil }
-            return db.getOne(where: parentIdKey, matches: id)
+            let parentIdKey = childColumn.parentIdKey
+            guard let parentIdValue = backing[parentIdKey.name] else {
+                /// the parent isn't in database yet, can't have children
+                return nil
+            }
+
+            return db.getOne(where: associatedParentIdKey, matches: parentIdValue)
         }
     }
 
@@ -178,7 +181,8 @@ final class Ref<S: Schema> {
         let column = S.template[keyPath: key]
         let parentIdKey = column.parentIdKey.name
         let parentIdValue = backing[parentIdKey]
-        let associatedParentIdKey = column.name
+        let associatedParentIdKey = column.associatedParentIdKey
+
         return db.getAll(where: associatedParentIdKey, matches: parentIdValue)
     }
 
@@ -525,6 +529,9 @@ class Children<ChildSchema: Schema>: Column<[ChildSchema]> {
     @Later var parentIdKey: PrimaryKeyBase
     @Later var parentIdKeyPath: AnyKeyPath
 
+    @Later var associatedParentIdKey: String
+    @Later var associatedParentIdKeyPath: PartialKeyPath<ChildSchema>
+
     init<ParentSchema: Schema>(_ key: String = "", referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
         self._parentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
@@ -536,6 +543,12 @@ class Children<ChildSchema: Schema>: Column<[ChildSchema]> {
             return parent.parentIdKeyPath
         }
 
+        self._associatedParentIdKey = Later {
+            let parent = ChildSchema.template[keyPath: reference]
+            return parent.associatedParentIdKey
+        }
+
+        self._associatedParentIdKeyPath = Later { reference }
 
         /// not going to actually really store this key
         super.init(key, .text, Later([]))
@@ -552,6 +565,9 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
     @Later var parentIdKey: PrimaryKeyBase
     @Later var parentIdKeyPath: AnyKeyPath
 
+    @Later var associatedParentIdKey: String
+    @Later var associatedParentIdKeyPath: PartialKeyPath<ChildSchema>
+
     /**
      parentIdKey
      * parentIdValue
@@ -559,8 +575,6 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
      * childAssociatedValue
      */
     init<ParentSchema: Schema>(_ key: String = "", referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
-//        self.referencedBy = reference
-
         self._parentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
             return parent.parentIdKey
@@ -570,6 +584,13 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
             let parent = ChildSchema.template[keyPath: reference]
             return parent.parentIdKeyPath
         }
+
+        self._associatedParentIdKey = Later {
+            let parent = ChildSchema.template[keyPath: reference]
+            return parent.associatedParentIdKey
+        }
+
+        self._associatedParentIdKeyPath = Later { reference }
 
         super.init(key, .text, Later([]))
         /// hacky way  to keep it out of stuff
