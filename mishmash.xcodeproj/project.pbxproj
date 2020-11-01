@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		8082EE42254E336500ACBADA /* Vinyl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Vinyl.swift */; };
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
@@ -53,6 +54,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8082EE41254E336500ACBADA /* Vinyl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vinyl.swift; sourceTree = "<group>"; };
 		80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctionBuilders.swift; sourceTree = "<group>"; };
 		80F3CD8E254CE50B00EFA52F /* HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTP.swift; sourceTree = "<group>"; };
 		80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPathListable.swift; sourceTree = "<group>"; };
@@ -117,7 +119,7 @@
 			name = Products;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		OBJ_5 /*  */ = {
+		OBJ_5 = {
 			isa = PBXGroup;
 			children = (
 				OBJ_6 /* Package.swift */,
@@ -127,7 +129,6 @@
 				OBJ_17 /* mishmash */,
 				OBJ_18 /* README.md */,
 			);
-			name = "";
 			sourceTree = "<group>";
 		};
 		OBJ_7 /* Sources */ = {
@@ -148,6 +149,7 @@
 				80F3CD9B254D23BF00EFA52F /* Request.swift */,
 				80F3CDB0254D3BC400EFA52F /* JSON.swift */,
 				80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */,
+				8082EE41254E336500ACBADA /* Vinyl.swift */,
 			);
 			name = mishmash;
 			path = Sources/mishmash;
@@ -219,7 +221,7 @@
 			knownRegions = (
 				en,
 			);
-			mainGroup = OBJ_5 /*  */;
+			mainGroup = OBJ_5;
 			productRefGroup = OBJ_14 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -237,6 +239,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 0;
 			files = (
+				8082EE42254E336500ACBADA /* Vinyl.swift in Sources */,
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
 				OBJ_24 /* mishmash.swift in Sources */,
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,

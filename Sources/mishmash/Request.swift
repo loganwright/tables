@@ -168,7 +168,7 @@ struct Keyyer {
 }
 
 @dynamicMemberLookup
-class Template<T> {
+class Orig_Template<T> {
     typealias Keys = T
     private var backing: JSON
     init(_ backing: JSON) {
@@ -252,13 +252,13 @@ struct Attribute<T> {
 //    static var template: Self { get }
 //}
 //
-open class JSONKeys {
-    @Attribute(key: "id") var id: String = ""
-    @Attribute(key: "age") var age: Int = 0
-//    init() {}
-    static var template: Self { Self.init() }
-    public required init() {}
-}
+//open class JSONKeys {
+//    @Attribute(key: "id") var id: String = ""
+//    @Attribute(key: "age") var age: Int = 0
+////    init() {}
+//    static var template: Self { Self.init() }
+//    public required init() {}
+//}
 
 extension JSON {
 //    subscript<K: Keyable, C: Codable>(dynamicMember key: KeyPath<K, Attribute<C>>) -> C {
@@ -273,18 +273,18 @@ extension JSON {
 //            self[attribute.key] = newValue.json
 //        }
 //    }
-    subscript<C: Codable>(dynamicMember key: KeyPath<JSONKeys, Attribute<C>>) -> C {
-        get {
-            let attribute = JSONKeys.template[keyPath: key]
-            // bumpy for now, smooth out lataa
-            return try! C(json: self[attribute.key]!)
-        }
-        set {
-            let attribute = JSONKeys.template[keyPath: key]
-            // bumpy for now, smooth out lataa
-            self[attribute.key] = newValue.json
-        }
-    }
+//    subscript<C: Codable>(dynamicMember key: KeyPath<JSONKeys, Attribute<C>>) -> C {
+//        get {
+//            let attribute = JSONKeys.template[keyPath: key]
+//            // bumpy for now, smooth out lataa
+//            return try! C(json: self[attribute.key]!)
+//        }
+//        set {
+//            let attribute = JSONKeys.template[keyPath: key]
+//            // bumpy for now, smooth out lataa
+//            self[attribute.key] = newValue.json
+//        }
+//    }
 
     subscript<KeyedBy: KeySet>(dynamicMember key: KeyPath<KeySetOptions, KeyedBy>) -> Cover<KeyedBy> {
         get {
@@ -298,6 +298,22 @@ extension JSON {
 //            // bumpy for now, smooth out lataa
 //            self[attribute.key] = newValue.json
 //        }
+    }
+
+    subscript<KeyedBy: KeySet, C: Codable>(dynamicMember key: KeyPath<KeyedBy, Attribute<C>>) -> C {
+        get {
+            let attribute = KeyedBy.template[keyPath: key]
+            let json = self[attribute.name] ?? .null
+            return try! C(json: json)
+//            let attribute = JSONKeys.template[keyPath: key]
+//            // bumpy for now, smooth out lataa
+//            return try! C(json: self[attribute.key]!)
+        }
+        set {
+            let attribute = KeyedBy.template[keyPath: key]
+            // bumpy for now, smooth out lataa
+            self[attribute.name] = newValue.json
+        }
     }
 }
 
@@ -321,15 +337,43 @@ class Cover<KeyedBy: KeySet> {
             let js = self.wrapped[attribute.name] ?? .null
             return try! U(json: js)
         }
-        set {
+//        set {
+//            let attribute = keySet[keyPath: key]
+//            self.wrapped[attribute.name] = newValue.json
+//        }
+    }
+}
+
+
+@dynamicMemberLookup
+class _Cover<KeyedBy: KeySet> {
+    let keySet: KeyedBy
+    var wrapped: JSON
+    init(_ wrapped: inout JSON) {
+        self.keySet = KeyedBy.template
+        self.wrapped = wrapped
+    }
+
+    subscript<U: Codable>(dynamicMember key: KeyPath<KeyedBy, Attribute<U>>) -> U {
+        get {
             let attribute = keySet[keyPath: key]
-            self.wrapped[attribute.name] = newValue.json
+            let js = self.wrapped[attribute.name] ?? .null
+            return try! U(json: js)
         }
+//        set {
+//            let attribute = keySet[keyPath: key]
+//            self.wrapped[attribute.name] = newValue.json
+//        }
     }
 }
 
 protocol KeySet {
-    static var template: Self { get }
+    init()
+}
+
+extension KeySet {
+    /// vestigial, proper store one per type
+    static var template: Self { .init() }
 }
 //extension JSONKeys: KeySet {}
 
@@ -360,35 +404,242 @@ struct ColorKeys: KeySet {
     @Attribute(key: "favoriteColor") var favorite: String = ""
     static var template: ColorKeys = .init()
 }
+
+extension ColorKeys {
+    var extended: Attribute<Int> { Attribute(wrappedValue: -1, key: "testAdd") }
+}
+
 extension KeySetOptions {
     var colorKeys: ColorKeys { wontRun() }
 }
 
+protocol ColumnSet {
+    init()
+}
+
+@dynamicMemberLookup
+struct Ob<KeyedBy: ColumnSet> {
+    /// TODO: Use 'Any' type? that's what swift core uses
+    /// or maybe a protocol that can be keyed
+    private var backing: [String: JSON] = [:]
+
+    init(_ backing: [String: JSON]) {
+        self.backing = backing
+    }
+
+    subscript<C: Codable>(dynamicMember key: KeyPath<KeyedBy, Orig_Column<C>>) -> C {
+        get {
+            print("only init once and store")
+            let column = KeyedBy()[keyPath: key]
+            let json = backing[column.name] ?? .null
+            return try! C(json: json)
+        }
+        set {
+            let column = KeyedBy()[keyPath: key]
+            backing[column.name] = newValue.json
+        }
+    }
+
+    subscript<C: Codable>(dynamicMember key: KeyPath<KeyedBy, Attribute<C>>) -> C {
+        get {
+            let column = KeyedBy()[keyPath: key]
+            let json = backing[column.name] ?? .null
+            return try! C(json: json)
+        }
+        set {
+            let column = KeyedBy()[keyPath: key]
+            backing[column.name] = newValue.json
+        }
+    }
+}
+
+//struct Column<C: Codable> {
+//    let name: String
+//    let `default`: C?
+//    init(_ name: String, `default`: C? = nil) {
+//        self.name = name
+//        self.default = `default`
+//    }
+//}
+
+@propertyWrapper
+struct Orig_Column<C: Codable> {
+    let name: String
+    private var _wrappedValue: C? = nil
+    var wrappedValue: C {
+        get {
+            guard let existing = _wrappedValue else {
+                fatalError("value not yet set on column")
+            }
+            return existing
+        }
+        set {
+            _wrappedValue = newValue
+        }
+    }
+
+
+    init(_ name: String) {
+        self.name = name
+        self._wrappedValue = nil
+    }
+
+    init(wrappedValue: C?, _ name: String) {
+        self.name = name
+        self._wrappedValue = wrappedValue
+    }
+}
+
+protocol UserBase: ColumnSet {}
+extension UserBase {
+    var id: Orig_Column<String> {
+        Orig_Column("id")
+    }
+    var name: Orig_Column<String> {
+        Orig_Column("name")
+    }
+    var age: Orig_Column<Int> {
+        Orig_Column("age")
+    }
+//    @Column("id") private(set) var id: String
+//    @Column("name") private(set) var name: String
+//    @Column("age") private(set) var age: Int
+}
+
+import Foundation
+
+//struct Author: Codable, KeySet {
+//    @Column("name") var name: String = ""
+//    static var template: Author = .init()
+//}
+
+protocol BlogHeaders: KeySet {
+//    @Column("title") var title: String = nil
+//    @Column("createdAt") var createdAt: Date = nil
+//    static var template: BlogHeaders = .init()
+}
+
+extension BlogHeaders {
+    var title: Orig_Column<String> { .init("title") }
+    var createdAt: Orig_Column<Date> { .init("date") }
+//    @Column("createdAt") var createdAt: Date = nil
+//    static var template: BlogHeaders = .init()
+}
+
+protocol BlogBody: KeySet {
+//    @Column("contents") var contents: String = nil
+}
+
+//@dynamicMemberLookup
+//final class Record<KeyedBy: KeySet> {
+//    /// TODO: Use 'Any' type? that's what swift core uses
+//    /// or maybe a protocol that can be keyed
+//    private var backing: [String: JSON] = [:]
+//    init(_ backing: [String: JSON]) {
+//        self.backing = backing
+//    }
+//
+//    subscript<C: Codable>(dynamicMember key: KeyPath<KeyedBy, Orig_Column<C>>) -> C {
+//        get {
+//            let column = KeyedBy.template[keyPath: key]
+//            let json = backing[column.name] ?? .null
+//            return try! C(json: json)
+//        }
+//        set {
+//            let column = KeyedBy.template[keyPath: key]
+//            backing[column.name] = newValue.json
+//        }
+//    }
+//
+//    subscript<C: Codable>(dynamicMember key: KeyPath<KeyedBy, Attribute<C>>) -> C {
+//        get {
+//            let column = KeyedBy.template[keyPath: key]
+//            let json = backing[column.name] ?? .null
+//            return try! C(json: json)
+//        }
+//        set {
+//            let column = KeyedBy.template[keyPath: key]
+//            backing[column.name] = newValue.json
+//        }
+//    }
+//}
+
+protocol ASF {
+    init()
+}
+
+
+//@dynamicMemberLookup
+//struct Dynamic<T: _Record> {
+//    init() {
+//        // set a connection?
+//    }
+//
+//    subscript<C: Codable>(dynamicMember key: KeyPath<T, Orig_Column<C>>) -> C {
+//        get {
+//            fatalError()
+//        }
+//    }
+//}
+//
+//protocol _Record {
+//    init()
+//}
+//
+//struct Thing: _Record {
+//    var goob = Orig_Column<String>("goob")
+//    var bzzlrb = Orig_Column<Int>("bzzlrb")
+//}
 
 func propertyAttaching() {
+    // Dynamic<Thing>(.sqlite)
+//    let dyn = Dynamic<Thing>()
+//    let g = dyn.goob
+    let a = [ASF]()
+    var json = JSON.emptyObj
+    json["bgColor"] = "#ff889a".json
+    json["favoriteColor"] = "#9a88af".json
+    json["title"] = "Cool Swift".json
+
+    print(json.colorKeys.$bg)
+
+//    let ob = Ob<UserBase & User>(json.obj!)
+
+//    let temp = Template<BlogHeaders>(json)
+//    temp.title
+//    let ob = Ob<BlogBody & BlogHeaders>(json.obj!)
+}
+
+func oldasdfdsfasdf() {
+//    print(ob.$bg)
+//    print(ob.$favorite)
+    print("")
 //    let f = Flip(grib: 98, slib: "")
 //    Partial(f, paths: \.grib)
 
-    let kers = \JSONKeys.$age
+//    let kers = \JSONKeys.$age
     var blerb = JSON.emptyObj
-    blerb.userKeys.$age = 42
-    blerb.lifeKeys.$createdAt = Date()
-//    print(blerb.lifeKeys.$createdAt)
+    let ck = blerb.colorKeys.extended
+    let av = blerb.colorKeys?.$extended
+    print(blerb.colorKeys?.$extended)
+//    blerb.age = 42
+//    blerb.$createdAt = Date()
+    print(blerb.lifeKeys.$createdAt)
     print(blerb.userKeys.$age)
     print(blerb.userKeys.$age)
-    blerb.colorKeys.$bg = "#ffffaa"
+//    blerb.colorKeys.$bg = "#ffffaa"
     print(blerb.colorKeys.$bg)
     print()
     blerb.$id = "abc.123"
     blerb.$age = 14
 //    blerb
     print("blerb: \(blerb.$id), \(blerb.$age)")
-    let aggregatedKeysType = Template<Sleepy & Derpy>.Keys.self
+    let aggregatedKeysType = Orig_Template<Sleepy & Derpy>.Keys.self
     print(aggregatedKeysType)
     let mirrrrrr = Mirror(reflecting: aggregatedKeysType)
     print(mirrrrrr)
 
-    let foo = Template<Sleepy & Derpy>(.obj([:])).another
+    let foo = Orig_Template<Sleepy & Derpy>(.obj([:])).another
     let js = JSON.obj(["id": "1".json])
 //    js[keyPath: <#T##KeyPath<JSON, Value>#>]
 //    let ka = KeyAggregator<KeySet>(js)

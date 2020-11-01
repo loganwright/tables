@@ -31,17 +31,17 @@ final class Reffed {
     }
 }
 
-@dynamicMemberLookup
-struct Dynamic {
-    subscript(dynamicMember key: String) -> Int? {
-        get {
-            0
-        }
-        set {
-            fatalError()
-        }
-    }
-}
+//@dynamicMemberLookup
+//struct Dynamic {
+//    subscript(dynamicMember key: String) -> Int? {
+//        get {
+//            0
+//        }
+//        set {
+//            fatalError()
+//        }
+//    }
+//}
 
 @dynamicMemberLookup
 struct Group<A, B> {
@@ -564,9 +564,9 @@ func asdfsadfsd() {
     funcs.doWhatever("hi")
 
 
-    let dyno = Dynamic()
-//    print(dyno.asdf)
-    let path = \Dynamic.anythingHere
+//    let dyno = Dynamic()
+////    print(dyno.asdf)
+//    let path = \Dynamic.anythingHere
 
 //    let _ = Serializer<Alien> {
 //        \.name

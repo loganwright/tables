@@ -7,7 +7,8 @@ final class HTTPTests: XCTestCase {
 //            .get
 //        }
 //        requestRun()
-        propertyAttaching()
+//        propertyAttaching()
+        testDatabaseStuff()
     }
 }
 
