@@ -4,21 +4,10 @@ protocol Schema {
 }
 
 extension Schema {
-    // special case, handled by database?
-    // will crash if accessed outside of Ref
-//    var id: Column<String?> { Column("id") }
-    static func _primaryKeyStr() -> String? {
-        primaryKey?.key
-    }
-
-    static var primaryKey: PrimaryKeyBase? {
+    var _primaryKey: PrimaryKeyBase? {
         // todo: optimize?
         unsafe_getColumns().lazy.compactMap { $0 as? PrimaryKeyBase } .first
     }
-
-//    static var primaryKey: _PuhrimaryKey? {
-//        unsafe_getColumns().lazy.compactMap { $0 as? _PuhrimaryKey } .first
-//    }
 }
 
 //protocol IDSchema: Schema {
@@ -43,9 +32,28 @@ private var templates: [String: Schema] = [:]
 extension Schema {
     static var template: Self {
         if let existing = templates[table] as? Self { return existing }
-        let new = Self.init()
+        let new = Self.make()
         templates[table] = new
         return new
+    }
+
+    /// always call this in preference to the other
+    static func make() -> Self {
+        let new = Self.init()
+        new._hydrateIntrospectedLabels()
+        return new
+    }
+
+    private func _hydrateIntrospectedLabels() {
+        let props = unsafe_getProperties()
+        props.forEach { prop in
+            guard let column = prop.val as? SQLColumn else {
+                Log.warn("unexpected property on schema: \(Self.self).\(prop.label)")
+                return
+            }
+            guard column.name.isEmpty else { return }
+            column.name = prop.label
+        }
     }
 }
 
@@ -130,7 +138,7 @@ final class Ref<S: Schema> {
         set {
             /// maybe just check that it exists?
             let column = S.template[keyPath: key]
-            guard let foreignKey = Link.primaryKey else { fatalError("primary key required for relations") }
+            guard let foreignKey = Link.template._primaryKey else { fatalError("primary key required for relations") }
             guard let new = newValue else {
                 backing[column.key] = nil
                 return
@@ -165,8 +173,8 @@ final class Ref<S: Schema> {
 //            }
 
             let column = S.template[keyPath: key]
-            guard let foreignKey = Link._primaryKeyStr() else { fatalError("primary key required for relations") }
-            backing[column.key] = newValue.compactMap { $0.backing[foreignKey].json } .json
+            guard let foreignKey = Link.template._primaryKey else { fatalError("primary key required for relations") }
+            backing[column.key] = newValue.compactMap { $0.backing[foreignKey.name].json } .json
             // try to get this back to stronger keypaths, maybe w other protocol
             // backing[column.key] = newValue.map(\.id)
             fatalError()
@@ -304,9 +312,12 @@ struct _Column<C: Codable> {
 import SQLKit
 
 class SQLColumn {
-    let key: String
+    fileprivate(set) var key: String
     /// I can never decide
-    var name: String { key }
+    var name: String {
+        get { key }
+        set { key = newValue }
+    }
     let type: SQLDataType
     let constraints: [SQLColumnConstraintAlgorithm]
 
@@ -343,23 +354,23 @@ protocol OptionalProtocol {
 }
 extension Optional: OptionalProtocol {}
 
-protocol IDType: DatabaseValue {}
-extension String: IDType {}
-extension Int: IDType {}
-
-class OrigPrimaryKey: SQLColumn {
-    override init(_ key: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
-        let primary = constraints.first { const in
-            switch const {
-            case .primaryKey: return true
-            default: return false
-            }
-        }
-        assert(primary != nil)
-
-        super.init(key, type, constraints)
-    }
-}
+//protocol IDType: DatabaseValue {}
+//extension String: IDType {}
+//extension Int: IDType {}
+//
+//class OrigPrimaryKey: SQLColumn {
+//    override init(_ key: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
+//        let primary = constraints.first { const in
+//            switch const {
+//            case .primaryKey: return true
+//            default: return false
+//            }
+//        }
+//        assert(primary != nil)
+//
+//        super.init(key, type, constraints)
+//    }
+//}
 
 func replacedDynamically() -> Never { fatalError() }
 
@@ -405,11 +416,11 @@ class PrimaryKeyBase: SQLColumn {
 class PrimaryKey<RawType: PrimaryKeyType>: PrimaryKeyBase {
     var wrappedValue: RawType? { replacedDynamically() }
 
-    init(_ key: String = "id", type: RawType.Type = RawType.self) where RawType == String {
+    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
         super.init(key, .uuid)
     }
 
-    init(_ key: String = "id", type: RawType.Type = RawType.self) where RawType == Int {
+    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == Int {
         super.init(key, .incrementing)
     }
 }
@@ -541,13 +552,13 @@ class Column<Value>: SQLColumn {
 }
 
 extension Column where Value: DatabaseValue {
-    convenience init(_ key: String, _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         self.init(key, Value.sqltype, constraints + [.notNull])
     }
 }
 
 extension Column where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
-    convenience init(_ key: String, _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         self.init(key, Value.Wrapped.sqltype, constraints)
     }
 }
@@ -569,7 +580,7 @@ extension Column where Value: OptionalProtocol, Value.Wrapped: Schema {
 //        self.init(key, type: IDType.sqltype, constraints: constraints + defaults)
 //    }
 
-    convenience init<PK>(_ key: String,
+    convenience init<PK>(_ key: String = "",
                          foreignKey: KeyPath<Value.Wrapped, PrimaryKey<PK>>,
                          _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         let foreignColumn = Value.Wrapped.template[keyPath: foreignKey]
@@ -586,7 +597,7 @@ extension Column where Value: OptionalProtocol, Value.Wrapped: Schema {
 // MARK: One to Many
 
 extension Column where Value: Sequence, Value.Element: Schema {
-    convenience init<PK>(_ key: String,
+    convenience init<PK>(_ key: String = "",
                          containsForeignKey foreignKey: KeyPath<Value.Element, PrimaryKey<PK>>,
                          _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         let foreignColumn = Value.Element.template[keyPath: foreignKey]
@@ -605,7 +616,7 @@ extension Column where Value: Sequence, Value.Element: Schema {
 }
 
 extension Schema {
-    static func unsafe_getColumns() -> [SQLColumn] {
+    func unsafe_getColumns() -> [SQLColumn] {
         return unsafe_getProperties().compactMap { prop in
             guard let column = prop.val as? SQLColumn else {
                 Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.type)")
@@ -613,13 +624,13 @@ extension Schema {
                 return nil
             }
 
-            column.unsafe_testing_inferKey = prop.label
+            if column.name.isEmpty { column.name = prop.label }
             return column
         }
     }
 
-    static func unsafe_getProperties() -> [(label: String, type: String, val: Any)] {
-        Mirror(reflecting: template).children.compactMap { child in
+    func unsafe_getProperties() -> [(label: String, type: String, val: Any)] {
+        Mirror(reflecting: self).children.compactMap { child in
             assert(child.label != nil, "expected a label for template property")
             guard let label = child.label else { return nil }
             return (label, "\(type(of: child.value))", child.value)
@@ -850,7 +861,7 @@ struct Table {
     }
 
     init(_ schema: Schema.Type) {
-        let columns = schema.unsafe_getColumns()
+        let columns = schema.init().unsafe_getColumns()
         self.init(schema.table, columns)
     }
 }
@@ -957,72 +968,12 @@ extension Database {
     }
 }
 
-protocol IDSchema: Schema {
-    associatedtype PKRawType: PrimaryKeyType
-    var _pk: PrimaryKey<PKRawType> { get set }
-//    var _id: PrimaryKey<PKRawType> { get set }
-//    var _idkp: KeyPath<Self, PrimaryKey<PKRawType>> { get set }
-}
-
-
-//extension Ref {
-//    var _id: PrimaryKeyBase? {
-//        S.primaryKey
-//    }
-//
-//    fileprivate func setId() throws {
-//        guard let _id else {
-//            <#statements#>
-//        }
-//
-//    }
+//protocol IDSchema: Schema {
+//    associatedtype PKRawType: PrimaryKeyType
+//    var _pk: PrimaryKey<PKRawType> { get set }
+////    var _id: PrimaryKey<PKRawType> { get set }
+////    var _idkp: KeyPath<Self, PrimaryKey<PKRawType>> { get set }
 //}
-
-//extension Schema {
-//    var primary: PrimaryKeyBase? {
-//        self[keyPath: Self.primaryKey]
-//    }
-//}
-
-extension Database {
-//    func save<S: Schema>(_ ref: Ref<S>, primary: KeyPath<S, PrimaryKey<String>>) {
-//        let pk = S.template[keyPath: primary]
-////        guard ref[keyPath: primary] == nil else { fatalError("id already set on object") }
-//
-//    }
-//
-//    func save<S: Schema>(_ ref: Ref<S>, primary: KeyPath<S, PrimaryKey<Int>>) {
-//
-//    }
-
-//    func save<S: IDSchema>(_ ref: Ref<S>) where S.PKRawType == String {
-////        ref._pk
-//        fatalError()
-//    }
-
-//    func save<S>(_ ref: Ref<S>) {
-//        if let primary = S.primaryKey {
-//            guard ref.backing[primary.key] == nil else { fatalError("ref already exists") }
-//            switch primary.keyType {
-//            case .uuid:
-//                ref.backing[primary.key] = UUID().json
-//            case .incrementing:
-//                // set automatically after save by sql
-////                incrementing = true
-//            break
-//            }
-//        }
-//
-//        save(to: S.table, ref.backing)
-//        ref.isDirty = false
-//
-//    }
-}
-
-extension Schema {
-    var _pkuuid: PrimaryKey<String>? { Self.primaryKey as? PrimaryKey<String> }
-    var _pkintid: PrimaryKey<Int>? { Self.primaryKey as? PrimaryKey<Int> }
-}
 
 extension SeeQuel: Database {
     func prepare(_ table: Table) throws {
@@ -1046,7 +997,7 @@ extension SeeQuel: Database {
     }
 
     func save<S>(_ ref: Ref<S>) where S : Schema {
-        let primary = S.primaryKey
+        let primary = S.template._primaryKey
         if let primary = primary {
             guard ref.backing[primary.key] == nil else { fatalError("ref already exists") }
             switch primary.keyType {
@@ -1112,8 +1063,8 @@ extension SeeQuel: Database {
     }
 
     func load<S>(id: String) -> Ref<S>? where S : Schema {
-        let columns = S.unsafe_getColumns().map(\.name)
-        guard let pk = S.primaryKey?.name else { fatalError("missing primary key") }
+        let columns = S.template.unsafe_getColumns().map(\.name)
+        guard let pk = S.template._primaryKey?.name else { fatalError("missing primary key") }
         let backing = try! self.db.select()
             .columns(columns)
             .where(SQLIdentifier(pk), .equal, id)

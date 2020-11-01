@@ -16,7 +16,7 @@ final class DBTests: XCTestCase {
     let sql = SQLManager.unsafe_testable
 
     func testExtractProperties() {
-        let properties = Item.unsafe_getProperties()
+        let properties = Item.template.unsafe_getProperties()
         let columns = properties.compactMap { $0.val as? SQLColumn }
         XCTAssertEqual(properties.count, 2)
         XCTAssertEqual(properties.count, columns.count)
@@ -32,7 +32,7 @@ final class DBTests: XCTestCase {
 
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
-        let _ = Foo.unsafe_getColumns()
+        let _ = Foo.template.unsafe_getColumns()
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("incompatible schema property") }))
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
     }
@@ -73,7 +73,7 @@ final class DBTests: XCTestCase {
 
         let w_meta = try db.unsafe_table_meta("item")
         XCTAssertEqual(w_meta.count, 2)
-        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.unsafe_getColumns().map(\.key).sorted())
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.unsafe_getColumns().map(\.key).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
         print(h_meta)
@@ -117,12 +117,12 @@ final class DBTests: XCTestCase {
 
 struct Item: Schema {
     var id = PrimaryKey<Int>()
-    var power = Column<Int>("power")
+    var power = Column<Int>()
 }
 
 struct Food: Schema {
     var id = PrimaryKey<Int>()
-    var health = Column<Int>("health")
+    var health = Column<Int>()
 }
 
 struct Hero: Schema {
@@ -130,11 +130,11 @@ struct Hero: Schema {
     var id = PrimaryKey<String>()
 
     // basics
-    var name = Column<String>("name")
-    var age = Column<Int>("age")
+    var name = Column<String>()
+    var age = Column<Int>()
     // nullable
-    var nickname = Column<String?>("nickname")
+    var nickname = Column<String?>()
 
     // relations
-    var weapon = Column<Item?>("weapon", foreignKey: \.id)
+    var weapon = Column<Item?>(foreignKey: \.id)
 }
