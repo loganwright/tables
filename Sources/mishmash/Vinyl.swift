@@ -165,7 +165,6 @@ final class Ref<S: Schema> {
             // we are parent, seeking detached children
             let childColumn = S.template[keyPath: key]
             let associatedParentIdKey = childColumn.associatedParentIdKey
-//            let associatedParentIdKeyPath = childColumn.associatedParentIdKeyPath
 
             let parentIdKey = childColumn.parentIdKey
             guard let parentIdValue = backing[parentIdKey.name] else {
@@ -185,62 +184,6 @@ final class Ref<S: Schema> {
 
         return db.getAll(where: associatedParentIdKey, matches: parentIdValue)
     }
-
-//    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
-//        get {
-//            let column = S.template[keyPath: key]
-//            guard let ids = backing[column.key]?.array?.compactMap(\.string) else {
-//                return nil
-//            }
-//            return database.load(ids: ids)
-//        }
-//        set {
-//            let hasUnsavedItems = newValue?
-//                .map(\.isDirty)
-//                .reduce(false, { $0 || $1 })
-//                ?? false
-//            guard !hasUnsavedItems else {
-//                fatalError("can not set unsaved many relations")
-//            }
-//
-//            let column = S.template[keyPath: key]
-//            backing[column.key] = newValue?.compactMap(\.id).json
-//        }
-//    }
-
-//    subscript<Many: Schema>(dynamicMember key: KeyPath<S, OneToMany<Many>>) -> [Ref<Many>] {
-//        get {
-//            // generalized
-//            let oneToMany = S.template[keyPath: key]
-////
-////            let ids = raw[oneToMany.key] ?? .null
-////            return try! C(json: ids)
-//        }
-//        set {
-//            let column = S.template[keyPath: key]
-//            newValue
-//            raw[column.key] = newValue.json
-//
-//            // not saved
-//            isDirty = true
-//        }
-//    }
-
-//    subscript<C: ColumnProtocol>(dynamicMember key: KeyPath<S, C>) -> C.Wrapped where C.Wrapped: Schema {
-//        get {
-//            let column = S.template[keyPath: key]
-//            let json = raw[column.key] ?? .null
-//            Ref<C.Wrapped>(raw: json.obj!)
-//            return try! C.Wrapped(json: json)
-//        }
-//        set {
-//            let column = S.template[keyPath: key]
-//            raw[column.key] = newValue.json
-//
-//            // not saved
-//            dirty = true
-//        }
-//    }
 }
 
 import SQLKit
@@ -295,23 +238,6 @@ protocol OptionalProtocol {
 }
 extension Optional: OptionalProtocol {}
 
-//protocol IDType: DatabaseValue {}
-//extension String: IDType {}
-//extension Int: IDType {}
-//
-//class OrigPrimaryKey: SQLColumn {
-//    override init(_ key: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
-//        let primary = constraints.first { const in
-//            switch const {
-//            case .primaryKey: return true
-//            default: return false
-//            }
-//        }
-//        assert(primary != nil)
-//
-//        super.init(key, type, constraints)
-//    }
-//}
 
 func replacedDynamically() -> Never { fatalError() }
 
@@ -509,11 +435,6 @@ class LazyHandler<T> {
 
 }
 
-//
-///// for types that are aggregated from data, and are not stored
-///// for example, a
-//class EphemeralColumn<C>: Column<C> {}
-
 
 /**
  parentIdKey
@@ -562,19 +483,17 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
 
     override var wrappedValue: ChildSchema? { replacedDynamically() }
 
+    /// let idToFilterBy = parent[parentIdKey]
     @Later var parentIdKey: PrimaryKeyBase
     @Later var parentIdKeyPath: AnyKeyPath
 
+    /// referencing out
     @Later var associatedParentIdKey: String
     @Later var associatedParentIdKeyPath: PartialKeyPath<ChildSchema>
 
-    /**
-     parentIdKey
-     * parentIdValue
-     childAssociatedIdKey
-     * childAssociatedValue
-     */
-    init<ParentSchema: Schema>(_ key: String = "", referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+    init<ParentSchema: Schema>(
+        _ key: String = "",
+        referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
         self._parentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
             return parent.parentIdKey
@@ -595,35 +514,6 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
         super.init(key, .text, Later([]))
         /// hacky way  to keep it out of stuff
         shouldSerialize = false
-
-        /// the child and parent are making circular references, and 'lazy' keyword doesn't work
-        /// ths can be improved, but trying to get working for now
-        self.$constraints.loader = { [weak self] in
-            assert(false, "should children be read only?")
-            guard let welf = self else { return [] }
-
-            //        let foreign = ParentSchema.template[keyPath: foreign]
-            let foreign = ChildSchema.template[keyPath: reference]
-            print("references: \(ChildSchema.table).\(foreign.name)")
-            print(welf.name)
-            welf._log(foreign)
-//            let defaults: [SQLColumnConstraintAlgorithm] = [
-//                .inlineForeignKey(name: welf.name),
-//                .references(ChildSchema.table,
-//                            foreign.name,
-//                            onDelete: nil,
-//                            onUpdate: nil)
-//            ]
-//            return defaults
-            return []
-        }
-    }
-
-    func _log<ParentSchema: Schema>(_ parentRef: Parent<ParentSchema>) {
-        print(parentRef)
-        print(parentRef.parentIdKey)
-        print(parentRef.parentIdKeyPath)
-        print()
     }
 }
 
@@ -650,145 +540,6 @@ extension Schema {
     }
 }
 
-//extension TypedColumn where C == Optional<DatabaseValue> {
-//    convenience init(_ key: String, constraints: [SQLColumnConstraintAlgorithm] = []) {
-//        self.init(key, type: C.Wrapped.sqltype, constraints: constraints)
-//    }
-//}
-
-//class TypeErasedColumn {
-//    let key: String
-//
-//    init(_ key: String) {
-//        self.key = key
-//    }
-//}
-
-/// should this stay a property wrapper?
-//@propertyWrapper
-//class Column<C>: TypeErasedColumn {
-////    public var projectedValue: Column<C> { self }
-//
-//    public var wrappedValue: C {
-//        fatalError("columns should only be accessed from within a 'Ref' object")
-//    }
-//}
-
-//protocol ColumnProtocol {
-//    var key: String { get }
-//}
-//extension Column: ColumnProtocol {}
-//
-//@propertyWrapper
-//open class SAVEColumn<C> {
-//    let key: String
-//
-//    var isReady: Bool { return _wrappedValue != nil }
-//
-//    private var _wrappedValue: C? = nil
-//    public var wrappedValue: C {
-//        get {
-//            print("DOES THIS EVEN RUN, SHOULD IT FATAL ERROR?")
-//            guard let existing = _wrappedValue else {
-//                fatalError("value not yet set on column")
-//            }
-//            return existing
-//        }
-//        set {
-//            print("DOES THIS EVEN RUN, SHOULD IT FATAL ERROR?")
-//            _wrappedValue = newValue
-//        }
-//    }
-//
-//    public var projectedValue: SAVEColumn<C> { self }
-//
-//    init(_ name: String) {
-//        self.key = name
-//        self._wrappedValue = nil
-//    }
-//
-////    init(_ name: String, `default`: C) {
-////        self.name = name
-////        self._wrappedValue = `default`
-////    }
-//
-//    /// required initializer
-//    init(wrappedValue: C?, _ name: String) {
-//        self.key = name
-//        self._wrappedValue = wrappedValue
-//    }
-//}
-
-
-enum DBOperator {
-    case equals
-}
-
-//extension Schema {
-////    static func fetch<T>(where: KeyPath<Self, T>)
-////    static func fetch(id: String) -> Ref<Self> {
-////        fatalError()
-////    }
-//
-//    static func fetch<T>(where: KeyPath<Self, Column<T>>, _ op: DBOperator, _ expectation: T) -> Ref<Self> {
-//        fatalError()
-//    }
-//}
-
-//@propertyWrapper
-//struct _Link<Base: Schema, Node: Schema> {
-////    let key: PartialKeyPath<To>
-////    let asdf: KeyPath<
-//    var wrappedValue: Ref<Node> {
-//        get {
-//            fatalError()
-//        }
-//    }
-//
-//    init<A, B>(where parent: KeyPath<Base, Column<A>>, equals child: KeyPath<Node, Column<B>>) {
-////        self.key = key
-////        fatalError()
-//    }
-//}
-
-//@propertyWrapper
-//struct Relation<Base: Schema, Node: Schema> {
-////    let key: PartialKeyPath<To>
-////    let asdf: KeyPath<
-//    var wrappedValue: Ref<Node> {
-//        get {
-//            fatalError()
-//        }
-//    }
-//
-//    init<A, B>(where parent: KeyPath<Base, Column<A>>, equals child: KeyPath<Node, Column<B>>) {
-////        self.key = key
-////        fatalError()
-//    }
-//}
-
-
-//@propertyWrapper
-//struct Link<Left: Schema, Right: Schema> {
-////    let left: Column
-////    let key: PartialKeyPath<To>
-////    let asdf: KeyPath<
-//    var wrappedValue: Ref<Right> {
-//        get {
-//            fatalError()
-////            Right.fetch(where: T##KeyPath<Schema, Column<Decodable & Encodable>>, T##op: DBOperator##DBOperator, T##expectation: Decodable & Encodable##Decodable & Encodable)
-//        }
-//    }
-//
-//    init<A, B>(where left: KeyPath<Left, Column<A>>, equals right: KeyPath<Right, Column<B>>) {
-//
-//        let l = Left.template[keyPath: left]
-//        let r = Right.template[keyPath: right]
-////        Right.fetch(where: left, .equals, right)
-////        self.key = key
-////        fatalError()
-//    }
-//}
 
 extension Database {
     func prepare<S: Schema>(_ schema: S) {
