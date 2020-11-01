@@ -87,6 +87,31 @@ final class Ref<S: Schema> {
         }
     }
 
+
+    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]>>) -> [Ref<C>] {
+        get {
+            let column = S.template[keyPath: key]
+            let ids = backing[column.key]?
+                .array?
+                .compactMap(\.string)
+                ?? []
+
+            return database.load(ids: ids)
+        }
+        set {
+            // TODO: should this check if they exist? maybe just be a little fuzzy
+//            let hasUnsavedItems = newValue
+//                .map(\.isDirty)
+//                .reduce(false, { $0 || $1 })
+//            guard !hasUnsavedItems else {
+//                fatalError("can not set unsaved many relations")
+//            }
+
+            let column = S.template[keyPath: key]
+            backing[column.key] = newValue.compactMap(\.id).json
+        }
+    }
+
     subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
         get {
             let column = S.template[keyPath: key]
@@ -215,25 +240,31 @@ struct _Column<C: Codable> {
     }
 }
 
+class ColumnBase {}
 @propertyWrapper
-struct Column<C> {
+class Column<C>: ColumnBase {
     let key: String
 
     public var projectedValue: Column<C> { self }
 
     public var wrappedValue: C {
-        get {
+//        get {
             fatalError("columns should only be accessed from within a 'Ref' object")
-        }
-        set {
-            fatalError("columns should only be accessed from within a 'Ref' object")
-        }
+//        }
+//        set {
+//            fatalError("columns should only be accessed from within a 'Ref' object")
+//        }
     }
 
-    init(_ name: String) {
-        self.key = name
+    init(_ key: String) {
+        self.key = key
     }
 }
+
+protocol ColumnProtocol {
+    var key: String { get }
+}
+extension Column: ColumnProtocol {}
 
 @propertyWrapper
 open class SAVEColumn<C> {
@@ -346,9 +377,10 @@ struct _Link<Base: Schema, Node: Schema> {
 //    }
 //}
 
-extension Ref {
-    func loadRelation<R: Schema>(where l: KeyPath<S, Column<String>>, equals r: KeyPath<R, Column<String>>) -> Ref<R> {
-        fatalError()
+extension Database {
+    func prepare<S: Schema>(_ schema: S) {
+        let template = S.template
+
     }
 }
 
@@ -357,19 +389,14 @@ struct Nested<S: Schema> {
     var wrappedValue: S { fatalError() }
 }
 
-protocol ColumnProtocol {
-    associatedtype Wrapped
-    var key: String { get }
-}
-
 //extension Column: ColumnProtocol {
 //    typealias Wrapped = C
 //}
 
 
-extension OneToMany: ColumnProtocol {
-    typealias Wrapped = S
-}
+//extension OneToMany: ColumnProtocol {
+//    typealias Wrapped = S
+//}
 
 final class Box<T> {
     var boxed: T
@@ -407,7 +434,7 @@ extension Database {
 protocol Database {
     func save<S>(_ ref: Ref<S>)
     func load<S>(id: String) -> Ref<S>?
-    func load<S>(ids: [String]) -> [Ref<S>]?
+    func load<S>(ids: [String]) -> [Ref<S>]
 }
 
 import Foundation
@@ -429,8 +456,8 @@ final class TestDB: Database {
     }
 
     /// warn if missing ids?
-    func load<S>(ids: [String]) -> [Ref<S>]? where S : Schema {
-        guard let table = tables[S.table] else { return nil }
+    func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
+        guard let table = tables[S.table] else { fatalError() }
         return ids.compactMap { table[$0] } .map { Ref($0, database: self) }
     }
 }
@@ -498,13 +525,13 @@ extension Ref {
     }
 }
 
-private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
-    Mirror(reflecting: template).children.compactMap { child in
-        assert(child.label != nil, "expected a label for template property")
-        guard let label = child.label else { return nil }
-        return (label, "\(type(of: child.value))")
-    }
-}
+//private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
+//    Mirror(reflecting: template).children.compactMap { child in
+//        assert(child.label != nil, "expected a label for template property")
+//        guard let label = child.label else { return nil }
+//        return (label, "\(type(of: child.value))")
+//    }
+//}
 
 @_functionBuilder
 struct Preparer {
@@ -527,25 +554,107 @@ struct Preparer {
 
 let db = TestDB()
 
-typealias Link = Column
-
 struct Human: Schema {
     var name = Column<String>("name")
     var age = Column<Int>("age")
 
     // MARK: RELATIONS
     /// one to one
-    var friend = Column<Human?>("friend")
+    var nemesis = Column<Human?>("nemesis")
 
     /// one to many
     var pets = Column<[Pet]?>("pets")
+    var friends = Column<[Human]>("friends")
+}
+
+extension Schema {
+    static func prepare(in db: Database, paths: [PartialKeyPath<Self>]) {
+        print("got paths: \(paths)")
+        let loaded = paths.map { template[keyPath: $0] }
+        print("loadedd: \(loaded)")
+    }
+}
+
+extension KeyPath where Root: Schema {
+    func prepare() {
+
+    }
 }
 
 struct Pet: Schema {
     var name = Column<String>("name")
 }
 
+protocol ColumnMeta {
+
+}
+
+private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
+    Mirror(reflecting: template).children.compactMap { child in
+        assert(child.label != nil, "expected a label for template property")
+        guard let label = child.label else { return nil }
+        return (label, "\(type(of: child.value))")
+    }
+}
+private func unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String)] {
+    Mirror(reflecting: template).children.compactMap { child in
+        assert(child.label != nil, "expected a label for template property")
+        guard let label = child.label else { return nil }
+        return (label, "\(type(of: child.value))")
+    }
+}
+
+private func _unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String, val: Any)] {
+    Mirror(reflecting: template).children.compactMap { child in
+        assert(child.label != nil, "expected a label for template property")
+        guard let label = child.label else { return nil }
+        return (label, "\(type(of: child.value))", child.value)
+    }
+}
+
+@_functionBuilder
+struct PreparationBuilder<S: Schema> {
+    static func buildBlock(_ paths: PartialKeyPath<S>...) {
+        let temp = S.template
+        let loaded = paths.map { temp[keyPath: $0] }
+        print("loaded: \(loaded)")
+    }
+}
+
+@_functionBuilder
+struct ColumnBuilder<S: Schema> {
+    static func buildBlock(_ paths: KeyPath<S, ColumnBase>...) {
+
+    }
+}
+
+extension Schema {
+    static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
+
+    }
+}
+
 func testDatabaseStuff() {
+    let huprops = _unsafe_getProperties(template: Human.template)
+    print(huprops)
+//    Human.prepare(on: db) {
+//        \.age
+//        \.friends
+//        \.name
+//        \.pets
+//    }
+    Human.prepare(on: db) {
+        \Human.age
+        \Human.friends
+        \Human.name
+//        \.age
+//        \.friends
+//        \.name
+//        \.pets
+    }
+
+    Human.prepare(in: db, paths: [\Human.age, \Human.friends, \Human.name, \Human.pets])
+
     let joe = Ref<Human>(database: db)
     joe.id = "0"
     joe.name = "joe"
@@ -555,11 +664,13 @@ func testDatabaseStuff() {
     jan.id = "1"
     jan.name = "jane"
     jan.age = 14
-    let frand = jan.friend
+    let frand = jan.nemesis
     print(frand)
 
-    joe.friend = jan
-    jan.friend = joe
+    joe.nemesis = jan
+    jan.nemesis = joe
+
+    joe.friends = [joe, jan]
 
     let bobo = Ref<Pet>(database: db)
     bobo.name = "bobo"
@@ -584,7 +695,7 @@ func testDatabaseStuff() {
 //    joe.friend()
 //    joe.save()
 
-    print("Hi: \(joe.friend!)")
+    print("Hi: \(joe.friends)")
 }
 
 func orig_testDatabaseStuff() {
