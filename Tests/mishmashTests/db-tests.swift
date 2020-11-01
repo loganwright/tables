@@ -166,20 +166,23 @@ final class DBTests: XCTestCase {
 
         let one = Ref<One>(db)
         one.name = "blarb"
-//        XCTFail("nooooo")
-        one.many = many
         try one.save()
+
+        XCTAssert(one.many.isEmpty)
+        many.forEach { indi in
+            indi.oneyy = one
+        }
+        XCTAssert(one.many.isEmpty)
 
         let two: Ref<One>  = db.load(id: "1")!
         XCTFail("make the map work again")
-//        XCTAssertEqual(many.map(\.id), two.many.map(\.id))
     }
 }
 
 struct Many: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
-    let parent = Parent<One>(references: \.id)
+    let oneyy = Parent<One>(references: \.id)
 }
 
 
@@ -187,7 +190,7 @@ struct One: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
 
-    let many = Children<Many>(referencedBy: \.parent)
+    let many = Children<Many>(referencedBy: \.oneyy)
 
 //    let many = Children<Many>(foreign: \.parent)
 //    let many = Column<[Many]>(\One.id, matches: \Many.parent)
@@ -239,138 +242,3 @@ struct Hero: Schema {
 //    var _equipped = Link<Hero, Item>.init(\Item._equippedBy)
 //    var __eqqq = Child<Item>(referencedBy: \.equippedBy)
 }
-func asdfcococ() {
-    let l = Ref<Hero>(SeeQuel.shared)
-    let a = l.lunch
-}
-
-
-func asdfldskjfldk() {
-//    \Hero._equipped
-}
-
-@propertyWrapper
-class Link<Me: Schema, Other: Schema>: SQLColumn {
-    var wrappedValue: (left: Me, right: Other) {
-        fatalError("")
-    }
-
-//    let lhs: KeyPath<Left, Link<Left, Right>>
-    let rhs: KeyPath<Other, Link<Other, Me>>
-
-    private let _constraints: LazyHandler<[SQLColumnConstraintAlgorithm]>
-
-    override var constraints: [SQLColumnConstraintAlgorithm] {
-        get {
-            _constraints.get() + super.constraints
-        }
-        set {
-            _constraints.set(newValue)
-            super.constraints = newValue
-        }
-    }
-    init(_ name: String = "",
-//         _ lhs: KeyPath<Left, Link<Left, Right>>,
-         _ references: KeyPath<Other, Link<Other, Me>>) {
-//        self.lhs = lhs
-        self.rhs = references
-        self._constraints = LazyHandler {
-            //        let foreign = ParentSchema.template[keyPath: foreign]
-            let foreign = Other.template[keyPath: references]
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .references(Other.table,
-                            foreign.name,
-                            onDelete: nil,
-                            onUpdate: nil)
-            ]
-            return defaults
-        }
-        super.init(name, .text, [])
-    }
-}
-
-@propertyWrapper
-class o_Link<Left: Schema, Right: Schema>: SQLColumn {
-    var wrappedValue: (left: Left, right: Right) {
-        fatalError("")
-    }
-
-//    let lhs: KeyPath<Left, Link<Left, Right>>
-    let rhs: KeyPath<Right, Link<Right, Left>>
-
-    private let _constraints: LazyHandler<[SQLColumnConstraintAlgorithm]>
-
-    override var constraints: [SQLColumnConstraintAlgorithm] {
-        get {
-            _constraints.get() + super.constraints
-        }
-        set {
-            _constraints.set(newValue)
-            super.constraints = newValue
-        }
-    }
-    init(_ name: String = "",
-//         _ lhs: KeyPath<Left, Link<Left, Right>>,
-         _ references: KeyPath<Right, Link<Right, Left>>) {
-//        self.lhs = lhs
-        self.rhs = references
-        self._constraints = LazyHandler {
-            //        let foreign = ParentSchema.template[keyPath: foreign]
-            let foreign = Right.template[keyPath: references]
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .references(Right.table,
-                            foreign.name,
-                            onDelete: nil,
-                            onUpdate: nil)
-            ]
-            return defaults
-        }
-        super.init(name, .text, [])
-    }
-}
-
-@propertyWrapper
-class __Link<Left: Schema, Right: Schema>: SQLColumn {
-    var wrappedValue: (left: Left, right: Right) {
-        fatalError("")
-    }
-
-    let lhs: KeyPath<Left, Link<Left, Right>>
-    let rhs: KeyPath<Right, Link<Right, Left>>
-
-    private let _constraints: LazyHandler<[SQLColumnConstraintAlgorithm]>
-
-    override var constraints: [SQLColumnConstraintAlgorithm] {
-        get {
-            _constraints.get() + super.constraints
-        }
-        set {
-            _constraints.set(newValue)
-            super.constraints = newValue
-        }
-    }
-    init(_ name: String = "",
-         _ lhs: KeyPath<Left, Link<Left, Right>>,
-         _ rhs: KeyPath<Right, Link<Right, Left>>) {
-        self.lhs = lhs
-        self.rhs = rhs
-        self._constraints = LazyHandler {
-            //        let foreign = ParentSchema.template[keyPath: foreign]
-            let foreign = Right.template[keyPath: rhs]
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .references(Right.table,
-                            foreign.name,
-                            onDelete: nil,
-                            onUpdate: nil)
-            ]
-            return defaults
-        }
-        super.init(name, .text, [])
-    }
-}
-
-
-//func asdf() {
-//    let a: Item! = nil
-//    let p = a.equippedBy
-//}
