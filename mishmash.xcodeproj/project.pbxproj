@@ -29,6 +29,7 @@
 		8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE68254E8B5200ACBADA /* ThreadSafe.swift */; };
 		8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */; };
 		8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE74254E8B9500ACBADA /* String+Error.swift */; };
+		8082EE7F254E902500ACBADA /* Globals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE7E254E902500ACBADA /* Globals.swift */; };
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
@@ -68,6 +69,7 @@
 		8082EE68254E8B5200ACBADA /* ThreadSafe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafe.swift; sourceTree = "<group>"; };
 		8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Result+Extensions.swift"; sourceTree = "<group>"; };
 		8082EE74254E8B9500ACBADA /* String+Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Error.swift"; sourceTree = "<group>"; };
+		8082EE7E254E902500ACBADA /* Globals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Globals.swift; sourceTree = "<group>"; };
 		80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctionBuilders.swift; sourceTree = "<group>"; };
 		80F3CD8E254CE50B00EFA52F /* HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTP.swift; sourceTree = "<group>"; };
 		80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPathListable.swift; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 				8082EE68254E8B5200ACBADA /* ThreadSafe.swift */,
 				8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */,
 				8082EE74254E8B9500ACBADA /* String+Error.swift */,
+				8082EE7E254E902500ACBADA /* Globals.swift */,
 			);
 			name = mishmash;
 			path = Sources/mishmash;
@@ -273,6 +276,7 @@
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
 				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
 				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
+				8082EE7F254E902500ACBADA /* Globals.swift in Sources */,
 				8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */,
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
 				80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */,

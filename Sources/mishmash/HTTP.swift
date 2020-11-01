@@ -492,8 +492,8 @@ extension GeneralKeys {}
 
 func asdfsadfsd() {
 
-    var node = Node<GeneralKeys>()
-    node.createdAt
+//    var node = Node<GeneralKeys>()
+//    node.createdAt
 
     let ob = Obbi(name: "obbbbi", ownsShirt: true)
 //    ob.encodeSchema {

@@ -8,7 +8,7 @@ final class MishMashTests: XCTestCase {
     }
 
     func testGo() {
-        go()
+//        go()
     }
 
     func testKeyPaths() {

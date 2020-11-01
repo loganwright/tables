@@ -317,7 +317,7 @@ extension CCColumn where Value: DatabaseValue {
 }
 
 extension CCColumn where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
-    convenience init(_ key: String, constraints: [SQLColumnConstraintAlgorithm] = []) {
+    convenience init(_ key: String, _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         self.init(key, type: Value.Wrapped.sqltype, constraints: constraints + [.notNull])
     }
 }
@@ -326,8 +326,8 @@ extension CCColumn where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
 
 extension CCColumn where Value: OptionalProtocol, Value.Wrapped: Schema {
     convenience init<IDType>(_ key: String,
-                        _ foreign: KeyPath<Value.Wrapped, IDColumn<IDType>>,
-                        constraints: [SQLColumnConstraintAlgorithm] = []) {
+                             _ foreign: KeyPath<Value.Wrapped, IDColumn<IDType>>,
+                             _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         let foreignColumn = Value.Wrapped.template[keyPath: foreign]
         let defaults: [SQLColumnConstraintAlgorithm] = [
             .references(Value.Wrapped.table,
@@ -343,8 +343,8 @@ extension CCColumn where Value: OptionalProtocol, Value.Wrapped: Schema {
 
 extension CCColumn where Value: Sequence, Value.Element: Schema {
     convenience init<IDType>(_ key: String,
-                        _ foreign: KeyPath<Value.Element, IDColumn<IDType>>,
-                        constraints: [SQLColumnConstraintAlgorithm] = []) {
+                             _ foreign: KeyPath<Value.Element, IDColumn<IDType>>,
+                             _ constraints: [SQLColumnConstraintAlgorithm] = []) {
         let foreignColumn = Value.Element.template[keyPath: foreign]
         let defaults: [SQLColumnConstraintAlgorithm] = [
             .references(Value.Element.table,
@@ -360,6 +360,24 @@ extension CCColumn where Value: Sequence, Value.Element: Schema {
     }
 }
 
+extension Schema {
+    static func unsafe_getColumns() -> [SQLColumn] {
+        return unsafe_getProperties().compactMap { prop in
+            if let column = prop.val as? SQLColumn { return column }
+            Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.type)")
+            Log.info("expected \(SQLColumn.self), ie: \(CCColumn<String>.self)")
+            return nil
+        }
+    }
+
+    static func unsafe_getProperties() -> [(label: String, type: String, val: Any)] {
+        Mirror(reflecting: template).children.compactMap { child in
+            assert(child.label != nil, "expected a label for template property")
+            guard let label = child.label else { return nil }
+            return (label, "\(type(of: child.value))", child.value)
+        }
+    }
+}
 
 //extension TypedColumn where C == Optional<DatabaseValue> {
 //    convenience init(_ key: String, constraints: [SQLColumnConstraintAlgorithm] = []) {

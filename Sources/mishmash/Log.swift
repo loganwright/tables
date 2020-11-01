@@ -14,4 +14,16 @@ struct Log {
         print("*****************")
         print("\(file):\(line) - \(err.localizedDescription)")
     }
+
+    // MARK: Logs
+
+
+    /// storing logs for easier testng
+    static var _testable_logs: [String] = []
+    #if DEBUG
+    private static func print(_ str: String) {
+        _testable_logs.append(str)
+        Swift.print(str)
+    }
+    #endif
 }
