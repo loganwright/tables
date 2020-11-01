@@ -1,5 +1,4 @@
 import Foundation
-extension String: Error {}
 //extension Decodable {
 //    static func from(template: String) -> Self {
 //        let filePath  = Bundle.main.path(

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -22,6 +22,13 @@
 
 /* Begin PBXBuildFile section */
 		8082EE42254E336500ACBADA /* Vinyl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Vinyl.swift */; };
+		8082EE49254E7AFD00ACBADA /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8082EE48254E7AFD00ACBADA /* SQLiteKit */; };
+		8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
+		8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE5C254E8A8900ACBADA /* SQLManager.swift */; };
+		8082EE63254E8A9F00ACBADA /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE62254E8A9F00ACBADA /* Log.swift */; };
+		8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE68254E8B5200ACBADA /* ThreadSafe.swift */; };
+		8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */; };
+		8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE74254E8B9500ACBADA /* String+Error.swift */; };
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
@@ -55,6 +62,12 @@
 
 /* Begin PBXFileReference section */
 		8082EE41254E336500ACBADA /* Vinyl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vinyl.swift; sourceTree = "<group>"; };
+		8082EE56254E89FD00ACBADA /* db-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "db-tests.swift"; sourceTree = "<group>"; };
+		8082EE5C254E8A8900ACBADA /* SQLManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLManager.swift; sourceTree = "<group>"; };
+		8082EE62254E8A9F00ACBADA /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
+		8082EE68254E8B5200ACBADA /* ThreadSafe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafe.swift; sourceTree = "<group>"; };
+		8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Result+Extensions.swift"; sourceTree = "<group>"; };
+		8082EE74254E8B9500ACBADA /* String+Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Error.swift"; sourceTree = "<group>"; };
 		80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctionBuilders.swift; sourceTree = "<group>"; };
 		80F3CD8E254CE50B00EFA52F /* HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTP.swift; sourceTree = "<group>"; };
 		80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPathListable.swift; sourceTree = "<group>"; };
@@ -77,6 +90,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 0;
 			files = (
+				8082EE49254E7AFD00ACBADA /* SQLiteKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +119,7 @@
 				OBJ_12 /* XCTestManifests.swift */,
 				OBJ_13 /* mishmashTests.swift */,
 				80F3CDA1254D24AD00EFA52F /* http-tests.swift */,
+				8082EE56254E89FD00ACBADA /* db-tests.swift */,
 			);
 			name = mishmashTests;
 			path = Tests/mishmashTests;
@@ -150,6 +165,11 @@
 				80F3CDB0254D3BC400EFA52F /* JSON.swift */,
 				80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */,
 				8082EE41254E336500ACBADA /* Vinyl.swift */,
+				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
+				8082EE62254E8A9F00ACBADA /* Log.swift */,
+				8082EE68254E8B5200ACBADA /* ThreadSafe.swift */,
+				8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */,
+				8082EE74254E8B9500ACBADA /* String+Error.swift */,
 			);
 			name = mishmash;
 			path = Sources/mishmash;
@@ -184,6 +204,9 @@
 			dependencies = (
 			);
 			name = mishmash;
+			packageProductDependencies = (
+				8082EE48254E7AFD00ACBADA /* SQLiteKit */,
+			);
 			productName = mishmash;
 			productReference = "mishmash::mishmash::Product" /* mishmash.framework */;
 			productType = "com.apple.product-type.framework";
@@ -222,6 +245,9 @@
 				en,
 			);
 			mainGroup = OBJ_5;
+			packageReferences = (
+				8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */,
+			);
 			productRefGroup = OBJ_14 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -240,13 +266,19 @@
 			buildActionMask = 0;
 			files = (
 				8082EE42254E336500ACBADA /* Vinyl.swift in Sources */,
+				8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */,
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
+				8082EE63254E8A9F00ACBADA /* Log.swift in Sources */,
 				OBJ_24 /* mishmash.swift in Sources */,
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
 				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
 				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
+				8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */,
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
 				80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */,
+				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
+				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
+				8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +320,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ENABLE_TESTABILITY = YES;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
@@ -295,8 +328,11 @@
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = mishmash.xcodeproj/mishmash_Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) $(TOOLCHAIN_DIR)/usr/lib/swift/macosx";
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/macosx",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
@@ -316,6 +352,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ENABLE_TESTABILITY = YES;
+				ENABLE_TESTING_SEARCH_PATHS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PLATFORM_DIR)/Developer/Library/Frameworks",
@@ -323,8 +360,11 @@
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = mishmash.xcodeproj/mishmash_Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) $(TOOLCHAIN_DIR)/usr/lib/swift/macosx";
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(TOOLCHAIN_DIR)/usr/lib/swift/macosx",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
@@ -409,7 +449,11 @@
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = mishmash.xcodeproj/mishmashTests_Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
@@ -441,7 +485,8 @@
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator appletvos appletvsimulator watchos watchsimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SWIFT_PACKAGE";
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				USE_HEADERMAP = NO;
 			};
 			name = Release;
@@ -458,7 +503,11 @@
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = mishmash.xcodeproj/mishmashTests_Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CFLAGS = "$(inherited)";
 				OTHER_LDFLAGS = "$(inherited)";
@@ -520,6 +569,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/loganwright/sqlite-kit";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8082EE48254E7AFD00ACBADA /* SQLiteKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */;
+			productName = SQLiteKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = OBJ_1 /* Project object */;
 }

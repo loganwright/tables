@@ -73,6 +73,11 @@ final class Ref<S: Schema> {
 
     // MARK: Relations
 
+    ///
+    /// for now, the only relations supported are one-to-one where the link MUST be optional
+    /// for one to many relations, it MUST not be optional, and will instead return empty arrays
+    ///
+
     subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<C?>>) -> Ref<C>? {
         get {
             let column = S.template[keyPath: key]
@@ -112,27 +117,27 @@ final class Ref<S: Schema> {
         }
     }
 
-    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
-        get {
-            let column = S.template[keyPath: key]
-            guard let ids = backing[column.key]?.array?.compactMap(\.string) else {
-                return nil
-            }
-            return database.load(ids: ids)
-        }
-        set {
-            let hasUnsavedItems = newValue?
-                .map(\.isDirty)
-                .reduce(false, { $0 || $1 })
-                ?? false
-            guard !hasUnsavedItems else {
-                fatalError("can not set unsaved many relations")
-            }
-
-            let column = S.template[keyPath: key]
-            backing[column.key] = newValue?.compactMap(\.id).json
-        }
-    }
+//    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
+//        get {
+//            let column = S.template[keyPath: key]
+//            guard let ids = backing[column.key]?.array?.compactMap(\.string) else {
+//                return nil
+//            }
+//            return database.load(ids: ids)
+//        }
+//        set {
+//            let hasUnsavedItems = newValue?
+//                .map(\.isDirty)
+//                .reduce(false, { $0 || $1 })
+//                ?? false
+//            guard !hasUnsavedItems else {
+//                fatalError("can not set unsaved many relations")
+//            }
+//
+//            let column = S.template[keyPath: key]
+//            backing[column.key] = newValue?.compactMap(\.id).json
+//        }
+//    }
 
 //    subscript<Many: Schema>(dynamicMember key: KeyPath<S, OneToMany<Many>>) -> [Ref<Many>] {
 //        get {
@@ -240,24 +245,143 @@ struct _Column<C: Codable> {
     }
 }
 
-class ColumnBase {}
-@propertyWrapper
-class Column<C>: ColumnBase {
+import SQLKit
+
+class SQLColumn {
     let key: String
+    let type: SQLDataType
+    let constraints: [SQLColumnConstraintAlgorithm]
 
-    public var projectedValue: Column<C> { self }
-
-    public var wrappedValue: C {
-//        get {
-            fatalError("columns should only be accessed from within a 'Ref' object")
-//        }
-//        set {
-//            fatalError("columns should only be accessed from within a 'Ref' object")
-//        }
+    init(_ key: String, type: SQLDataType, constraints: [SQLColumnConstraintAlgorithm]) {
+        self.key = key
+        self.type = type
+        self.constraints = constraints
     }
+}
+
+protocol DatabaseValue {
+    static var sqltype: SQLDataType { get }
+}
+
+extension String: DatabaseValue {
+    static var sqltype: SQLDataType { return .text }
+}
+
+extension Int: DatabaseValue {
+    static var sqltype: SQLDataType { .int }
+}
+
+protocol OptionalProtocol {
+    associatedtype Wrapped
+}
+extension Optional: OptionalProtocol {}
+
+protocol IDType: DatabaseValue {}
+extension String: IDType {}
+extension Int: IDType {}
+
+/// should this stay a property wrapper?
+@propertyWrapper
+class IDColumn<C: IDType>: SQLColumn {
+    public var wrappedValue: C { wontRun() }
+}
+
+extension IDColumn where C == String {
+    convenience init(_ key: String = "id") {
+        self.init(key,
+                  type: C.sqltype,
+                  constraints: [.primaryKey(autoIncrement: false), .notNull])
+    }
+}
+
+extension IDColumn where C == Int {
+    convenience init(_ key: String = "id") {
+        self.init(key,
+                  type: C.sqltype,
+                  constraints: [.primaryKey(autoIncrement: true), .notNull])
+    }
+}
+
+/// should this stay a property wrapper?
+@propertyWrapper
+class CCColumn<Value>: SQLColumn {
+    public var wrappedValue: Value {
+        fatalError("columns should only be accessed from within a 'Ref' object")
+    }
+}
+
+extension CCColumn where Value: DatabaseValue {
+    convenience init(_ key: String, _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+        self.init(key, type: Value.sqltype, constraints: constraints)
+    }
+}
+
+extension CCColumn where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
+    convenience init(_ key: String, constraints: [SQLColumnConstraintAlgorithm] = []) {
+        self.init(key, type: Value.Wrapped.sqltype, constraints: constraints + [.notNull])
+    }
+}
+
+// MARK: One to One
+
+extension CCColumn where Value: OptionalProtocol, Value.Wrapped: Schema {
+    convenience init<IDType>(_ key: String,
+                        _ foreign: KeyPath<Value.Wrapped, IDColumn<IDType>>,
+                        constraints: [SQLColumnConstraintAlgorithm] = []) {
+        let foreignColumn = Value.Wrapped.template[keyPath: foreign]
+        let defaults: [SQLColumnConstraintAlgorithm] = [
+            .references(Value.Wrapped.table,
+                        foreignColumn.key,
+                        onDelete: .setNull,
+                        onUpdate: .cascade)
+        ]
+        self.init(key, type: IDType.sqltype, constraints: constraints + defaults)
+    }
+}
+
+// MARK: One to Many
+
+extension CCColumn where Value: Sequence, Value.Element: Schema {
+    convenience init<IDType>(_ key: String,
+                        _ foreign: KeyPath<Value.Element, IDColumn<IDType>>,
+                        constraints: [SQLColumnConstraintAlgorithm] = []) {
+        let foreignColumn = Value.Element.template[keyPath: foreign]
+        let defaults: [SQLColumnConstraintAlgorithm] = [
+            .references(Value.Element.table,
+                        foreignColumn.key,
+                        onDelete: .setNull,
+                        onUpdate: .cascade)
+        ]
+
+        self.init(key,
+                  /// will be an array of id's which we store as text
+                  type: .text,
+                  constraints: constraints + defaults)
+    }
+}
+
+
+//extension TypedColumn where C == Optional<DatabaseValue> {
+//    convenience init(_ key: String, constraints: [SQLColumnConstraintAlgorithm] = []) {
+//        self.init(key, type: C.Wrapped.sqltype, constraints: constraints)
+//    }
+//}
+
+class TypeErasedColumn {
+    let key: String
 
     init(_ key: String) {
         self.key = key
+    }
+}
+
+/// should this stay a property wrapper?
+@propertyWrapper
+class Column<C>: TypeErasedColumn {
+//    public var projectedValue: Column<C> { self }
+
+    public var wrappedValue: C {
+        fatalError("columns should only be accessed from within a 'Ref' object")
     }
 }
 
@@ -556,6 +680,7 @@ let db = TestDB()
 
 struct Human: Schema {
     var name = Column<String>("name")
+    var nickname = Column<String?>("nickname")
     var age = Column<Int>("age")
 
     // MARK: RELATIONS
@@ -621,12 +746,12 @@ struct PreparationBuilder<S: Schema> {
     }
 }
 
-@_functionBuilder
-struct ColumnBuilder<S: Schema> {
-    static func buildBlock(_ paths: KeyPath<S, ColumnBase>...) {
-
-    }
-}
+//@_functionBuilder
+//struct ColumnBuilder<S: Schema> {
+//    static func buildBlock(_ paths: KeyPath<S, ColumnBase>...) {
+//
+//    }
+//}
 
 extension Schema {
     static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
@@ -682,8 +807,8 @@ func testDatabaseStuff() {
     dolly.name = "dolly"
     try! dolly.save()
 
-    joe.pets = [bobo, spike, dolly]
-    jan.pets = [bobo]
+//    joe.pets = [bobo, spike, dolly]
+//    jan.pets = [bobo]
 
     print(db.tables[Human.table])
     try! joe.save()
