@@ -16,7 +16,7 @@ final class DBTests: XCTestCase {
     let sql = SQLManager.unsafe_testable
 
     func testExtractProperties() {
-        let properties = Weapon.unsafe_getProperties()
+        let properties = Item.unsafe_getProperties()
         let columns = properties.compactMap { $0.val as? SQLColumn }
         XCTAssertEqual(properties.count, 2)
         XCTAssertEqual(properties.count, columns.count)
@@ -26,7 +26,7 @@ final class DBTests: XCTestCase {
 
     func testIncompatiblePropertyWarn() {
         struct Foo: Schema {
-            var id = IDColumn<Int>()
+            var id = PrimaryKey<Int>()
             var ohnooo = "that's not right"
         }
 
@@ -41,11 +41,11 @@ final class DBTests: XCTestCase {
         let db = SeeQuel(storage: .memory)
         try db.prepare {
             Table("weapon") {
-                IDColumn<Int>("id")
+                PrimaryKey<Int>("id")
                 Column<Int>("power")
             }
             Table("food") {
-                IDColumn<Int>("id")
+                PrimaryKey<Int>("id")
                 Column<String>("name")
                 Column<Int>("health")
             }
@@ -59,21 +59,21 @@ final class DBTests: XCTestCase {
     func testPrepareAuto() throws {
         let db = SeeQuel(storage: .memory)
         try db.prepare {
-            Weapon.self
+            Item.self
             Food.self
             Hero.self
         }
 
 
         let prepared = try db.unsafe_getAllTables()
-        XCTAssert(prepared.contains("weapon"))
+        XCTAssert(prepared.contains("item"))
         XCTAssert(prepared.contains("food"))
         XCTAssert(prepared.contains("hero"))
         XCTAssert(prepared.count == 3)
 
-        let w_meta = try db.unsafe_table_meta("weapon")
+        let w_meta = try db.unsafe_table_meta("item")
         XCTAssertEqual(w_meta.count, 2)
-        XCTAssertEqual(w_meta.map(\.name).sorted(),Weapon.unsafe_getColumns().map(\.key).sorted())
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.unsafe_getColumns().map(\.key).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
         print(h_meta)
@@ -83,39 +83,52 @@ final class DBTests: XCTestCase {
     func testSave() throws {
         let db = SeeQuel(storage: .memory)
         try db.prepare {
-            Weapon.self
+            Item.self
             Food.self
             Hero.self
         }
 
-        var sword = Ref<Weapon>(db)
-        sword.damage = 83
+        let sword = Ref<Item>(db)
+        sword.power = 83
+        XCTAssertNil(sword.id)
         try sword.save()
+        XCTAssertFalse(sword.isDirty)
+        XCTAssertNotNil(sword.id)
 
         let hero = Ref<Hero>(db)
         hero.name = "hiro"
         hero.nickname = "the good one"
         hero.age = 120
         hero.weapon = sword
-        try hero.save()
 
-        print()
+        XCTAssertNil(hero.id)
+        try hero.save()
+        XCTAssertFalse(hero.isDirty)
+        XCTAssertNotNil(hero.id)
+
+        let _hero: Ref<Hero>? = db.load(id: hero.id!)
+        XCTAssertNotNil(_hero)
+        XCTAssertEqual(_hero?.id, hero.id)
+        XCTAssertEqual(_hero?.weapon?.id, sword.id)
+
     }
 }
 
-struct Weapon: Schema {
-    var id = IDColumn<Int>()
-    var damage = Column<Int>("damage")
+
+struct Item: Schema {
+    var id = PrimaryKey<Int>()
+    var power = Column<Int>("power")
 }
 
 struct Food: Schema {
-    var id = IDColumn<Int>()
+    var id = PrimaryKey<Int>()
     var health = Column<Int>("health")
 }
 
 struct Hero: Schema {
     // id
-    var id = IDColumn<String>("id")
+    var id = PrimaryKey<String>()
+
     // basics
     var name = Column<String>("name")
     var age = Column<Int>("age")
@@ -123,5 +136,5 @@ struct Hero: Schema {
     var nickname = Column<String?>("nickname")
 
     // relations
-    var weapon = Column<Weapon?>("weapon", foreignKey: \.id)
+    var weapon = Column<Item?>("weapon", foreignKey: \.id)
 }
