@@ -71,6 +71,8 @@ final class Ref<S: Schema> {
         }
     }
 
+    // MARK: Relations
+
     subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<C?>>) -> Ref<C>? {
         get {
             let column = S.template[keyPath: key]
@@ -82,6 +84,28 @@ final class Ref<S: Schema> {
 //            if let new = newValue, new.isDirty { fatalError("must save before associating") }
             let column = S.template[keyPath: key]
             backing[column.key] = newValue?.id.json
+        }
+    }
+
+    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
+        get {
+            let column = S.template[keyPath: key]
+            guard let ids = backing[column.key]?.array?.compactMap(\.string) else {
+                return nil
+            }
+            return database.load(ids: ids)
+        }
+        set {
+            let hasUnsavedItems = newValue?
+                .map(\.isDirty)
+                .reduce(false, { $0 || $1 })
+                ?? false
+            guard !hasUnsavedItems else {
+                fatalError("can not set unsaved many relations")
+            }
+
+            let column = S.template[keyPath: key]
+            backing[column.key] = newValue?.compactMap(\.id).json
         }
     }
 
@@ -192,7 +216,27 @@ struct _Column<C: Codable> {
 }
 
 @propertyWrapper
-open class Column<C> {
+struct Column<C> {
+    let key: String
+
+    public var projectedValue: Column<C> { self }
+
+    public var wrappedValue: C {
+        get {
+            fatalError("columns should only be accessed from within a 'Ref' object")
+        }
+        set {
+            fatalError("columns should only be accessed from within a 'Ref' object")
+        }
+    }
+
+    init(_ name: String) {
+        self.key = name
+    }
+}
+
+@propertyWrapper
+open class SAVEColumn<C> {
     let key: String
 
     var isReady: Bool { return _wrappedValue != nil }
@@ -212,7 +256,7 @@ open class Column<C> {
         }
     }
 
-    public var projectedValue: Column<C> { self }
+    public var projectedValue: SAVEColumn<C> { self }
 
     init(_ name: String) {
         self.key = name
@@ -352,6 +396,7 @@ var sneaky: [String: Any] = [:]
 extension Ref {
     func save() throws {
         database.save(self)
+        isDirty = false
     }
 }
 
@@ -362,6 +407,7 @@ extension Database {
 protocol Database {
     func save<S>(_ ref: Ref<S>)
     func load<S>(id: String) -> Ref<S>?
+    func load<S>(ids: [String]) -> [Ref<S>]?
 }
 
 import Foundation
@@ -371,6 +417,7 @@ final class TestDB: Database {
     func save<S>(_ ref: Ref<S>) {
         var table = tables[S.table] ?? [:]
         let id = ref.id ?? UUID().uuidString
+        ref.id = id
         table[id] = ref.backing
         tables[S.table] = table
     }
@@ -379,6 +426,12 @@ final class TestDB: Database {
         guard let table = tables[S.table] else { return nil }
         guard let backing = table[id] else { return nil }
         return Ref(backing, database: self)
+    }
+
+    /// warn if missing ids?
+    func load<S>(ids: [String]) -> [Ref<S>]? where S : Schema {
+        guard let table = tables[S.table] else { return nil }
+        return ids.compactMap { table[$0] } .map { Ref($0, database: self) }
     }
 }
 
@@ -428,22 +481,6 @@ struct OneToMany<S: Schema> {
     }
 }
 
-
-struct Human: Schema {
-//    @Column("Foo") var foo: String = ""
-
-//    var name = Column("name", default: "")
-    var name = Column<String>("name")
-    var age = Column<Int>("age")
-
-    var friend = Column<Human?>("friend")
-    var pets = OneToMany<Pet>("pets")
-}
-
-struct Pet: Schema {
-    var friend = Column<String>("friend")
-}
-
 extension Ref {
     /// one to many
     func relations<P: Schema, C>(matching: KeyPath<P, Column<C>>) -> [Ref<P>] {
@@ -490,6 +527,18 @@ struct Preparer {
 
 let db = TestDB()
 
+struct Human: Schema {
+    var name = Column<String>("name")
+    var age = Column<Int>("age")
+
+    var friend = Column<Human?>("friend")
+    var pets = Column<[Pet]?>("pets")
+}
+
+struct Pet: Schema {
+    var name = Column<String>("name")
+}
+
 func testDatabaseStuff() {
     let joe = Ref<Human>(database: db)
     joe.id = "0"
@@ -505,6 +554,19 @@ func testDatabaseStuff() {
 
     joe.friend = jan
     jan.friend = joe
+
+    let bobo = Ref<Pet>(database: db)
+    bobo.name = "bobo"
+    try! bobo.save()
+    let spike = Ref<Pet>(database: db)
+    spike.name = "spike"
+    try! spike.save()
+    let dolly = Ref<Pet>(database: db)
+    dolly.name = "dolly"
+    try! dolly.save()
+
+    joe.pets = [bobo, spike, dolly]
+    jan.pets = [bobo]
 
     print(db.tables[Human.table])
     try! joe.save()
@@ -530,7 +592,7 @@ func orig_testDatabaseStuff() {
 //        \Human._dad
 //    }
 
-    Pet.fetch(where: \.friend, .equals, "joe")
+//    Pet.fetch(where: \.friend, .equals, "joe")
 //    newhh.id = ""
 
 //    let new = Ref<Human>()
