@@ -1,3 +1,9 @@
+///
+/// Unique to define One to Many
+/// a `Parent<T>` column ( renamed sth ) and `Unique<Parent<T>>` or sth, but don't want to get too crazy on generics
+///
+
+
 protocol Schema {
     init()
     static var table: String { get }
@@ -218,33 +224,33 @@ final class Ref<S: Schema> {
 //    }
 
 
-    subscript<Foreign: Schema>(dynamicMember key: KeyPath<S, Column<[Foreign]>>) -> [Ref<Foreign>] {
-        get {
-            let column = S.template[keyPath: key]
-            let ids = backing[column.name]?
-                .array?
-                .compactMap(\.string)
-                ?? []
-            return db.load(ids: ids)
-//            return database.load(ids: ids)
-        }
-        set {
-            // TODO: should this check if they exist? maybe just be a little fuzzy
-//            let hasUnsavedItems = newValue
-//                .map(\.isDirty)
-//                .reduce(false, { $0 || $1 })
-//            guard !hasUnsavedItems else {
-//                fatalError("can not set unsaved many relations")
-//            }
-
-            let column = S.template[keyPath: key]
-            guard let foreignKey = Foreign.template._primaryKey else { fatalError("primary key required for relations") }
-            backing[column.key] = newValue.compactMap { $0.backing[foreignKey.name].json } .json
-            // try to get this back to stronger keypaths, maybe w other protocol
-            // backing[column.key] = newValue.map(\.id)
-//            fatalError()
-        }
-    }
+//    subscript<Foreign: Schema>(dynamicMember key: KeyPath<S, Column<[Foreign]>>) -> [Ref<Foreign>] {
+//        get {
+//            let column = S.template[keyPath: key]
+//            let ids = backing[column.name]?
+//                .array?
+//                .compactMap(\.string)
+//                ?? []
+//            return db.load(ids: ids)
+////            return database.load(ids: ids)
+//        }
+//        set {
+//            // TODO: should this check if they exist? maybe just be a little fuzzy
+////            let hasUnsavedItems = newValue
+////                .map(\.isDirty)
+////                .reduce(false, { $0 || $1 })
+////            guard !hasUnsavedItems else {
+////                fatalError("can not set unsaved many relations")
+////            }
+//
+//            let column = S.template[keyPath: key]
+//            guard let foreignKey = Foreign.template._primaryKey else { fatalError("primary key required for relations") }
+//            backing[column.key] = newValue.compactMap { $0.backing[foreignKey.name].json } .json
+//            // try to get this back to stronger keypaths, maybe w other protocol
+//            // backing[column.key] = newValue.map(\.id)
+////            fatalError()
+//        }
+//    }
 
 //    subscript<C: Schema>(dynamicMember key: KeyPath<S, Column<[C]?>>) -> [Ref<C>]? {
 //        get {
@@ -849,7 +855,7 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
 class Children<ChildSchema: Schema>: Column<[ChildSchema]> {
     override var wrappedValue: [ChildSchema] { replacedDynamically() }
 
-    init<ParentSchema: Schema>(_ key: String = "", foreign: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+    init<ParentSchema: Schema>(_ key: String = "", referencedBy: KeyPath<ChildSchema, Parent<ParentSchema>>) {
         /// not going to actually really store this key
         // should I try not to store anything?
         super.init(key, .text, [])
@@ -1423,6 +1429,10 @@ extension Database {
 ////    var _idkp: KeyPath<Self, PrimaryKey<PKRawType>> { get set }
 //}
 
+extension Ref {
+    var primaryKey: PrimaryKeyBase? { S.template._primaryKey }
+}
+
 extension SeeQuel: Database {
 //    func getOne<S: Schema, T: Encodable>(where: T, matches: KeyPath<S, Column<T>>) -> Ref<S>? {
 //        return getOne(where: matches, matches: `where`)
@@ -1475,10 +1485,13 @@ extension SeeQuel: Database {
     }
 
     func save<S>(_ ref: Ref<S>) where S : Schema {
+        if ref.exists, ref.primaryKey != nil {
+            update(ref)
+            return
+        }
+
+        /// if object doesn't exist
         let idKey = S.template._primaryKey
-        // todo: fix this, if object isn't primary keyed, then
-        // can save, it's ok, otherwise will crash if it's unique keyed
-        let shouldSave = idKey == nil
         let needsId = idKey != nil && ref.backing[idKey!.name] == nil
         if needsId, let id = idKey {
             switch id.keyType {
@@ -1504,6 +1517,13 @@ extension SeeQuel: Database {
             else { return }
         let id = unsafe_lastInsertedRowId()
         ref.backing[pk.key] = id.json
+    }
+
+    func update<S>(_ ref: Ref<S>) where S: Schema {
+        try! self.db.insert(into: S.table)
+            .model(ref.backing)
+            .run()
+            .wait()
     }
 
     private func unsafe_lastInsertedRowId() -> Int {

@@ -98,6 +98,7 @@ final class DBTests: XCTestCase {
         
         let lorbo = Ref<Hero>(db)
         lorbo.name = "lorbo"
+        lorbo.age = 234
         print(lorbo.lunch)
         XCTAssertNil(lorbo.lunch)
         try lorbo.save()
@@ -165,8 +166,8 @@ final class DBTests: XCTestCase {
 
         let one = Ref<One>(db)
         one.name = "blarb"
-        XCTFail("nooooo")
-//        one.many = many
+//        XCTFail("nooooo")
+        one.many = many
         try one.save()
 
         let two: Ref<One>  = db.load(id: "1")!
@@ -186,7 +187,7 @@ struct One: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
 
-    let many = Children<Many>(foreign: \.parent)
+    let many = Children<Many>(referencedBy: \.parent)
 
 //    let many = Children<Many>(foreign: \.parent)
 //    let many = Column<[Many]>(\One.id, matches: \Many.parent)
@@ -237,6 +238,10 @@ struct Hero: Schema {
 
 //    var _equipped = Link<Hero, Item>.init(\Item._equippedBy)
 //    var __eqqq = Child<Item>(referencedBy: \.equippedBy)
+}
+func asdfcococ() {
+    let l = Ref<Hero>(SeeQuel.shared)
+    let a = l.lunch
 }
 
 
