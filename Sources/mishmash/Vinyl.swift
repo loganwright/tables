@@ -527,11 +527,17 @@ struct Preparer {
 
 let db = TestDB()
 
+typealias Link = Column
+
 struct Human: Schema {
     var name = Column<String>("name")
     var age = Column<Int>("age")
 
+    // MARK: RELATIONS
+    /// one to one
     var friend = Column<Human?>("friend")
+
+    /// one to many
     var pets = Column<[Pet]?>("pets")
 }
 
