@@ -21,7 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		8082EE42254E336500ACBADA /* Vinyl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Vinyl.swift */; };
+		8082EE42254E336500ACBADA /* Schema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Schema.swift */; };
 		8082EE49254E7AFD00ACBADA /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8082EE48254E7AFD00ACBADA /* SQLiteKit */; };
 		8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
 		8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE5C254E8A8900ACBADA /* SQLManager.swift */; };
@@ -62,7 +62,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		8082EE41254E336500ACBADA /* Vinyl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vinyl.swift; sourceTree = "<group>"; };
+		8082EE41254E336500ACBADA /* Schema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schema.swift; sourceTree = "<group>"; };
 		8082EE56254E89FD00ACBADA /* db-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "db-tests.swift"; sourceTree = "<group>"; };
 		8082EE5C254E8A8900ACBADA /* SQLManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLManager.swift; sourceTree = "<group>"; };
 		8082EE62254E8A9F00ACBADA /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
@@ -166,7 +166,7 @@
 				80F3CD9B254D23BF00EFA52F /* Request.swift */,
 				80F3CDB0254D3BC400EFA52F /* JSON.swift */,
 				80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */,
-				8082EE41254E336500ACBADA /* Vinyl.swift */,
+				8082EE41254E336500ACBADA /* Schema.swift */,
 				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
 				8082EE62254E8A9F00ACBADA /* Log.swift */,
 				8082EE68254E8B5200ACBADA /* ThreadSafe.swift */,
@@ -268,7 +268,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 0;
 			files = (
-				8082EE42254E336500ACBADA /* Vinyl.swift in Sources */,
+				8082EE42254E336500ACBADA /* Schema.swift in Sources */,
 				8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */,
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
 				8082EE63254E8A9F00ACBADA /* Log.swift in Sources */,

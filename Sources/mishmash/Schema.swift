@@ -3,10 +3,17 @@
 /// a `Parent<T>` column ( renamed sth ) and `Unique<Parent<T>>` or sth, but don't want to get too crazy on generics
 ///
 
-
+//@dynamicCallable
 protocol Schema {
     init()
     static var table: String { get }
+}
+
+extension Schema {
+    static func dynamicallyCall(withArguments args: [Database]) -> Ref<Self> {
+        assert(args.count == 1)
+        return Ref(args[0])
+    }
 }
 
 extension Schema {
@@ -63,24 +70,9 @@ extension Schema {
     }
 }
 
-
 // MARK: Reference {
 @dynamicMemberLookup
 final class Ref<S: Schema> {
-    /// leaving this note, don't use the backing, for schema, they should never really be instantiated outside
-    /// of the template
-    ///
-    /// this ensures that schema are only accessed through a Ref<> object, which can then
-    /// control access, retain database/connections, mark dirty, etc.
-    ///    private var backing: S = .template
-    ///
-    ///
-    /// *****************************
-
-
-
-    /// there's maybe a better way to do this that avoids all the json conversions?
-    /// maybe a protocol String -> Thing
     fileprivate(set) var backing: [String: JSON] {
         didSet { isDirty = true }
     }
@@ -89,10 +81,6 @@ final class Ref<S: Schema> {
     fileprivate(set) var isDirty: Bool = false
     fileprivate(set) var exists: Bool = false
 
-//    var exists: Bool {
-//        /// TODO: we want to more or less set ids automatically?
-//        raw["id"] != nil
-//    }
     let db: Database
 
     init(_ raw: [String: JSON], _ database: Database) {
@@ -135,7 +123,7 @@ final class Ref<S: Schema> {
     /// for now, the only relations supported are one-to-one where the link MUST be optional
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
-    subscript<ParentSchema: Schema>(dynamicMember key: KeyPath<S, Parent<ParentSchema>>) -> Ref<ParentSchema>? {
+    subscript<ParentSchema: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ParentSchema>>) -> Ref<ParentSchema>? {
         get {
             let parent_id = S.template[keyPath: key]
             guard let foreignId = backing[parent_id.key]?.string else { return nil }
@@ -151,6 +139,7 @@ final class Ref<S: Schema> {
                 return
             }
 
+            /// would be great if we could attach to the 'Ref' object or somehow trigger an update later after saving
             guard let parentIdValue = parent.backing[parentIdKey] else {
                 fatalError("Object: \(parent) not ready to be linked.. missing: \(parentIdKey)")
             }
@@ -176,7 +165,7 @@ final class Ref<S: Schema> {
         }
     }
 
-    subscript<C: Schema>(dynamicMember key: KeyPath<S, Children<C>>) -> [Ref<C>] {
+    subscript<C: Schema>(dynamicMember key: KeyPath<S, ToMany<C>>) -> [Ref<C>] {
         let column = S.template[keyPath: key]
         let parentIdKey = column.parentIdKey.name
         let parentIdValue = backing[parentIdKey]
@@ -252,8 +241,9 @@ class UniqueKeyBase: SQLColumn {
     }
 }
 
+
 class PrimaryKeyBase: UniqueKeyBase {
-    enum IDType: Equatable {
+    enum KeyType: Equatable {
         /// combining multiple keys not supported
         case uuid, incrementing
 
@@ -277,10 +267,10 @@ class PrimaryKeyBase: UniqueKeyBase {
     }
 
     // MARK: Attributes
-    let idType: IDType
+    let pk: KeyType
 
-    fileprivate init(_ key: String, _ keyType: IDType) {
-        self.idType = keyType
+    fileprivate init(_ key: String, _ keyType: KeyType) {
+        self.pk = keyType
         super.init(key, keyType.sqltype, [keyType.constraint])
     }
 }
@@ -350,8 +340,12 @@ final class Later<T> {
     }
 }
 
+
+// temporary
+typealias Parent = ForeignKey
+
 @propertyWrapper
-class Parent<ParentSchema: Schema>: Column<ParentSchema?> {
+class ForeignKey<ParentSchema: Schema>: Column<ParentSchema?> {
 
     @Later var parentIdKey: PrimaryKeyBase
     @Later var parentIdKeyPath: PartialKeyPath<ParentSchema>
@@ -361,12 +355,12 @@ class Parent<ParentSchema: Schema>: Column<ParentSchema?> {
     override var wrappedValue: ParentSchema? { replacedDynamically() }
 
     init(_ name: String = "",
-         references parentIdKeyPath: KeyPath<ParentSchema, PrimaryKey<Int>>,
+         linking foreign: KeyPath<ParentSchema, PrimaryKey<Int>>,
          onDelete: SQLForeignKeyAction? = nil,
          onUpdate: SQLForeignKeyAction? = nil) {
 
-        self._parentIdKeyPath = Later { parentIdKeyPath }
-        self._parentIdKey = Later { ParentSchema.template[keyPath: parentIdKeyPath] }
+        self._parentIdKeyPath = Later { foreign }
+        self._parentIdKey = Later { ParentSchema.template[keyPath: foreign] }
         super.init(name, Int.sqltype, Later([]))
 
         ///
@@ -387,7 +381,7 @@ class Parent<ParentSchema: Schema>: Column<ParentSchema?> {
     }
 
     init(_ name: String = "",
-         references foreign: KeyPath<ParentSchema, PrimaryKey<String>>,
+         linking foreign: KeyPath<ParentSchema, PrimaryKey<String>>,
          onDelete: SQLForeignKeyAction? = nil,
          onUpdate: SQLForeignKeyAction? = nil) {
 
@@ -444,32 +438,32 @@ class LazyHandler<T> {
  */
 
 @propertyWrapper
-class Children<ChildSchema: Schema>: Column<[ChildSchema]> {
-    override var wrappedValue: [ChildSchema] { replacedDynamically() }
+class ToMany<Many: Schema>: Column<[Many]> {
+    override var wrappedValue: [Many] { replacedDynamically() }
 
     @Later var parentIdKey: PrimaryKeyBase
     @Later var parentIdKeyPath: AnyKeyPath
 
     @Later var associatedParentIdKey: String
-    @Later var associatedParentIdKeyPath: PartialKeyPath<ChildSchema>
+    @Later var associatedParentIdKeyPath: PartialKeyPath<Many>
 
-    init<ParentSchema: Schema>(_ key: String = "", referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+    init<OuterSchema: Schema>(_ key: String = "", linkedBy linkingKeyPath: KeyPath<Many, ForeignKey<OuterSchema>>) {
         self._parentIdKey = Later {
-            let parent = ChildSchema.template[keyPath: reference]
+            let parent = Many.template[keyPath: linkingKeyPath]
             return parent.parentIdKey
         }
 
         self._parentIdKeyPath = Later {
-            let parent = ChildSchema.template[keyPath: reference]
+            let parent = Many.template[keyPath: linkingKeyPath]
             return parent.parentIdKeyPath
         }
 
         self._associatedParentIdKey = Later {
-            let parent = ChildSchema.template[keyPath: reference]
+            let parent = Many.template[keyPath: linkingKeyPath]
             return parent.associatedParentIdKey
         }
 
-        self._associatedParentIdKeyPath = Later { reference }
+        self._associatedParentIdKeyPath = Later { linkingKeyPath }
 
         /// not going to actually really store this key
         super.init(key, .text, Later([]))
@@ -493,7 +487,7 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
 
     init<ParentSchema: Schema>(
         _ key: String = "",
-        referencedBy reference: KeyPath<ChildSchema, Parent<ParentSchema>>) {
+        referencedBy reference: KeyPath<ChildSchema, ForeignKey<ParentSchema>>) {
         self._parentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
             return parent.parentIdKey
@@ -540,27 +534,10 @@ extension Schema {
     }
 }
 
-
-extension Database {
-    func prepare<S: Schema>(_ schema: S) {
-        let template = S.template
-
-    }
-}
-
 @propertyWrapper
 struct Nested<S: Schema> {
     var wrappedValue: S { fatalError() }
 }
-
-//extension Column: ColumnProtocol {
-//    typealias Wrapped = C
-//}
-
-
-//extension OneToMany: ColumnProtocol {
-//    typealias Wrapped = S
-//}
 
 final class Box<T> {
     var boxed: T
@@ -569,19 +546,6 @@ final class Box<T> {
         self.boxed = boxed
     }
 }
-
-
-//struct OneToMany<S: Schema> {
-//
-//    var wrappedValue: [Ref<S>] {
-//        fatalError()
-//    }
-//
-//    init(_ key: String) {
-//
-//    }
-//}
-var sneaky: [String: Any] = [:]
 
 
 extension Ref {
@@ -974,7 +938,7 @@ extension SeeQuel: Database {
         let idKey = S.template._primaryKey
         let needsId = idKey != nil && ref.backing[idKey!.name] == nil
         if needsId, let id = idKey {
-            switch id.idType {
+            switch id.pk {
             case .uuid:
                 /// uuid not auto generated, needs to be made
                 ref.backing[id.key] = UUID().json
@@ -993,7 +957,7 @@ extension SeeQuel: Database {
         guard
             needsId,
             let pk = idKey,
-            pk.idType == .incrementing
+            pk.pk == .incrementing
             else { return }
         let id = unsafe_lastInsertedRowId()
         ref.backing[pk.key] = id.json
@@ -1080,126 +1044,12 @@ extension SeeQuel {
     }
 }
 
-
-
-//import Foundation
-//final class TestDB: Database {
-//    func prepare(_ table: Table) throws {
-//
-//    }
-//
-//    var tables: [String: [String: [String: JSON]]] = [:]
-//
-//    func save<S>(_ ref: Ref<S>) {
-//        var table = tables[S.table] ?? [:]
-//        Log.warn("not setting id")
-////        let id = ref.id ?? UUID().uuidString
-////        ref.id = id
-////        table[id] = ref.backing
-//        tables[S.table] = table
-//    }
-//
-//    func load<S>(id: String) -> Ref<S>? where S : Schema {
-//        guard let table = tables[S.table] else { return nil }
-//        guard let backing = table[id] else { return nil }
-//        return Ref(backing, self)
-//    }
-//
-//    /// warn if missing ids?
-//    func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
-//        guard let table = tables[S.table] else { fatalError() }
-//        return ids.compactMap { table[$0] } .map { Ref($0, self) }
-//    }
-//}
-
-extension Schema {
-//    static func `where`<T>(_ kp: KeyPath<Self, Column<T>>, equals: T) -> Ref<Self> {
-//        fatalError()
-//    }
-
-    static func `where`<T>(_ kp: KeyPath<Self, Column<T>>, in: [T]) -> [Ref<Self>] {
-        fatalError()
-    }
-}
-
-//extension Array where Element == Bool {
-//    var hasUnsavedObjects
-//}
-
-//@propertyWrapper
-//struct OneToMany<S: Schema> {
-//    let key: String
-//    private var ids: [String] = []
-//    private let _cache: Box<[Ref<S>]> = .init([])
-//
-//    var wrappedValue: [Ref<S>] {
-//        get {
-//            guard _cache.boxed.isEmpty else { return _cache.boxed }
-////            Log.warn("should seek to make this more async somehow")
-//            _cache.boxed = S.where(\.id, in: ids)
-//            return _cache.boxed
-//        }
-//        set {
-//            print("*** SHOULD I SAVE HERE? ***")
-//            /// for now, objects should be saved first
-//            let hasUnsavedItems = newValue
-//                .map(\.isDirty)
-//                .reduce(false, { $0 || $1 })
-//            guard !hasUnsavedItems else {
-//                fatalError("can not set unsaved many relations")
-//            }
-//            ids = newValue.compactMap(\.id)
-//            _cache.boxed = newValue
-//        }
-//    }
-//
-//    init(_ key: String) {
-//        self.key = key
-//    }
-//}
-
-extension Ref {
-    /// one to many
-    func relations<P: Schema, C>(matching: KeyPath<P, Column<C>>) -> [Ref<P>] {
-        fatalError()
-    }
-
-    /// one to one
-    func parent<P: Schema, C>(matching: KeyPath<S, Column<C>>) -> Ref<P> {
-        fatalError()
-    }
-
-    /// one to one
-    func child<P: Schema, C>(matching: KeyPath<P, Column<C>>) -> Ref<P> {
-        fatalError()
-    }
-}
-
-//private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
-//    Mirror(reflecting: template).children.compactMap { child in
-//        assert(child.label != nil, "expected a label for template property")
-//        guard let label = child.label else { return nil }
-//        return (label, "\(type(of: child.value))")
-//    }
-//}
-
 @_functionBuilder
 struct Preparer {
     static func buildBlock(_ schema: Schema.Type...) {
 
     }
 }
-
-//@dynamicMemberLookup
-//struct Database {
-//    static let shared = Database()
-//
-//    func prepare(@Preparer _ builder: () -> Void) {
-//        builder()
-//    }
-//
-////    subc
-//}
 
 
 //let db = TestDB()

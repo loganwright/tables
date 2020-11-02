@@ -40,21 +40,22 @@ final class DBTests: XCTestCase {
     func testPrepare() throws {
         let db = SeeQuel(storage: .memory)
         try db.prepare {
-            Table("weapon") {
+            Table("item") {
                 PrimaryKey<Int>("id")
                 Column<Int>("power")
             }
             Table("food") {
                 PrimaryKey<Int>("id")
-                Column<String>("name")
+                Column<String>("item")
                 Column<Int>("health")
             }
         }
 
         let prepared = try db.unsafe_getAllTables()
-        XCTAssert(prepared.contains("weapon"))
+        XCTAssert(prepared.contains("item"))
         XCTAssert(prepared.contains("food"))
     }
+
 
     func testPrepareAuto() throws {
         let db = SeeQuel(storage: .memory)
@@ -176,12 +177,152 @@ final class DBTests: XCTestCase {
         let two: Ref<One>  = db.load(id: "1")!
         XCTAssert(two.many.count == one.many.count)
     }
+
+    func testMatch() throws {
+        let db = SeeQuel.shared
+        try db.prepare {
+            Team.self
+            Player.self
+        }
+
+        let cats = Ref<Team>(db)
+        cats.name = "the Catz"
+        cats.mascot = "cats"
+        cats.rating = 5
+        try cats.save()
+    }
+
+    func testFancy() throws {
+        try db.prepare { Team.self }
+        let columns = Team.template.unsafe_getColumns()
+        let instance = Ref<Team>(db)
+        for column in columns {
+//            instance[keyPath: column] = ""
+        }
+    }
 }
+
+let db = SeeQuel.shared
+
+//protocol PrimaryKeyProtocol {}
+//
+//protocol ID {
+//    var id: PrimaryKeyProtocol { get }
+//}
+//
+//extension PrimaryKey: PrimaryKeyProtocol {}
+//
+//struct Foob: Schema, ID {
+//    var id = PrimaryKey<String>()
+//}
+
+
+
+struct Team: Schema {
+    let id = PrimaryKey<String>()
+    let name = Column<String>()
+    let mascot = Column<String>()
+    let rating = Column<Int>()
+
+    ///
+    let rival = ForeignKey<Team>(linking: \.id)
+    ///
+    let players = ToMany<Player>(linkedBy: \.team)
+}
+
+struct Player: Schema {
+    let id = PrimaryKey<Int>()
+    let team = ForeignKey<Team>(linking: \.id)
+}
+
+@_functionBuilder
+struct FuzzyBuilder<S: Schema> {
+    static func buildBlock(_ db: Database) -> Database {
+        return db
+    }
+    static func buildBlock(_ db: Database, _ block: Default<S>...) -> Ref<S> {
+        return Ref(db)
+    }
+}
+struct Default<S: Schema> {
+
+    init<T>(_ kp: KeyPath<S, Column<T>>, _ def: T) {
+//        self.val = val
+        fatalError()
+    }
+}
+
+extension Schema {
+    static func on(_ db: Database) -> Ref<Self> {
+        return Ref(db)
+    }
+
+    static func on(@FuzzyBuilder<Self> _ fuzz: () -> Database) -> Ref<Self> {
+        return Ref(fuzz())
+    }
+    static func on(@FuzzyBuilder<Self> _ fuzz: () -> Ref<Self>) -> Ref<Self> {
+        return fuzz()
+    }
+}
+
+func play() throws {
+    try db.prepare {
+        Team.self
+        Player.self
+    }
+
+    let bears = Team.on(db)
+    bears.mascot = "bear"
+    bears.rating = 8
+    try bears.save()
+
+    let ducks = Team.on(db)
+    ducks.mascot = "duck"
+    ducks.rating = 7
+    ducks.rival = bears
+    try ducks.save()
+
+    let al = Player.on(db)
+    al.team = bears
+
+    let gal = Player.on(db)
+    gal.team = bears
+
+    let dale = Player.on(db)
+    dale.team = ducks
+}
+
+func new<T>(_ t: T.Type) {
+
+}
+
+extension Schema {
+    static func make(on db: Database) -> Ref<Self> {
+        return Ref<Self>(db)
+       }
+    static func query(on db: Database) -> Ref<Self> {
+        return Ref<Self>(db)
+    }
+}
+
+struct Location: Schema {
+    let id = PrimaryKey<String>()
+    let name = Column<String>()
+    let nickname = Column<String?>()
+}
+
+struct Plant: Schema {
+    let id = PrimaryKey<Int>()
+    let name = Column<String>()
+    let origin = ForeignKey<Location>(linking: \.id)
+}
+
+
 
 struct Many: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
-    let oneyy = Parent<One>(references: \.id)
+    let oneyy = ForeignKey<One>(linking: \.id)
 }
 
 
@@ -189,10 +330,7 @@ struct One: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
 
-    let many = Children<Many>(referencedBy: \.oneyy)
-
-//    let many = Children<Many>(foreign: \.parent)
-//    let many = Column<[Many]>(\One.id, matches: \Many.parent)
+    let many = ToMany<Many>(linkedBy: \.oneyy)
 }
 
 import SQLKit
@@ -209,15 +347,14 @@ struct Item: Schema {
     var id = PrimaryKey<Int>()
     var power = Column<Int>()
 
-    var equippedBy = Parent<Hero>(references: \.id)
-//    var _equippedBy = Link<Item, Hero>(references: \Hero._equipped)
+    var equippedBy = ForeignKey<Hero>(linking: \.id)
 }
 
 struct Food: Schema {
     var id = PrimaryKey<String>()
     var health = Column<Int>()
 
-    var owner = Parent<Hero>(references: \.id)
+    var owner = ForeignKey<Hero>(linking: \.id)
 }
 
 struct Hero: Schema {
@@ -232,12 +369,7 @@ struct Hero: Schema {
 
     // relations
 //    var equipped = Column<Item?>(foreignKey: \.id)
-    var equipped = Parent<Item>(references: \.id)
+    var equipped = ForeignKey<Item>(linking: \.id)
 
     var lunch = Child<Food>(referencedBy: \.owner)
-//    var equipped = Child<Item>(referencedBy: \.equippedBy)
-//    var equipped: Any? = nil
-
-//    var _equipped = Link<Hero, Item>.init(\Item._equippedBy)
-//    var __eqqq = Child<Item>(referencedBy: \.equippedBy)
 }
