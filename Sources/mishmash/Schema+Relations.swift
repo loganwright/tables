@@ -18,6 +18,9 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
 
     override var wrappedValue: Foreign? { replacedDynamically() }
 
+    private var onDelete: SQLForeignKeyAction?
+    private var onUpdate: SQLForeignKeyAction?
+
     init(_ name: String = "",
          linking foreign: KeyPath<Foreign, PrimaryKey<Int>>,
          onDelete: SQLForeignKeyAction? = nil,
@@ -64,8 +67,13 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
 
 extension ForeignKey: ForeignKeySettable {
     func setForeignKeys(on builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder {
-        Log.warn("fix the foreign key/referencing words, I think you (I) learned it backwards")
-        return builder.foreignKey([referencingKey], references: Foreign.table, [foreignIdKey.name])
+        Log.info("fix the foreign key/referencing words, I think you (I) learned it backwards")
+        return builder.foreignKey([referencingKey],
+                                  references: SQLRawExecute(Foreign.table).raw,
+                                  [foreignIdKey.name],
+                                  onDelete: onDelete,
+                                  onUpdate: onUpdate,
+                                  named: nil)
     }
 }
 
