@@ -123,7 +123,7 @@ final class Ref<S: Schema> {
     /// for now, the only relations supported are one-to-one where the link MUST be optional
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
-    subscript<ParentSchema: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ParentSchema>>) -> Ref<ParentSchema>? {
+    subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
         get {
             let parent_id = S.template[keyPath: key]
             guard let foreignId = backing[parent_id.key]?.string else { return nil }
@@ -131,8 +131,8 @@ final class Ref<S: Schema> {
         }
         set {
             let parentColumn = S.template[keyPath: key]
-            let parentIdKey = parentColumn.parentIdKey.name
-            let associatedParentIdKey = parentColumn.associatedParentIdKey
+            let parentIdKey = parentColumn.foreignIdKey.name
+            let associatedParentIdKey = parentColumn.referencingKey
 
             guard let parent = newValue else {
                 backing[associatedParentIdKey] = nil
@@ -167,9 +167,9 @@ final class Ref<S: Schema> {
 
     subscript<C: Schema>(dynamicMember key: KeyPath<S, ToMany<C>>) -> [Ref<C>] {
         let column = S.template[keyPath: key]
-        let parentIdKey = column.parentIdKey.name
+        let parentIdKey = column.foreignIdKey.name
         let parentIdValue = backing[parentIdKey]
-        let associatedParentIdKey = column.associatedParentIdKey
+        let associatedParentIdKey = column.referencingKey
 
         return db.getAll(where: associatedParentIdKey, matches: parentIdValue)
     }
@@ -340,39 +340,41 @@ final class Later<T> {
     }
 }
 
+//class Relation<Foreign: Schema>: Column<Foreign> {
+//    @Later var foreignIdKey: PrimaryKeyBase
+//    @Later var foreignIdKeyPath: PartialKeyPath<Foreign>
+//
+//    var referencingKey: String { name }
+//}
 
 // temporary
-typealias Parent = ForeignKey
-
 @propertyWrapper
-class ForeignKey<ParentSchema: Schema>: Column<ParentSchema?> {
+class ForeignKey<Foreign: Schema>: Column<Foreign?> {
 
-    @Later var parentIdKey: PrimaryKeyBase
-    @Later var parentIdKeyPath: PartialKeyPath<ParentSchema>
+    @Later var foreignIdKey: PrimaryKeyBase
+    @Later var foreignIdKeyPath: PartialKeyPath<Foreign>
 
-    var associatedParentIdKey: String { name }
+    var referencingKey: String { name }
 
-    override var wrappedValue: ParentSchema? { replacedDynamically() }
+    override var wrappedValue: Foreign? { replacedDynamically() }
 
     init(_ name: String = "",
-         linking foreign: KeyPath<ParentSchema, PrimaryKey<Int>>,
+         linking foreign: KeyPath<Foreign, PrimaryKey<Int>>,
          onDelete: SQLForeignKeyAction? = nil,
          onUpdate: SQLForeignKeyAction? = nil) {
 
-        self._parentIdKeyPath = Later { foreign }
-        self._parentIdKey = Later { ParentSchema.template[keyPath: foreign] }
+        self._foreignIdKeyPath = Later { foreign }
+        self._foreignIdKey = Later { Foreign.template[keyPath: foreign] }
         super.init(name, Int.sqltype, Later([]))
 
         ///
         self.$constraints.loader = { [weak self] in
             guard let welf = self else { fatalError() }
-            let references = welf.parentIdKey
-            print("references: \(ParentSchema.table).\(references.name)")
-            print("foreign: \(welf.name)")
+            let foreignKey = welf.foreignIdKey
             let defaults: [SQLColumnConstraintAlgorithm] = [
-                .inlineForeignKey(name: welf.name),
-                .references(ParentSchema.table,
-                            references.name,
+                .inlineForeignKey(name: welf.referencingKey),
+                .references(Foreign.table,
+                            foreignKey.name,
                             onDelete: onDelete,
                             onUpdate: onUpdate)
             ]
@@ -381,27 +383,31 @@ class ForeignKey<ParentSchema: Schema>: Column<ParentSchema?> {
     }
 
     init(_ name: String = "",
-         linking foreign: KeyPath<ParentSchema, PrimaryKey<String>>,
+         linking foreign: KeyPath<Foreign, PrimaryKey<String>>,
          onDelete: SQLForeignKeyAction? = nil,
          onUpdate: SQLForeignKeyAction? = nil) {
 
-        self._parentIdKeyPath = Later { foreign }
-        self._parentIdKey = Later { ParentSchema.template[keyPath: foreign] }
+        self._foreignIdKeyPath = Later { foreign }
+        self._foreignIdKey = Later { Foreign.template[keyPath: foreign] }
         super.init(name, String.sqltype, Later([]))
+        self.loadConstraints(onDelete: onDelete, onUpdate: onUpdate)
+    }
 
+    /// just offloading some behavior to prevent
+    /// infinite loops when schema cross reference
+    /// only really used during preparations anyways
+    private func loadConstraints(onDelete: SQLForeignKeyAction?,
+        onUpdate: SQLForeignKeyAction?) {
         self.$constraints.loader = { [weak self] in
             guard let welf = self else { fatalError() }
-            let foreign = ParentSchema.template[keyPath: foreign]
-            print("references: \(ParentSchema.table).\(foreign.name)")
-            print("foreign: \(welf.name)")
+            let foreignKey = welf.foreignIdKey
             let defaults: [SQLColumnConstraintAlgorithm] = [
-                .inlineForeignKey(name: welf.name),
-                .references(ParentSchema.table,
-                            foreign.name,
+                .inlineForeignKey(name: welf.referencingKey),
+                .references(Foreign.table,
+                            foreignKey.name,
                             onDelete: onDelete,
                             onUpdate: onUpdate)
             ]
-
             return defaults
         }
     }
@@ -441,29 +447,30 @@ class LazyHandler<T> {
 class ToMany<Many: Schema>: Column<[Many]> {
     override var wrappedValue: [Many] { replacedDynamically() }
 
-    @Later var parentIdKey: PrimaryKeyBase
-    @Later var parentIdKeyPath: AnyKeyPath
+    @Later var foreignIdKey: PrimaryKeyBase
+    @Later var foreignIdKeyPath: AnyKeyPath
 
-    @Later var associatedParentIdKey: String
-    @Later var associatedParentIdKeyPath: PartialKeyPath<Many>
+    /// the key that is referencing something else, like game_id would be referencing the 'id' of 'game'
+    @Later var referencingKey: String
+    @Later var referencingKeyPath: PartialKeyPath<Many>
 
     init<OuterSchema: Schema>(_ key: String = "", linkedBy linkingKeyPath: KeyPath<Many, ForeignKey<OuterSchema>>) {
-        self._parentIdKey = Later {
+        self._foreignIdKey = Later {
             let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.parentIdKey
+            return parent.foreignIdKey
         }
 
-        self._parentIdKeyPath = Later {
+        self._foreignIdKeyPath = Later {
             let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.parentIdKeyPath
+            return parent.foreignIdKeyPath
         }
 
-        self._associatedParentIdKey = Later {
+        self._referencingKey = Later {
             let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.associatedParentIdKey
+            return parent.referencingKey
         }
 
-        self._associatedParentIdKeyPath = Later { linkingKeyPath }
+        self._referencingKeyPath = Later { linkingKeyPath }
 
         /// not going to actually really store this key
         super.init(key, .text, Later([]))
@@ -471,7 +478,6 @@ class ToMany<Many: Schema>: Column<[Many]> {
     }
 }
 
-/// this child type is more like a One to One with parent, parent can also have children one to many, possibly make this more clear````
 @propertyWrapper
 class Child<ChildSchema: Schema>: Column<ChildSchema?> {
 
@@ -490,17 +496,17 @@ class Child<ChildSchema: Schema>: Column<ChildSchema?> {
         referencedBy reference: KeyPath<ChildSchema, ForeignKey<ParentSchema>>) {
         self._parentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
-            return parent.parentIdKey
+            return parent.foreignIdKey
         }
 
         self._parentIdKeyPath = Later {
             let parent = ChildSchema.template[keyPath: reference]
-            return parent.parentIdKeyPath
+            return parent.foreignIdKeyPath
         }
 
         self._associatedParentIdKey = Later {
             let parent = ChildSchema.template[keyPath: reference]
-            return parent.associatedParentIdKey
+            return parent.referencingKey
         }
 
         self._associatedParentIdKeyPath = Later { reference }
@@ -721,7 +727,7 @@ final class Logging: SQLDatabase {
 var logging: Logging?
 final class SeeQuel {
 
-    static let shared: SeeQuel = SeeQuel(storage: .file(path: seequel_directory.path))
+    static let shared: SeeQuel = SeeQuel(storage: .memory) // SeeQuel(storage: .file(path: seequel_directory.path))
 
 //    private var db: SQLDatabase = TestDatabase()
     private var db: SQLDatabase { self.connection.sql()
@@ -848,8 +854,12 @@ extension Database {
         refs.forEach(save)
     }
 
-    func prepare(_ tables: [Table]) throws {
-        try tables.forEach(prepare)
+    func prepare(_ tables: [Table]) {
+        do {
+            try tables.forEach(prepare)
+        } catch {
+            Log.error("table prepare failed: \(error)")
+        }
     }
 }
 

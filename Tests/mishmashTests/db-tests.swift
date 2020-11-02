@@ -148,7 +148,6 @@ final class DBTests: XCTestCase {
     }
 
     func testOneToMany() throws {
-
         let db = SeeQuel(storage: .memory)
         try db.prepare {
             Many.self
@@ -180,7 +179,7 @@ final class DBTests: XCTestCase {
 
     func testMatch() throws {
         let db = SeeQuel.shared
-        try db.prepare {
+        try! db.prepare {
             Team.self
             Player.self
         }
@@ -193,7 +192,8 @@ final class DBTests: XCTestCase {
     }
 
     func testFancy() throws {
-        try db.prepare { Team.self }
+        let db = SeeQuel.shared
+        try! db.prepare { Team.self }
         let columns = Team.template.unsafe_getColumns()
         let instance = Ref<Team>(db)
         for column in columns {
@@ -201,8 +201,6 @@ final class DBTests: XCTestCase {
         }
     }
 }
-
-let db = SeeQuel.shared
 
 //protocol PrimaryKeyProtocol {}
 //
@@ -266,7 +264,10 @@ extension Schema {
 }
 
 func play() throws {
-    try db.prepare {
+    let db = SeeQuel.shared
+
+
+    try! db.prepare {
         Team.self
         Player.self
     }
