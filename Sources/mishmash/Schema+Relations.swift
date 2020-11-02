@@ -117,7 +117,7 @@ class ToOne<One: Schema>: Column<One?> {
 
     init<Foreign: Schema>(
         _ key: String = "",
-        referencedBy reference: KeyPath<One, ForeignKey<Foreign>>) {
+        linkedBy reference: KeyPath<One, ForeignKey<Foreign>>) {
         self._foreignIdKey = Later {
             let parent = One.template[keyPath: reference]
             return parent.foreignIdKey

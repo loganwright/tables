@@ -85,6 +85,32 @@ final class SchemaTests: SieqlTersts {
         XCTAssert(ids.count == booktitless.count)
         XCTAssert(author.books.count == booktitless.count)
     }
+
+    struct Person: Schema {
+        let id = PrimaryKey<String>()
+        let phone = ToOne<Phone>(linkedBy: \.owner)
+    }
+
+    struct Phone: Schema {
+        let owner = ForeignKey<Person>(linking: \.id)
+    }
+
+    func testToOne() throws {
+        try db.prepare {
+            Person.self
+            Phone.self
+        }
+
+        let person = Person.on(db)
+        try person.save()
+
+        let phone = Phone.on(db)
+        phone.owner = person
+        try phone.save()
+
+        XCTAssertEqual(phone.owner?.id, person.id)
+        XCTAssertNotNil(person.phone)
+    }
 }
 
 final class DBTests: XCTestCase {
@@ -452,5 +478,5 @@ struct Hero: Schema {
 //    var equipped = Column<Item?>(foreignKey: \.id)
     var equipped = ForeignKey<Item>(linking: \.id)
 
-    var lunch = ToOne<Food>(referencedBy: \.owner)
+    var lunch = ToOne<Food>(linkedBy: \.owner)
 }

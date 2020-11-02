@@ -221,7 +221,6 @@ extension SeeQuel: Database {
         }
 
         guard !ref.backing.isEmpty else { return }
-
         try! self.db.insert(into: S.table)
             .model(ref.backing)
             .run()
