@@ -12,6 +12,81 @@ import XCTest
  }
  */
 
+class SieqlTersts: XCTestCase {
+    var db: SeeQuel! = SeeQuel(storage: .memory(identifier: "tests"))
+    override func tearDown() {
+        super.tearDown()
+        db = nil
+    }
+
+}
+final class SchemaTests: SieqlTersts {
+    struct Car: Schema {
+        let id = PrimaryKey<Int>()
+        let color = Column<String>()
+    }
+
+    struct User: Schema {
+        let id = PrimaryKey<String>()
+        let car = ForeignKey<Car>(linking: \.id)
+    }
+
+    func testForeignKey() throws {
+        try db.prepare {
+            Car.self
+            User.self
+        }
+        
+        let car = Car.on(db) { car in
+            car.color = "#aaa832"
+        }
+        XCTAssertNotNil(car.id, "should come with id from db")
+
+        let user = User.on(db)
+        user.car = car
+        try user.save()
+
+        XCTAssertEqual(user.backing["car"]?.int, car.id)
+    }
+
+
+    struct Author: Schema {
+        let id = PrimaryKey<Int>()
+        let name = Column<String>()
+        let books = ToMany<Book>(linkedBy: \.author)
+    }
+
+    struct Book: Schema {
+        let title = Column<String>()
+        let author = ForeignKey<Author>(linking: \.id)
+    }
+
+    func testToManyKey() throws {
+        try db.prepare {
+            Author.self
+            Book.self
+        }
+
+        let author = Author.on(db)
+        author.name = "hughes"
+        try author.save()
+
+        let booktitless = ["a", "b", "c", "d"]
+        let books: [Ref<Book>] = try booktitless.map { title in
+            let book = Book.on(db)
+            book.title = title
+            book.author = author
+            try book.save()
+            return book
+        }
+        XCTAssert(books.count == booktitless.count)
+        let ids = books.compactMap(\.author).compactMap(\.id)
+        XCTAssert(Set(ids).count == 1)
+        XCTAssert(ids.count == booktitless.count)
+        XCTAssert(author.books.count == booktitless.count)
+    }
+}
+
 final class DBTests: XCTestCase {
     let sql = SQLManager.unsafe_testable
 
@@ -255,11 +330,16 @@ extension Schema {
         return Ref(db)
     }
 
-    static func on(@FuzzyBuilder<Self> _ fuzz: () -> Database) -> Ref<Self> {
-        return Ref(fuzz())
-    }
-    static func on(@FuzzyBuilder<Self> _ fuzz: () -> Ref<Self>) -> Ref<Self> {
-        return fuzz()
+    static func on(_ db: Database, creator: (Ref<Self>) -> Void) -> Ref<Self> {
+        let new = Ref<Self>(db)
+        creator(new)
+        let attributes = template.columns.filter(\.shouldSerialize).filter { !($0 is PrimaryKeyBase)}
+
+        guard new.backing.keys.count == attributes.count else {
+            fatalError("\(Ref<Self>.self) not properly instantiated")
+        }
+        try! new.save()
+        return new
     }
 }
 
@@ -372,5 +452,5 @@ struct Hero: Schema {
 //    var equipped = Column<Item?>(foreignKey: \.id)
     var equipped = ForeignKey<Item>(linking: \.id)
 
-    var lunch = Child<Food>(referencedBy: \.owner)
+    var lunch = ToOne<Food>(referencedBy: \.owner)
 }

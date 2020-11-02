@@ -1,48 +1,45 @@
-///
-/// Unique to define One to Many
-/// a `Parent<T>` column ( renamed sth ) and `Unique<Parent<T>>` or sth, but don't want to get too crazy on generics
-///
+// MARK: Schema
 
-//@dynamicCallable
 protocol Schema {
     init()
     static var table: String { get }
 }
 
 extension Schema {
-    static func dynamicallyCall(withArguments args: [Database]) -> Ref<Self> {
-        assert(args.count == 1)
-        return Ref(args[0])
+    static var table: String { "\(Self.self)".lowercased()}
+}
+
+// MARK:  
+
+extension Schema {
+    var primaryKey: PrimaryKeyBase? {
+        columns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
+    }
+    var isPrimaryKeyed: Bool {
+        primaryKey != nil
     }
 }
 
-extension Schema {
-    var _primaryKey: PrimaryKeyBase? {
-        // todo: optimize?
-        unsafe_getColumns().lazy.compactMap { $0 as? PrimaryKeyBase } .first
+extension Ref {
+    var primaryKey: PrimaryKeyBase? {
+        S.template.primaryKey
+    }
+    var isPrimaryKeyed: Bool {
+        S.template.isPrimaryKeyed
     }
 }
 
-//protocol IDSchema: Schema {
-//    associatedtype ID: IDType
-//    var id: IDColumn<ID> { get set }
-//}
-//
-//struct Plant: IDSchema {
-//    var id = IDColumn<String>()
-//}
+// MARK: Template
 
-//protocol SchemaID: Schema {
-//    associatedtype IDType: PrimaryKey
-//    var id: IDType { get }
-//}
-
-extension Schema {
-    static var table: String { "\(Self.self)".lowercased() }
-}
-
+/// templates help us to use instances of a schema as opposed to trying
+/// to infer information from it's more opaque type metadata
+/// this caches nicely
 private var templates: [String: Schema] = [:]
+
 extension Schema {
+    /// load the template for a given schema type
+    /// loading this way also ensures that labels are set
+    /// according to swift properties
     static var template: Self {
         if let existing = templates[table] as? Self { return existing }
         let new = Self.make()
@@ -50,15 +47,72 @@ extension Schema {
         return new
     }
 
-    /// always call this in preference to the other
+    /// constructs a new schema to be used if necessary
+    /// calling `template` is usually enough as we should rarely be directly accessing
+    /// schema
     static func make() -> Self {
         let new = Self.init()
-        new._hydrateIntrospectedLabels()
+        new.hydrateColumnKeysWithPropertyLabels()
         return new
     }
+}
 
-    private func _hydrateIntrospectedLabels() {
+// MARK: Introspection
+
+/// a model of mirror reflected properties
+struct SchemaProperty {
+    let label: String
+    let columntype: Any.Type
+    let val: Any
+
+    init(_ label: String, _ val: Any) {
+        self.label = label
+        let t = Swift.type(of: val)
+        self.columntype = t
+        self.val = val
+    }
+}
+
+extension Schema {
+    var columns: [SQLColumn] {
+        allColumns.filter(\.shouldSerialize)
+    }
+
+    var allColumns: [SQLColumn] {
+        unsafe_getColumns()
+    }
+
+    /// load all introspectable properties from an instance
+    func unsafe_getProperties() -> [SchemaProperty] {
+        Mirror(reflecting: self).children.compactMap { child in
+            guard let label = child.label else { fatalError("expected a label for template property") }
+            return SchemaProperty(label, child.value)
+        }
+    }
+
+    /// load all sqlcolumns associated with this schema
+    func unsafe_getColumns() -> [SQLColumn] {
+        unsafe_getProperties().compactMap { prop in
+            guard let column = prop.val as? SQLColumn else {
+                Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.columntype)")
+                Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
+                return nil
+            }
+
+            if column.name.isEmpty { column.name = prop.label }
+            return column
+        }
+    }
+
+    /// we need to fill in the templating columns, for example
+    ///
+    ///  `let note = Column<String>()`
+    ///
+    ///     if not properly hydrated, the column will have an empty string as a key
+    ///
+    private func hydrateColumnKeysWithPropertyLabels() {
         let props = unsafe_getProperties()
+
         props.forEach { prop in
             guard let column = prop.val as? SQLColumn else {
                 Log.warn("unexpected property on schema: \(Self.self).\(prop.label)")
@@ -67,111 +121,6 @@ extension Schema {
             guard column.name.isEmpty else { return }
             column.name = prop.label
         }
-    }
-}
-
-// MARK: Reference {
-@dynamicMemberLookup
-final class Ref<S: Schema> {
-    fileprivate(set) var backing: [String: JSON] {
-        didSet { isDirty = true }
-    }
-
-    /// whether or not the reference has changed since it came from the database
-    fileprivate(set) var isDirty: Bool = false
-    fileprivate(set) var exists: Bool = false
-
-    let db: Database
-
-    init(_ raw: [String: JSON], _ database: Database) {
-        self.backing = raw
-        self.db = database
-    }
-
-    /// this is a new object, restrict this creation
-    convenience init(_ database: Database) {
-        self.init([:], database)
-    }
-
-    subscript<C: Codable>(dynamicMember key: KeyPath<S, Column<C>>) -> C {
-        get {
-            let column = S.template[keyPath: key]
-            let json = backing[column.key] ?? .null
-            return try! C(json: json)
-        }
-        set {
-            let column = S.template[keyPath: key]
-            backing[column.key] = newValue.json
-        }
-    }
-
-    subscript<PK: Codable>(dynamicMember key: KeyPath<S, PrimaryKey<PK>>) -> PK? {
-        get {
-            let pk = S.template[keyPath: key]
-            guard let value = backing[pk.name] else { return nil }
-            return try! PK(json: value)
-        }
-        set {
-            let pk = S.template[keyPath: key]
-            backing[pk.key] = newValue.json
-        }
-    }
-
-    // MARK: Relations
-
-    ///
-    /// for now, the only relations supported are one-to-one where the link MUST be optional
-    /// for one to many relations, it MUST not be optional, and will instead return empty arrays
-    ///
-    subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
-        get {
-            let parent_id = S.template[keyPath: key]
-            guard let foreignId = backing[parent_id.key]?.string else { return nil }
-            return db.load(id: foreignId)
-        }
-        set {
-            let parentColumn = S.template[keyPath: key]
-            let parentIdKey = parentColumn.foreignIdKey.name
-            let associatedParentIdKey = parentColumn.referencingKey
-
-            guard let parent = newValue else {
-                backing[associatedParentIdKey] = nil
-                return
-            }
-
-            /// would be great if we could attach to the 'Ref' object or somehow trigger an update later after saving
-            guard let parentIdValue = parent.backing[parentIdKey] else {
-                fatalError("Object: \(parent) not ready to be linked.. missing: \(parentIdKey)")
-            }
-
-            // we are the child, taking note of our parent
-            backing[associatedParentIdKey] = parentIdValue
-        }
-    }
-
-    subscript<ChildSchema: Schema>(dynamicMember key: KeyPath<S, Child<ChildSchema>>) -> Ref<ChildSchema>? {
-        get {
-            // we are parent, seeking detached children
-            let childColumn = S.template[keyPath: key]
-            let associatedParentIdKey = childColumn.associatedParentIdKey
-
-            let parentIdKey = childColumn.parentIdKey
-            guard let parentIdValue = backing[parentIdKey.name] else {
-                /// the parent isn't in database yet, can't have children
-                return nil
-            }
-
-            return db.getOne(where: associatedParentIdKey, matches: parentIdValue)
-        }
-    }
-
-    subscript<C: Schema>(dynamicMember key: KeyPath<S, ToMany<C>>) -> [Ref<C>] {
-        let column = S.template[keyPath: key]
-        let parentIdKey = column.foreignIdKey.name
-        let parentIdValue = backing[parentIdKey]
-        let associatedParentIdKey = column.referencingKey
-
-        return db.getAll(where: associatedParentIdKey, matches: parentIdValue)
     }
 }
 
@@ -184,10 +133,7 @@ class SQLColumn {
         set { name = newValue }
     }
 
-    open var name: String {
-        didSet { print("updated name: \(oldValue) to \(name)") }
-    }
-
+    open var name: String
     open var type: SQLDataType
 
     /// using the Later attribute to allow nested columns to properly initialize
@@ -235,15 +181,14 @@ protocol PrimaryKeyValue: DatabaseValue {}
 extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
 
-class UniqueKeyBase: SQLColumn {
-    fileprivate init(_ key: String, _ keyType: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
+class UniqueKey<T>: Column<T> {
+    init(_ key: String = "", _ keyType: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
         super.init(key, keyType, Later([.notNull, .unique] + constraints))
     }
 }
 
-
-class PrimaryKeyBase: UniqueKeyBase {
-    enum KeyType: Equatable {
+class PrimaryKeyBase: SQLColumn {
+    enum Kind: Equatable {
         /// combining multiple keys not supported
         case uuid, incrementing
 
@@ -267,11 +212,11 @@ class PrimaryKeyBase: UniqueKeyBase {
     }
 
     // MARK: Attributes
-    let pk: KeyType
+    let pk: Kind
 
-    fileprivate init(_ key: String, _ keyType: KeyType) {
-        self.pk = keyType
-        super.init(key, keyType.sqltype, [keyType.constraint])
+    fileprivate init(_ key: String, _ kind: Kind) {
+        self.pk = kind
+        super.init(key, kind.sqltype, Later([kind.constraint]))
     }
 }
 
@@ -288,7 +233,6 @@ class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     }
 }
 
-/// should this stay a property wrapper?
 @propertyWrapper
 class Column<Value>: SQLColumn {
     open var wrappedValue: Value { replacedDynamically() }
@@ -318,123 +262,6 @@ extension SQLColumnConstraintAlgorithm {
     }
 }
 
-@propertyWrapper
-final class Later<T> {
-    var wrappedValue: T {
-        loader()
-    }
-    var projectedValue: Later<T> { self }
-
-    fileprivate var loader: () -> T
-
-    init(wrappedValue: T) {
-        self.loader = { wrappedValue }
-    }
-
-    convenience init(_ t: T) {
-        self.init(wrappedValue: t)
-    }
-
-    init(_ loader: @escaping () -> T) {
-        self.loader = loader
-    }
-}
-
-//class Relation<Foreign: Schema>: Column<Foreign> {
-//    @Later var foreignIdKey: PrimaryKeyBase
-//    @Later var foreignIdKeyPath: PartialKeyPath<Foreign>
-//
-//    var referencingKey: String { name }
-//}
-
-// temporary
-@propertyWrapper
-class ForeignKey<Foreign: Schema>: Column<Foreign?> {
-
-    @Later var foreignIdKey: PrimaryKeyBase
-    @Later var foreignIdKeyPath: PartialKeyPath<Foreign>
-
-    var referencingKey: String { name }
-
-    override var wrappedValue: Foreign? { replacedDynamically() }
-
-    init(_ name: String = "",
-         linking foreign: KeyPath<Foreign, PrimaryKey<Int>>,
-         onDelete: SQLForeignKeyAction? = nil,
-         onUpdate: SQLForeignKeyAction? = nil) {
-
-        self._foreignIdKeyPath = Later { foreign }
-        self._foreignIdKey = Later { Foreign.template[keyPath: foreign] }
-        super.init(name, Int.sqltype, Later([]))
-
-        ///
-        self.$constraints.loader = { [weak self] in
-            guard let welf = self else { fatalError() }
-            let foreignKey = welf.foreignIdKey
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .inlineForeignKey(name: welf.referencingKey),
-                .references(Foreign.table,
-                            foreignKey.name,
-                            onDelete: onDelete,
-                            onUpdate: onUpdate)
-            ]
-            return defaults
-        }
-    }
-
-    init(_ name: String = "",
-         linking foreign: KeyPath<Foreign, PrimaryKey<String>>,
-         onDelete: SQLForeignKeyAction? = nil,
-         onUpdate: SQLForeignKeyAction? = nil) {
-
-        self._foreignIdKeyPath = Later { foreign }
-        self._foreignIdKey = Later { Foreign.template[keyPath: foreign] }
-        super.init(name, String.sqltype, Later([]))
-        self.loadConstraints(onDelete: onDelete, onUpdate: onUpdate)
-    }
-
-    /// just offloading some behavior to prevent
-    /// infinite loops when schema cross reference
-    /// only really used during preparations anyways
-    private func loadConstraints(onDelete: SQLForeignKeyAction?,
-        onUpdate: SQLForeignKeyAction?) {
-        self.$constraints.loader = { [weak self] in
-            guard let welf = self else { fatalError() }
-            let foreignKey = welf.foreignIdKey
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .inlineForeignKey(name: welf.referencingKey),
-                .references(Foreign.table,
-                            foreignKey.name,
-                            onDelete: onDelete,
-                            onUpdate: onUpdate)
-            ]
-            return defaults
-        }
-    }
-}
-
-class LazyHandler<T> {
-    private var _cache: T? = nil
-    private var getter: () -> T
-    init(getter: @escaping () -> T) {
-        self.getter = getter
-    }
-
-    func get() -> T {
-        if let _cache = _cache { return _cache }
-        else {
-            let new = getter()
-            _cache = new
-            return new
-        }
-    }
-
-    func set(_ t: T) {
-        _cache = t
-    }
-
-}
-
 
 /**
  parentIdKey
@@ -443,107 +270,8 @@ class LazyHandler<T> {
  * childAssociatedValue
  */
 
-@propertyWrapper
-class ToMany<Many: Schema>: Column<[Many]> {
-    override var wrappedValue: [Many] { replacedDynamically() }
 
-    @Later var foreignIdKey: PrimaryKeyBase
-    @Later var foreignIdKeyPath: AnyKeyPath
 
-    /// the key that is referencing something else, like game_id would be referencing the 'id' of 'game'
-    @Later var referencingKey: String
-    @Later var referencingKeyPath: PartialKeyPath<Many>
-
-    init<OuterSchema: Schema>(_ key: String = "", linkedBy linkingKeyPath: KeyPath<Many, ForeignKey<OuterSchema>>) {
-        self._foreignIdKey = Later {
-            let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.foreignIdKey
-        }
-
-        self._foreignIdKeyPath = Later {
-            let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.foreignIdKeyPath
-        }
-
-        self._referencingKey = Later {
-            let parent = Many.template[keyPath: linkingKeyPath]
-            return parent.referencingKey
-        }
-
-        self._referencingKeyPath = Later { linkingKeyPath }
-
-        /// not going to actually really store this key
-        super.init(key, .text, Later([]))
-        shouldSerialize = false
-    }
-}
-
-@propertyWrapper
-class Child<ChildSchema: Schema>: Column<ChildSchema?> {
-
-    override var wrappedValue: ChildSchema? { replacedDynamically() }
-
-    /// let idToFilterBy = parent[parentIdKey]
-    @Later var parentIdKey: PrimaryKeyBase
-    @Later var parentIdKeyPath: AnyKeyPath
-
-    /// referencing out
-    @Later var associatedParentIdKey: String
-    @Later var associatedParentIdKeyPath: PartialKeyPath<ChildSchema>
-
-    init<ParentSchema: Schema>(
-        _ key: String = "",
-        referencedBy reference: KeyPath<ChildSchema, ForeignKey<ParentSchema>>) {
-        self._parentIdKey = Later {
-            let parent = ChildSchema.template[keyPath: reference]
-            return parent.foreignIdKey
-        }
-
-        self._parentIdKeyPath = Later {
-            let parent = ChildSchema.template[keyPath: reference]
-            return parent.foreignIdKeyPath
-        }
-
-        self._associatedParentIdKey = Later {
-            let parent = ChildSchema.template[keyPath: reference]
-            return parent.referencingKey
-        }
-
-        self._associatedParentIdKeyPath = Later { reference }
-
-        super.init(key, .text, Later([]))
-        /// hacky way  to keep it out of stuff
-        shouldSerialize = false
-    }
-}
-
-extension Schema {
-    func unsafe_getColumns() -> [SQLColumn] {
-        return unsafe_getProperties().compactMap { prop in
-            guard let column = prop.val as? SQLColumn else {
-                Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.type)")
-                Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
-                return nil
-            }
-
-            if column.name.isEmpty { column.name = prop.label }
-            return column
-        }
-    }
-
-    func unsafe_getProperties() -> [(label: String, type: String, val: Any)] {
-        Mirror(reflecting: self).children.compactMap { child in
-            assert(child.label != nil, "expected a label for template property")
-            guard let label = child.label else { return nil }
-            return (label, "\(type(of: child.value))", child.value)
-        }
-    }
-}
-
-@propertyWrapper
-struct Nested<S: Schema> {
-    var wrappedValue: S { fatalError() }
-}
 
 final class Box<T> {
     var boxed: T
@@ -553,14 +281,6 @@ final class Box<T> {
     }
 }
 
-
-extension Ref {
-    func save() throws {
-        db.save(self)
-        isDirty = false
-        exists = true
-    }
-}
 
 @_functionBuilder
 struct TableBuilder {
@@ -579,6 +299,7 @@ struct ListBuilder<T> {
         return list
     }
 }
+
 
 struct Table {
     let name: String
@@ -602,12 +323,6 @@ struct Table {
     }
 }
 
-
-func notImplemented(_ label: String = #function) -> Never {
-    Log.error("\(label) not implemented")
-    exit(1)
-}
-
 import Logging
 import SQLiteKit
 import Foundation
@@ -623,118 +338,12 @@ private var seequel_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
-struct GenericDialect: SQLDialect {
-    var supportsAutoIncrement: Bool = true
-
-    var name: String = "generic sql"
-
-    var supportsIfExists: Bool = true
-
-    var supportsReturning: Bool = true
-
-    var identifierQuote: SQLExpression {
-        return SQLRaw("`")
-    }
-
-    var literalStringQuote: SQLExpression {
-        return SQLRaw("'")
-    }
-
-    func bindPlaceholder(at position: Int) -> SQLExpression {
-        return SQLRaw("?")
-    }
-
-    func literalBoolean(_ value: Bool) -> SQLExpression {
-        switch value {
-        case true: return SQLRaw("true")
-        case false: return SQLRaw("false")
-        }
-    }
-
-    var enumSyntax: SQLEnumSyntax = .inline
-
-    var autoIncrementClause: SQLExpression {
-        return SQLRaw("AUTOINCREMENT")
-    }
-
-    var autoIncrementFunction: SQLExpression? = nil
-
-    var supportsDropBehavior: Bool = false
-
-    var triggerSyntax = SQLTriggerSyntax()
-
-    var alterTableSyntax = SQLAlterTableSyntax(alterColumnDefinitionClause: SQLRaw("MODIFY"), alterColumnDefinitionTypeKeyword: nil)
-
-    mutating func setTriggerSyntax(create: SQLTriggerSyntax.Create = [], drop: SQLTriggerSyntax.Drop = []) {
-        self.triggerSyntax.create = create
-        self.triggerSyntax.drop = drop
-    }
-}
-
-
-final class TestDatabase: SQLDatabase {
-    let logger: Logger
-    let eventLoop: EventLoop
-    var results: [String]
-    var dialect: SQLDialect {
-        self._dialect
-    }
-    var _dialect: GenericDialect
-
-    init() {
-        self.logger = .init(label: "rabblerabble.bluearlbj")
-        self.eventLoop = EmbeddedEventLoop()
-        self.results = []
-        self._dialect = GenericDialect()
-    }
-
-    func execute(sql query: SQLExpression, _ onRow: @escaping (SQLRow) -> ()) -> EventLoopFuture<Void> {
-        var serializer = SQLSerializer(database: self)
-        query.serialize(to: &serializer)
-        results.append(serializer.sql)
-        print(serializer.sql)
-        return self.eventLoop.makeSucceededFuture(())
-    }
-}
-
-final class Logging: SQLDatabase {
-    var db: SQLDatabase
-    let logger: Logger
-    let eventLoop: EventLoop
-    var results: [String]
-    var dialect: SQLDialect {
-        self._dialect
-    }
-    var _dialect: GenericDialect
-
-    init(_ db: SQLDatabase) {
-        self.db = db
-        self.logger = .init(label: "rabblerabble.bluearlbj")
-        self.eventLoop = EmbeddedEventLoop()
-        self.results = []
-        self._dialect = GenericDialect()
-    }
-
-    func execute(sql query: SQLExpression, _ onRow: @escaping (SQLRow) -> ()) -> EventLoopFuture<Void> {
-        var serializer = SQLSerializer(database: db)
-        query.serialize(to: &serializer)
-        results.append(serializer.sql)
-        print(serializer.sql)
-        return self.eventLoop.makeSucceededFuture(())
-    }
-}
-
-var logging: Logging?
 final class SeeQuel {
-
     static let shared: SeeQuel = SeeQuel(storage: .memory) // SeeQuel(storage: .file(path: seequel_directory.path))
 
 //    private var db: SQLDatabase = TestDatabase()
-    private var db: SQLDatabase { self.connection.sql()
-//        if logging === nil {
-//            logging = Logging(self.connection.sql())
-//        }
-//        return logging!
+    var db: SQLDatabase {
+        self.connection.sql()
     }
 
     private let eventLoopGroup: EventLoopGroup
@@ -771,46 +380,6 @@ final class SeeQuel {
     }
 }
 
-struct SchemaProperty {
-    let label: String
-    let columntype: Any.Type
-    let val: Any
-
-    let isLazy: Bool
-
-    init(_ mangled: String, _ val: Any) {
-        let lazyMangledPrefix = "$__lazy_storage_$_"
-        if mangled.hasPrefix(lazyMangledPrefix) {
-            self.isLazy = true
-            self.label = String(mangled.dropFirst(lazyMangledPrefix.count))
-        } else {
-            if mangled.contains("$") { Log.warn("unhandled special case") }
-            self.isLazy = false
-            self.label = mangled
-        }
-
-        let t = Swift.type(of: val)
-        print("value is type: \(t)")
-        self.columntype = t
-        self.val = val
-    }
-}
-
-extension Schema {
-    static func _validate() throws {
-        let propertyList = template.unsafe_getProperties()
-        
-    }
-
-    func unsafe_propertyList() -> [SchemaProperty] {
-        Mirror(reflecting: self).children.compactMap { child in
-            guard let label = child.label else { fatalError("expected a label for template property") }
-            let columntype = "\(type(of: child.value))"
-            return SchemaProperty(label, child.value)
-//            return (label, "\(type(of: child.value))", child.value)
-        }
-    }
-}
 struct SQLRawExecute: SQLExpression {
     let raw: String
     init(_ raw: String) {
@@ -867,418 +436,5 @@ extension Database {
     func prepare(@TableBuilder _ builder: () -> [Table]) throws {
         let tables = builder()
         try self.prepare(tables)
-    }
-}
-
-//protocol IDSchema: Schema {
-//    associatedtype PKRawType: PrimaryKeyType
-//    var _pk: PrimaryKey<PKRawType> { get set }
-////    var _id: PrimaryKey<PKRawType> { get set }
-////    var _idkp: KeyPath<Self, PrimaryKey<PKRawType>> { get set }
-//}
-
-extension Ref {
-    var primaryKey: PrimaryKeyBase? { S.template._primaryKey }
-}
-
-extension SeeQuel: Database {
-    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>] {
-        let all = try! self.db.select()
-            .columns(["*"])
-            .where(SQLIdentifier(key), .equal, matches)
-            .from(S.table)
-            .all(decoding: [String: JSON].self)
-            .wait()
-        return all.map { Ref($0, self) }
-    }
-
-    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>? {
-        let backing = try! self.db.select()
-            .columns(["*"])
-            .where(SQLIdentifier(key), .equal, matches)
-            .from(S.table)
-            .first(decoding: [String: JSON].self)
-            .wait()
-        guard let unwrap = backing else { return nil }
-        return Ref<S>(unwrap, self)
-    }
-
-    func orig_getOne<S: Schema, T: Encodable>(where keyPath: KeyPath<S, Column<T>>, matches: T) -> Ref<S>? {
-        // let columns = S.template.unsafe_getColumns().map(\.name)
-        let column = S.template[keyPath: keyPath]
-        let backing = try! self.db.select()
-            .columns(["*"])
-            .where(SQLIdentifier(column.name), .equal, matches)
-            .from(S.table)
-            .first(decoding: [String: JSON].self)
-            .wait()
-        guard let unwrap = backing else { return nil }
-        return Ref<S>(unwrap, self)
-    }
-
-    func prepare(_ table: Table) throws {
-        Log.warn("todo: validate template")
-        Log.warn("todo: check if table exists")
-        /// all objects have an id column
-        var prepare = self.db.create(table: table.name)
-
-        table.columns.forEach { column in
-            prepare = prepare.column(column.key, type: column.type, column.constraints)
-        }
-
-        let results = try prepare.run().wait()
-        print(results)
-        print("")
-    }
-
-    func save(to table: String, _ body: [String : JSON]) {
-        try! self.db.insert(into: table)
-            .model(body)
-            .run()
-            .wait()
-    }
-
-    func save<S>(_ ref: Ref<S>) where S : Schema {
-        if ref.exists, ref.primaryKey != nil {
-            update(ref)
-            return
-        }
-
-        /// if object doesn't exist
-        let idKey = S.template._primaryKey
-        let needsId = idKey != nil && ref.backing[idKey!.name] == nil
-        if needsId, let id = idKey {
-            switch id.pk {
-            case .uuid:
-                /// uuid not auto generated, needs to be made
-                ref.backing[id.key] = UUID().json
-            case .incrementing:
-                // set automatically after save by sql
-//                incrementing = true
-                break
-            }
-        }
-
-        try! self.db.insert(into: S.table)
-            .model(ref.backing)
-            .run()
-            .wait()
-
-        guard
-            needsId,
-            let pk = idKey,
-            pk.pk == .incrementing
-            else { return }
-        let id = unsafe_lastInsertedRowId()
-        ref.backing[pk.key] = id.json
-    }
-
-    func update<S>(_ ref: Ref<S>) where S: Schema {
-        guard let primary = ref.primaryKey else { fatalError("can only update with primary keyed objects currently") }
-        try! self.db
-            .update(S.table)
-            .where(primary.name.sqlid, .equal, ref.backing[primary.name])
-            .set(model: ref.backing)
-            .run()
-            .wait()
-    }
-
-    private func unsafe_lastInsertedRowId() -> Int {
-        let raw = SQLRawExecute("select last_insert_rowid();")
-        var id: Int = -1
-        try! db.execute(sql: raw) { (row) in
-            let raw = try! row.decode(model: [String: Int].self)
-            assert(raw.values.count == 1, "unexpected sql rowid response")
-            let _id = raw.values.first
-            assert(_id != nil, "sql failed to make rowid")
-            id = _id!
-        } .wait()
-        return id
-    }
-
-    func load<S>(id: String) -> Ref<S>? where S : Schema {
-//        let columns = S.template.unsafe_getColumns().map(\.name)
-        guard let pk = S.template._primaryKey?.name else { fatalError("missing primary key") }
-        let backing = try! self.db.select()
-            .columns(["*"])
-            .where(SQLIdentifier(pk), .equal, id)
-            .from(S.table)
-            .first(decoding: [String: JSON].self)
-            .wait()
-        guard let unwrap = backing else { return nil }
-        // move to higher layer
-        let ref = Ref<S>(unwrap, self)
-        ref.exists = true
-        return ref
-    }
-
-    func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
-        notImplemented()
-    }
-}
-
-extension String {
-    fileprivate var sqlid: SQLIdentifier { .init(self) }
-}
-extension SeeQuel {
-    func unsafe_getAllTables() throws -> [String] {
-        struct Table: Decodable {
-            let name: String
-        }
-        let results = try db.select().column("name")
-            .from("sqlite_master")
-            .where("type", .equal, "table")
-            .all(decoding: Table.self)
-            .wait()
-        return results.map(\.name)
-    }
-
-    struct _TableColumnMeta: Codable {
-        // column_id
-        let cid: Int
-        let name: String
-        let type: String
-        let notnull: Bool
-        let dflt_value: JSON?
-        let pk: Bool
-    }
-
-    func unsafe_table_meta(_ table: String) throws -> [_TableColumnMeta] {
-        var meta = [_TableColumnMeta]()
-        try db.execute(sql: SQLTableSchema(table)) { (row) in
-            print("metadata: \(row)")
-            let next = try! row.decode(model: _TableColumnMeta.self)
-            meta.append(next)
-        } .wait()
-        return meta
-    }
-}
-
-@_functionBuilder
-struct Preparer {
-    static func buildBlock(_ schema: Schema.Type...) {
-
-    }
-}
-
-
-//let db = TestDB()
-
-struct Human: Schema {
-    var id = PrimaryKey<String>()
-    var name = Column<String>("name")
-    var nickname = Column<String?>("nickname")
-    var age = Column<Int>("age")
-
-    // MARK: RELATIONS
-    /// one to one
-    /// should be able to infer a single id column from type, as well as label,
-    /// and have just
-    /// `var nemesis = Column<Human?>()`
-    /// for now taking out, need to address infinite cycle for schema linking to schema
-//    var nemesis = Column<Human?>("nemesis", foreignKey: \.id)
-//
-//    /// one to many
-//    var pets = Column<[Pet]>("pets", containsForeignKey: \.id)
-//    var friends = Column<[Human]>("friends", containsForeignKey: \.id)
-}
-
-extension Schema {
-    static func prepare(in db: Database, paths: [PartialKeyPath<Self>]) {
-        print("got paths: \(paths)")
-        let loaded = paths.map { template[keyPath: $0] }
-        print("loadedd: \(loaded)")
-    }
-}
-
-extension KeyPath where Root: Schema {
-    func prepare() {
-
-    }
-}
-
-//struct Pet: Schema {
-//    var id = IDColumn<Int>()
-//    var name = Column<String>("name")
-//}
-//
-//protocol ColumnMeta {
-//
-//}
-
-private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
-    Mirror(reflecting: template).children.compactMap { child in
-        assert(child.label != nil, "expected a label for template property")
-        guard let label = child.label else { return nil }
-        return (label, "\(type(of: child.value))")
-    }
-}
-private func unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String)] {
-    Mirror(reflecting: template).children.compactMap { child in
-        assert(child.label != nil, "expected a label for template property")
-        guard let label = child.label else { return nil }
-        return (label, "\(type(of: child.value))")
-    }
-}
-
-private func _unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String, val: Any)] {
-    Mirror(reflecting: template).children.compactMap { child in
-        assert(child.label != nil, "expected a label for template property")
-        guard let label = child.label else { return nil }
-        return (label, "\(type(of: child.value))", child.value)
-    }
-}
-
-//@_functionBuilder
-//struct PreparationBuilder<S: Schema> {
-//    static func buildBlock(_ paths: PartialKeyPath<S>...) {
-//        let temp = S.template
-//        let loaded = paths.map { temp[keyPath: $0] }
-//        print("loaded: \(loaded)")
-//    }
-//}
-
-//@_functionBuilder
-//struct ColumnBuilder<S: Schema> {
-//    static func buildBlock(_ paths: KeyPath<S, ColumnBase>...) {
-//
-//    }
-//}
-//
-//extension Schema {
-//    static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
-//
-//    }
-//}
-
-func testDatabaseStuff() {
-    let huprops = _unsafe_getProperties(template: Human.template)
-    print(huprops)
-//    Human.prepare(on: db) {
-//        \.age
-//        \.friends
-//        \.name
-//        \.pets
-//    }
-//    Human.prepare(on: db) {
-//        \Human.age
-//        \Human.friends
-//        \Human.name
-////        \.age
-////        \.friends
-////        \.name
-////        \.pets
-//    }
-//
-//    Human.prepare(in: db, paths: [\Human.age, \Human.friends, \Human.name, \Human.pets])
-//
-//    let joe = Ref<Human>(database: db)
-//    joe.id = "0"
-//    joe.name = "joe"
-//    joe.age = 13
-//
-//    let jan = Ref<Human>(database: db)
-//    jan.id = "1"
-//    jan.name = "jane"
-//    jan.age = 14
-//    let frand = jan.nemesis
-//    print(frand)
-//
-//    joe.nemesis = jan
-//    jan.nemesis = joe
-//
-//    joe.friends = [joe, jan]
-
-//    let bobo = Ref<Pet>(db)
-//    bobo.name = "bobo"
-//    try! bobo.save()
-//    let spike = Ref<Pet>(db)
-//    spike.name = "spike"
-//    try! spike.save()
-//    let dolly = Ref<Pet>(db)
-//    dolly.name = "dolly"
-//    try! dolly.save()
-//
-////    joe.pets = [bobo, spike, dolly]
-////    jan.pets = [bobo]
-//
-//    print(db.tables[Human.table])
-//    try! joe.save()
-//    try! jan.save()
-//    print(db.tables[Human.table]!)
-//    try! joe.save()
-//    jan.friend = joe
-//    try! jan.save()
-//    joe.friend()
-//    joe.save()
-
-//    print("Hi: \(joe.friends)")
-}
-
-func orig_testDatabaseStuff() {
-//    Database.shared.prepare {
-//        Pet.self
-//        Human.self
-//    }
-
-//    Human.prepare {
-//        \Human.id
-//        \Human._dad
-//    }
-
-//    Pet.fetch(where: \.friend, .equals, "joe")
-//    newhh.id = ""
-
-//    let new = Ref<Human>()
-//    new.id = "asdf"
-//    new.age = 13
-//    print("Hi: \(new.friend)")
-//    let pets = new.pets
-//    let a = new.pets
-//    let pets = new.relations(matching: \Pet.friend)
-//    let parent = new.parent(matching: \._dad) as Ref<Human>
-//    new.child(matching: <#T##KeyPath<Schema, Column<Decodable & Encodable>>#>)
-
-//    let a = new.age
-//    let asd = unsafe_getProperties(template: new)
-//    print(asd)
-//    let props = unsafe_getProperties(template: Human.self)
-//    print(props)
-//    \Human.id
-    let all = Human.template.allKeyPaths
-    print()
-//    new.name = "blorgop"
-
-//    new.age.
-    let ref: Ref<Human>! = nil
-
-//    let a = ref.age
-}
-
-extension Human: KeyPathListable {}
-private func unsafe_getProperties<S: Schema>(template: S.Type) -> [(label: String, type: String)] {
-    Mirror(reflecting: S.template).children.compactMap { child in
-        assert(child.label != nil, "expected a label for template property")
-        guard let label = child.label else { return nil }
-        return (label, "\(type(of: child.value))")
-    }
-}
-
-protocol KeyPathListable: Schema {
-    var allKeyPaths: [String: PartialKeyPath<Self>] { get }
-}
-
-extension KeyPathListable {
-    private subscript(checkedMirrorDescendant key: String) -> Any {
-        return Mirror(reflecting: self).descendant(key)!
-    }
-
-    var allKeyPaths: [String: PartialKeyPath<Self>] {
-        var membersTokeyPaths = [String: PartialKeyPath<Self>]()
-        let mirror = Mirror(reflecting: self)
-        for case (let key?, _) in mirror.children {
-            membersTokeyPaths[key] = \Self.[checkedMirrorDescendant: key] as PartialKeyPath
-        }
-        return membersTokeyPaths
     }
 }
