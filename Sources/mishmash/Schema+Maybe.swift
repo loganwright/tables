@@ -78,8 +78,8 @@ final class Bridge<A: Schema, B: Schema> {
 }
 
 func testBridging() {
-    let bridge = Bridge<Team, Player>(SeeQuel.shared)
-
-    bridge.mascot = "sadf"
-    bridge.rating = 4
+//    let bridge = Bridge<Team, Player>(SeeQuel.shared)
+//
+//    bridge.mascot = "sadf"
+//    bridge.rating = 4
 }

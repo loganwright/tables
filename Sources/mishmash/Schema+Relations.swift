@@ -46,19 +46,31 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
     /// only really used during preparations anyways
     private func loadConstraints(onDelete: SQLForeignKeyAction?,
         onUpdate: SQLForeignKeyAction?) {
-        self.$constraints.loader = { [weak self] in
-            guard let welf = self else { fatalError() }
-            let foreignKey = welf.foreignIdKey
-            let defaults: [SQLColumnConstraintAlgorithm] = [
-                .inlineForeignKey(name: welf.referencingKey),
-                .references(Foreign.table,
-                            foreignKey.name,
-                            onDelete: onDelete,
-                            onUpdate: onUpdate)
-            ]
-            return defaults
-        }
+        Log.warn("moving foreign keys to different serialization place")
+//        self.$constraints.loader = { [weak self] in
+//            guard let welf = self else { fatalError() }
+//            let foreignKey = welf.foreignIdKey
+//            let defaults: [SQLColumnConstraintAlgorithm] = [
+//                .inlineForeignKey(name: welf.referencingKey),
+//                .references(Foreign.table,
+//                            foreignKey.name,
+//                            onDelete: onDelete,
+//                            onUpdate: onUpdate)
+//            ]
+//            return defaults
+//        }
     }
+}
+
+extension ForeignKey: ForeignKeySettable {
+    func setForeignKeys(on builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder {
+        Log.warn("fix the foreign key/referencing words, I think you (I) learned it backwards")
+        return builder.foreignKey([referencingKey], references: Foreign.table, [foreignIdKey.name])
+    }
+}
+
+protocol ForeignKeySettable {
+    func setForeignKeys(on builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder
 }
 
 /**
@@ -140,6 +152,48 @@ class ToOne<One: Schema>: Column<One?> {
         shouldSerialize = false
     }
 }
+
+/**
+ pivot table
+ */
+//@propertyWrapper
+//class ToOne<One: Schema>: Column<One?> {
+//
+//    override var wrappedValue: One? { replacedDynamically() }
+//
+//    /// let idToFilterBy = foreign
+//    @Later var foreignIdKey: PrimaryKeyBase
+//    @Later var foreignIdKeyPath: AnyKeyPath
+//
+//    /// referencing out
+//    @Later var referencingIdKey: String
+//    @Later var referencingIdKeyPath: PartialKeyPath<One>
+//
+//    init<Foreign: Schema>(
+//        _ key: String = "",
+//        linkedBy reference: KeyPath<One, ForeignKey<Foreign>>) {
+//        self._foreignIdKey = Later {
+//            let parent = One.template[keyPath: reference]
+//            return parent.foreignIdKey
+//        }
+//
+//        self._foreignIdKeyPath = Later {
+//            let parent = One.template[keyPath: reference]
+//            return parent.foreignIdKeyPath
+//        }
+//
+//        self._referencingIdKey = Later {
+//            let parent = One.template[keyPath: reference]
+//            return parent.referencingKey
+//        }
+//
+//        self._referencingIdKeyPath = Later { reference }
+//
+//        super.init(key, .text, Later([]))
+//        /// hacky way  to keep it out of stuff
+//        shouldSerialize = false
+//    }
+//}
 
 /// there's a lot of initialization and intermixing, sometimes lazy loading helps with cycles
 /// and is good in preparation for more async support

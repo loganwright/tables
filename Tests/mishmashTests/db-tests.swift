@@ -20,7 +20,8 @@ class SieqlTersts: XCTestCase {
     }
 
 }
-final class SchemaTests: SieqlTersts {
+
+final class RelationTests: SieqlTersts {
     struct Car: Schema {
         let id = PrimaryKey<Int>()
         let color = Column<String>()
@@ -61,7 +62,7 @@ final class SchemaTests: SieqlTersts {
         let author = ForeignKey<Author>(linking: \.id)
     }
 
-    func testToManyKey() throws {
+    func testOneToManyKey() throws {
         try db.prepare {
             Author.self
             Book.self
@@ -111,6 +112,73 @@ final class SchemaTests: SieqlTersts {
         XCTAssertEqual(phone.owner?.id, person.id)
         XCTAssertNotNil(person.phone)
     }
+
+
+    struct Moon: Schema {
+        let id = PrimaryKey<String>()
+        let sunFriend = ForeignKey<Sun>(linking: \.id)
+        let starFriends = ToMany<Star>(linkedBy: \.moonFriend)
+    }
+
+    struct Sun: Schema {
+        let id = PrimaryKey<String>()
+        let moonFriend = ForeignKey<Moon>(linking: \.id)
+        let starFriends = ToMany<Star>(linkedBy: \.sunFriend)
+    }
+
+    struct Star: Schema {
+        let id = PrimaryKey<Int>()
+        let moonFriend = ForeignKey<Moon>(linking: \.id)
+        let sunFriend = ForeignKey<Sun>(linking: \.id)
+    }
+
+    func testOneToOne() throws {
+        try db.prepare {
+            Moon.self
+            Sun.self
+            Star.self
+        }
+
+        let moon = Moon.on(db)
+        try moon.save()
+        XCTAssertNil(moon.sunFriend)
+
+        let sun = Sun.on(db)
+        try sun.save()
+
+        moon.sunFriend = sun
+        XCTAssertNotNil(moon.sunFriend)
+        /// will still be `nil` because we dno't have a child relationship
+        /// a child will look in the db for matching keys
+        /// a separate foreignKey will be as it is
+        XCTAssertNil(sun.moonFriend)
+
+
+        sun.moonFriend = moon
+        try sun.save()
+        try moon.save()
+
+        XCTAssertNotNil(moon.sunFriend)
+        XCTAssertNotNil(sun.moonFriend)
+        XCTAssert(moon.starFriends.isEmpty)
+        XCTAssert(sun.starFriends.isEmpty)
+
+        let fifty = 50
+        try (1...fifty).forEach { int in
+            let star = Star.on(db)
+            star.id = int
+            star.sunFriend = sun
+            star.moonFriend = moon
+            print("saving star..")
+            try star.save()
+            print("done saving star..")
+        }
+
+        XCTAssertEqual(moon.starFriends.count, 50)
+        XCTAssertEqual(sun.starFriends.count, 50)
+    }
+
+
 }
 
 final class DBTests: XCTestCase {
@@ -197,7 +265,7 @@ final class DBTests: XCTestCase {
         XCTAssertFalse(banana.exists)
         try banana.save()
         XCTAssertTrue(banana.exists)
-        
+
         let lorbo = Ref<Hero>(db)
         lorbo.name = "lorbo"
         lorbo.age = 234
@@ -251,12 +319,12 @@ final class DBTests: XCTestCase {
     func testOneToMany() throws {
         let db = SeeQuel(storage: .memory)
         try db.prepare {
-            Many.self
+            ManyOb.self
             One.self
         }
 
-        let many: [Ref<Many>] = ["a", "b", "c", "d", "e"].map {
-            let ref = Ref<Many>(db)
+        let many: [Ref<ManyOb>] = ["a", "b", "c", "d", "e"].map {
+            let ref = Ref<ManyOb>(db)
             ref.name = $0
             return ref
         }
@@ -426,7 +494,7 @@ struct Plant: Schema {
 
 
 
-struct Many: Schema {
+struct ManyOb: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
     let oneyy = ForeignKey<One>(linking: \.id)
@@ -437,7 +505,7 @@ struct One: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
 
-    let many = ToMany<Many>(linkedBy: \.oneyy)
+    let many = ToMany<ManyOb>(linkedBy: \.oneyy)
 }
 
 import SQLKit

@@ -611,64 +611,64 @@ func propertyAttaching() {
 //    let ob = Ob<BlogBody & BlogHeaders>(json.obj!)
 }
 
-func oldasdfdsfasdf() {
-//    print(ob.$bg)
-//    print(ob.$favorite)
-    print("")
-//    let f = Flip(grib: 98, slib: "")
-//    Partial(f, paths: \.grib)
-
-//    let kers = \JSONKeys.$age
-    var blerb = JSON.emptyObj
-    let ck = blerb.colorKeys.extended
-    let av = blerb.colorKeys?.$extended
-    print(blerb.colorKeys?.$extended)
-//    blerb.age = 42
-//    blerb.$createdAt = Date()
-    print(blerb.lifeKeys.$createdAt)
-    print(blerb.userKeys.$age)
-    print(blerb.userKeys.$age)
-//    blerb.colorKeys.$bg = "#ffffaa"
-    print(blerb.colorKeys.$bg)
-    print()
-    blerb.$id = "abc.123"
-    blerb.$age = 14
-//    blerb
-    print("blerb: \(blerb.$id), \(blerb.$age)")
-    let aggregatedKeysType = Orig_Template<Sleepy & Derpy>.Keys.self
-    print(aggregatedKeysType)
-    let mirrrrrr = Mirror(reflecting: aggregatedKeysType)
-    print(mirrrrrr)
-
-    let foo = Orig_Template<Sleepy & Derpy>(.obj([:])).another
-    let js = JSON.obj(["id": "1".json])
-//    js[keyPath: <#T##KeyPath<JSON, Value>#>]
-//    let ka = KeyAggregator<KeySet>(js)
-//    print(ka.id)
-
-    let l = (\Sleepy.id) as AnyKeyPath
-    let r = (\One.id) as AnyKeyPath
-    print(js[keyPath: l])
-    print(js[keyPath: r])
-    js.id
-    let a = \Derpy.isDerp
-    let b = \Derpy.isDerp
-    print("0 match: \(a == b)")
-    let c = \One.id
-    let d = \One.id
-    print("1 match: \(c == d)")
-//    let e = \One.base
-//    let f = \Keyyyys.base
-//    print("2 match: \(e == f)")
-
-
-    let _a = NSExpression(forKeyPath: a)
-    let _c = NSExpression(forKeyPath: c)
-//    let _e = NSExpression(forKeyPath: e)
-//    let kpz = \Derpy.$isDerp
-//    let foo = Template<Sleepy & Derpy>(.obj([:])).isDerp
-
-}
+//func oldasdfdsfasdf() {
+////    print(ob.$bg)
+////    print(ob.$favorite)
+//    print("")
+////    let f = Flip(grib: 98, slib: "")
+////    Partial(f, paths: \.grib)
+//
+////    let kers = \JSONKeys.$age
+//    var blerb = JSON.emptyObj
+//    let ck = blerb.colorKeys.extended
+//    let av = blerb.colorKeys?.$extended
+//    print(blerb.colorKeys?.$extended)
+////    blerb.age = 42
+////    blerb.$createdAt = Date()
+//    print(blerb.lifeKeys.$createdAt)
+//    print(blerb.userKeys.$age)
+//    print(blerb.userKeys.$age)
+////    blerb.colorKeys.$bg = "#ffffaa"
+//    print(blerb.colorKeys.$bg)
+//    print()
+//    blerb.$id = "abc.123"
+//    blerb.$age = 14
+////    blerb
+//    print("blerb: \(blerb.$id), \(blerb.$age)")
+//    let aggregatedKeysType = Orig_Template<Sleepy & Derpy>.Keys.self
+//    print(aggregatedKeysType)
+//    let mirrrrrr = Mirror(reflecting: aggregatedKeysType)
+//    print(mirrrrrr)
+//
+//    let foo = Orig_Template<Sleepy & Derpy>(.obj([:])).another
+//    let js = JSON.obj(["id": "1".json])
+////    js[keyPath: <#T##KeyPath<JSON, Value>#>]
+////    let ka = KeyAggregator<KeySet>(js)
+////    print(ka.id)
+//
+//    let l = (\Sleepy.id) as AnyKeyPath
+//    let r = (\One.id) as AnyKeyPath
+//    print(js[keyPath: l])
+//    print(js[keyPath: r])
+//    js.id
+//    let a = \Derpy.isDerp
+//    let b = \Derpy.isDerp
+//    print("0 match: \(a == b)")
+//    let c = \One.id
+//    let d = \One.id
+//    print("1 match: \(c == d)")
+////    let e = \One.base
+////    let f = \Keyyyys.base
+////    print("2 match: \(e == f)")
+//
+//
+//    let _a = NSExpression(forKeyPath: a)
+//    let _c = NSExpression(forKeyPath: c)
+////    let _e = NSExpression(forKeyPath: e)
+////    let kpz = \Derpy.$isDerp
+////    let foo = Template<Sleepy & Derpy>(.obj([:])).isDerp
+//
+//}
 
 struct Entry {
     let key: String

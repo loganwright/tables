@@ -99,7 +99,7 @@ final class Ref<S: Schema> {
     ///
     /// the relations tests help with the confusion
     ///
-    subscript<Many: Schema>(dynamicMember key: KeyPath<S, ToMany<Many>>) -> [Ref<Many>] {
+    subscript<Maaany: Schema>(dynamicMember key: KeyPath<S, ToMany<Maaany>>) -> [Ref<Maaany>] {
         let column = S.template[keyPath: key]
         let foreignIdKey = column.foreignIdKey.name
         let foreignIdValue = backing[foreignIdKey]
@@ -177,14 +177,24 @@ extension SeeQuel: Database {
     }
 
     func prepare(_ table: Table) throws {
-        Log.warn("todo: validate template")
-        Log.warn("todo: check if table exists")
+        Log.info("preparing: \(table.name)")
+//        Log.warn("todo: validate template")
+//        Log.warn("todo: check if table exists")
 
         /// all objects have an id column
         var prepare = self.db.create(table: table.name)
 
+        var foreignKeys: [ForeignKeySettable] = []
         table.columns.forEach { column in
             prepare = prepare.column(column.key, type: column.type, column.constraints)
+            if let column = column as? ForeignKeySettable {
+                foreignKeys.append(column)
+            }
+        }
+
+        // foreign keys should be at end of declaration
+        foreignKeys.forEach { column in
+            prepare = column.setForeignKeys(on: prepare)
         }
 
         let results = try prepare.run().wait()
@@ -276,6 +286,16 @@ extension SeeQuel: Database {
 
     func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
         replacedDynamically()
+    }
+}
+
+extension SQLColumn {
+    var hasForeignKeyConstraints: Bool {
+        return constraints.lazy.compactMap { c in
+            if case .foreignKey = c {
+                return true
+            } else { return nil }
+        } .first ?? false
     }
 }
 
