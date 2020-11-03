@@ -71,25 +71,24 @@ final class Ref<S: Schema> {
             return db.load(id: referencingValue)
         }
         set {
-            let foreignColumn = S.template[keyPath: key]
-            let foreignIdKey = foreignColumn.foreignIdKey.name
-            let referencingKey = foreignColumn.referencingKey
+            let relation = S.template[keyPath: key]
+            let pointingTo = relation.pointingTo
 
-            guard let new = newValue else {
-                backing[referencingKey] = nil
+            guard let foreigner = newValue else {
+                self.backing[relation.name] = nil
                 return
             }
 
-            guard let foreignIdValue = new.backing[foreignIdKey] else {
+            guard let foreignIdValue = foreigner.backing[pointingTo.name] else {
                 /// would be great if we could attach to the 'Ref' object and somehow trigger an update later after saving
                 /// maybe queue things into the database
-                fatalError("Object: \(new) not ready to be linked.. missing: \(foreignIdKey)")
+                fatalError("object: \(foreigner) not ready to be linked.. missing: \(pointingTo.name)")
             }
 
             // the caller is the referencing body
             // the foreignColumn may or may not be also
             // referencing back in some way
-            backing[referencingKey] = foreignIdValue
+            self.backing[relation.name] = foreignIdValue
         }
     }
 
@@ -99,29 +98,29 @@ final class Ref<S: Schema> {
     ///
     /// the relations tests help with the confusion
     ///
-    subscript<Maaany: Schema>(dynamicMember key: KeyPath<S, ToMany<Maaany>>) -> [Ref<Maaany>] {
-        let column = S.template[keyPath: key]
-        let foreignIdKey = column.foreignIdKey.name
-        let foreignIdValue = backing[foreignIdKey]
-        let referencingIdKey = column.referencingKey
-
-        return db.getAll(where: referencingIdKey, matches: foreignIdValue)
+    subscript<Many: Schema>(dynamicMember key: KeyPath<S, ToMany<Many>>) -> [Ref<Many>] {
+        let relation = S.template[keyPath: key]
+        let pointingTo = relation.pointingTo
+        let pointingFrom = relation.pointingFrom
+        let id = self.backing[pointingTo.name]
+        return db.getAll(where: pointingFrom.name, matches: id)
     }
 
     /// a one to one relationship where a single object from another table
     /// is referencing to this one
     subscript<One: Schema>(dynamicMember key: KeyPath<S, ToOne<One>>) -> Ref<One>? {
         // we are parent, seeking detached children
-        let column = S.template[keyPath: key]
-        let referencingIdKey = column.referencingIdKey
+        let relation = S.template[keyPath: key]
+        let pointingTo = relation.pointingTo
+        let pointingFrom = relation.pointingFrom
 
-        let foreignIdKey = column.foreignIdKey
-        guard let foreignIdValue = backing[foreignIdKey.name] else {
-            /// the parent isn't in database yet, can't have children
+
+        guard let id = self.backing[pointingTo.name] else {
+            /// we don't have the value that's being pointed to, can't have a child pointing back
             return nil
         }
-
-        return db.getOne(where: referencingIdKey, matches: foreignIdValue)
+//        let id = self.backing[pointingTo.name]
+        return db.getOne(where: pointingFrom.name, matches: id)
     }
 }
 
@@ -192,11 +191,13 @@ extension SeeQuel: Database {
             }
         }
 
+        Log.warn("not just foreign keys, needs to be done for other table modifiers?")
         // foreign keys should be at end of declaration
         foreignKeys.forEach { column in
             prepare = column.setForeignKeys(on: prepare)
         }
 
+//        prepare.
         let results = try prepare.run().wait()
         print(results)
         print("")

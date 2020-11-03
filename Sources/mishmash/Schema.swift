@@ -5,6 +5,10 @@ protocol Schema {
     static var table: String { get }
 }
 
+protocol Foojijij {
+    var id: PrimaryKeyBase { get }
+}
+
 extension Schema {
     static var table: String { "\(Self.self)".lowercased()}
 }
@@ -126,6 +130,15 @@ extension Schema {
 
 import SQLKit
 
+extension SQLTableConstraintAlgorithm {
+
+}
+extension SQLColumnConstraintAlgorithm {
+//    var validInSQLite: Bool {
+//
+//    }
+}
+
 class SQLColumn {
     /// can't decide on naming, going back and forth :/
     var key: String {
@@ -181,7 +194,10 @@ protocol PrimaryKeyValue: DatabaseValue {}
 extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
 
-class UniqueKey<T>: Column<T> {
+
+protocol UniqueKeyValue: DatabaseValue {}
+
+class UniqueKey<T: Hashable>: Column<T> {
     init(_ key: String = "", _ keyType: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
         super.init(key, keyType, Later([.notNull, .unique] + constraints))
     }
@@ -220,6 +236,18 @@ class PrimaryKeyBase: SQLColumn {
     }
 }
 
+import SQLiteKit
+struct PrimaryKeyed {
+    func asdf() {
+//        SQLiteData
+    }
+//    var key([SQLD])
+}
+
+//protocol
+//@propertyWrapper
+//class Unique<
+
 @propertyWrapper
 class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     var wrappedValue: RawType? { replacedDynamically() }
@@ -232,6 +260,9 @@ class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
         super.init(key, .incrementing)
     }
 }
+
+//@propertyWrapper
+//class _Column<Value>: SQLColumn
 
 @propertyWrapper
 class Column<Value>: SQLColumn {

@@ -21,6 +21,12 @@ class SieqlTersts: XCTestCase {
 
 }
 
+/**
+
+ Car.on(db) { new in
+
+ }
+ */
 final class RelationTests: SieqlTersts {
     struct Car: Schema {
         let id = PrimaryKey<Int>()
@@ -29,7 +35,7 @@ final class RelationTests: SieqlTersts {
 
     struct User: Schema {
         let id = PrimaryKey<String>()
-        let car = ForeignKey<Car>(linking: \.id)
+        let car = ForeignKey<Car>(pointingTo: \.id)
     }
 
     func testForeignKey() throws {
@@ -41,7 +47,7 @@ final class RelationTests: SieqlTersts {
         let car = Car.on(db) { car in
             car.color = "#aaa832"
         }
-        XCTAssertNotNil(car.id, "should come with id from db")
+        XCTAssertNotNil(car.id, "testing an option to initialize this way.. not done")
 
         let user = User.on(db)
         user.car = car
@@ -59,7 +65,7 @@ final class RelationTests: SieqlTersts {
 
     struct Book: Schema {
         let title = Column<String>()
-        let author = ForeignKey<Author>(linking: \.id)
+        let author = ForeignKey<Author>(pointingTo: \.id)
     }
 
     func testOneToManyKey() throws {
@@ -93,7 +99,7 @@ final class RelationTests: SieqlTersts {
     }
 
     struct Phone: Schema {
-        let owner = ForeignKey<Person>(linking: \.id)
+        let owner = ForeignKey<Person>(pointingTo: \.id)
     }
 
     func testToOne() throws {
@@ -116,20 +122,20 @@ final class RelationTests: SieqlTersts {
 
     struct Moon: Schema {
         let id = PrimaryKey<String>()
-        let sunFriend = ForeignKey<Sun>(linking: \.id)
+        let sunFriend = ForeignKey<Sun>(pointingTo: \.id)
         let starFriends = ToMany<Star>(linkedBy: \.moonFriend)
     }
 
     struct Sun: Schema {
         let id = PrimaryKey<String>()
-        let moonFriend = ForeignKey<Moon>(linking: \.id)
+        let moonFriend = ForeignKey<Moon>(pointingTo: \.id)
         let starFriends = ToMany<Star>(linkedBy: \.sunFriend)
     }
 
     struct Star: Schema {
         let id = PrimaryKey<Int>()
-        let moonFriend = ForeignKey<Moon>(linking: \.id)
-        let sunFriend = ForeignKey<Sun>(linking: \.id)
+        let moonFriend = ForeignKey<Moon>(pointingTo: \.id)
+        let sunFriend = ForeignKey<Sun>(pointingTo: \.id)
     }
 
     func testOneToOne() throws {
@@ -383,7 +389,18 @@ final class DBTests: XCTestCase {
 //    var id = PrimaryKey<String>()
 //}
 
+class Grouped: Column<Grouped> {
+    
+}
 
+protocol IDSchema: Schema {
+    var _id: PrimaryKeyBase { get set }
+}
+
+//struct Join<L: IDSchema, R: IDSchema>: Schema {
+//    let left = ForeignKey<L>(linking: \._id, primary: true)
+//    let right = ForeignKey<R>(linking: \._id, primary: true)
+//}
 
 struct Team: Schema {
     let id = PrimaryKey<String>()
@@ -392,14 +409,14 @@ struct Team: Schema {
     let rating = Column<Int>()
 
     ///
-    let rival = ForeignKey<Team>(linking: \.id)
+    let rival = ForeignKey<Team>(pointingTo: \.id)
     ///
     let players = ToMany<Player>(linkedBy: \.team)
 }
 
 struct Player: Schema {
     let id = PrimaryKey<Int>()
-    let team = ForeignKey<Team>(linking: \.id)
+    let team = ForeignKey<Team>(pointingTo: \.id)
 }
 
 @_functionBuilder
@@ -489,7 +506,7 @@ struct Location: Schema {
 struct Plant: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
-    let origin = ForeignKey<Location>(linking: \.id)
+    let origin = ForeignKey<Location>(pointingTo: \.id)
 }
 
 
@@ -497,7 +514,7 @@ struct Plant: Schema {
 struct ManyOb: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
-    let oneyy = ForeignKey<One>(linking: \.id)
+    let oneyy = ForeignKey<One>(pointingTo: \.id)
 }
 
 
@@ -522,14 +539,14 @@ struct Item: Schema {
     var id = PrimaryKey<Int>()
     var power = Column<Int>()
 
-    var equippedBy = ForeignKey<Hero>(linking: \.id)
+    var equippedBy = ForeignKey<Hero>(pointingTo: \.id)
 }
 
 struct Food: Schema {
     var id = PrimaryKey<String>()
     var health = Column<Int>()
 
-    var owner = ForeignKey<Hero>(linking: \.id)
+    var owner = ForeignKey<Hero>(pointingTo: \.id)
 }
 
 struct Hero: Schema {
@@ -544,7 +561,7 @@ struct Hero: Schema {
 
     // relations
 //    var equipped = Column<Item?>(foreignKey: \.id)
-    var equipped = ForeignKey<Item>(linking: \.id)
+    var equipped = ForeignKey<Item>(pointingTo: \.id)
 
     var lunch = ToOne<Food>(linkedBy: \.owner)
 }
