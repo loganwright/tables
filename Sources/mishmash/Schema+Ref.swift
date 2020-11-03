@@ -183,8 +183,8 @@ extension Ref {
 // MARK: Cleanup And move Out
 
 extension SeeQuel: Database {
-    func getAll<S: Schema>() -> [Ref<S>] {
-        let all = try! self.db.select()
+    func getAll<S: Schema>() throws -> [Ref<S>] {
+        let all = try self.db.select()
             .columns(["*"])
             .from(S.table)
             .all(decoding: [String: JSON].self)

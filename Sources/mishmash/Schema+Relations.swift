@@ -197,13 +197,9 @@ extension Schema {
     }
 }
 
-class Projection<S> {
-}
-
 @propertyWrapper
 class Pivot<Left: Schema, Right: Schema>: Relation {
     var wrappedValue: [Ref<Right>] { replacedDynamically() }
-    var projectedValue: Projection<Pivot<Left, Right>> { return .init() }
 
     @Later var lk: PrimaryKeyBase
     @Later var rk: PrimaryKeyBase
@@ -238,8 +234,8 @@ extension SQLDatabase {
             .wait()
     }
 
-    static func fetch<S: Schema>(where path: KeyPath<S, SQLColumn>, equals: String) {
-
+    static func fetch<S: Schema>(where column: KeyPath<S, SQLColumn>, equals: String) {
+        fatalError()
     }
 }
 

@@ -299,8 +299,8 @@ final class DBTests: XCTestCase {
                 new.boring = 111
             }
         }
-        XCTAssert("\(n ?? "")".contains("UNIQUE"))
-        XCTAssert("\(n ?? "")".contains("favoriteNumber"))
+        XCTAssert("\(n!)".contains("UNIQUE"))
+        XCTAssert("\(n!)".contains("favoriteNumber"))
 
 
         let w = expectError {
@@ -311,8 +311,8 @@ final class DBTests: XCTestCase {
                 new.boring = 111
             }
         }
-        XCTAssert("\(w)".contains("UNIQUE"))
-        XCTAssert("\(w)".contains("favoriteWord"))
+        XCTAssert("\(w!)".contains("UNIQUE"))
+        XCTAssert("\(w!)".contains("favoriteWord"))
 
 
         try Test.on(db) { orig in
