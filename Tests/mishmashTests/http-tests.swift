@@ -3,12 +3,7 @@ import XCTest
 
 final class HTTPTests: XCTestCase {
     func testRequestBuilder() {
-//        Request.build {
-//            .get
-//        }
-//        requestRun()
-//        propertyAttaching()
-        testDatabaseStuff()
+        
     }
 }
 
