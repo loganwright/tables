@@ -9,6 +9,10 @@ extension Schema {
     static var table: String { "\(Self.self)".lowercased()}
 }
 
+protocol TableBindings: Schema {
+    
+}
+
 // MARK:
 
 extension Schema {
@@ -144,6 +148,10 @@ extension Int: DatabaseValue {
     static var sqltype: SQLDataType { .int }
 }
 
+extension Data: DatabaseValue {
+    static var sqltype: SQLDataType { .blob }
+}
+
 protocol OptionalProtocol {
     associatedtype Wrapped
 }
@@ -158,11 +166,11 @@ extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
 
 
-protocol UniqueKeyValue: DatabaseValue {}
-
-class UniqueKey<T: Hashable>: Column<T> {
-    init(_ key: String = "", _ keyType: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
-        super.init(key, keyType, Later([.notNull, .unique] + constraints))
+@propertyWrapper
+class Unique<Value: DatabaseValue>: Column<Value> {
+    override var wrappedValue: Value { replacedDynamically() }
+    init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+        super.init(key, Value.sqltype, Later([.notNull, .unique] + constraints))
     }
 }
 
@@ -410,7 +418,7 @@ private struct SQLTableSchema: SQLExpression {
 protocol Database {
     func save(to table: String, _ body: [String: JSON])
 
-    func save<S>(_ ref: Ref<S>)
+    func save<S>(_ ref: Ref<S>) throws
     func load<S>(id: String) -> Ref<S>?
     func load<S>(ids: [String]) -> [Ref<S>]
 
@@ -425,8 +433,8 @@ protocol Database {
 }
 
 extension Database {
-    func save<S>(_ refs: [Ref<S>]) {
-        refs.forEach(save)
+    func save<S>(_ refs: [Ref<S>]) throws {
+        try refs.forEach(save)
     }
 
     func prepare(_ tables: [Table]) {

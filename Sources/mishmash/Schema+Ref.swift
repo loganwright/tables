@@ -34,11 +34,22 @@ final class Ref<S: Schema> {
 
     // MARK: SubscriptOverloads
 
-    subscript<C: Codable>(dynamicMember key: KeyPath<S, Column<C>>) -> C {
+    subscript<Value: Codable>(dynamicMember key: KeyPath<S, Column<Value>>) -> Value {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.key] ?? .null
-            return try! C(json: json)
+            return try! Value(json: json)
+        }
+        set {
+            let column = S.template[keyPath: key]
+            backing[column.key] = newValue.json
+        }
+    }
+    subscript<Value: Codable>(dynamicMember key: KeyPath<S, Unique<Value>>) -> Value {
+        get {
+            let column = S.template[keyPath: key]
+            let json = backing[column.key] ?? .null
+            return try! Value(json: json)
         }
         set {
             let column = S.template[keyPath: key]
@@ -159,7 +170,7 @@ final class Ref<S: Schema> {
 extension Ref {
     @discardableResult
     func save() throws -> Self {
-        db.save(self)
+        try db.save(self)
         isDirty = false
         exists = true
         return self
@@ -172,6 +183,15 @@ extension Ref {
 // MARK: Cleanup And move Out
 
 extension SeeQuel: Database {
+    func getAll<S: Schema>() -> [Ref<S>] {
+        let all = try! self.db.select()
+            .columns(["*"])
+            .from(S.table)
+            .all(decoding: [String: JSON].self)
+            .wait()
+        return all.map { Ref($0, self) }
+    }
+
     func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>] {
         let all = try! self.db.select()
             .columns(["*"])
@@ -236,7 +256,7 @@ extension SeeQuel: Database {
             .wait()
     }
 
-    func save<S>(_ ref: Ref<S>) where S : Schema {
+    func save<S>(_ ref: Ref<S>) throws where S : Schema {
         guard !ref.exists else {
             update(ref)
             return
@@ -257,7 +277,7 @@ extension SeeQuel: Database {
         }
 
         guard !ref.backing.isEmpty else { return }
-        try! self.db.insert(into: S.table)
+        try self.db.insert(into: S.table)
             .model(ref.backing)
             .run()
             .wait()

@@ -44,7 +44,7 @@ final class RelationTests: SieqlTersts {
             User.self
         }
         
-        let car = Car.on(db) { car in
+        let car = try Car.on(db) { car in
             car.color = "#aaa832"
         }
         XCTAssertNotNil(car.id, "testing an option to initialize this way.. not done")
@@ -205,17 +205,17 @@ final class RelationTests: SieqlTersts {
             PivotSchema<Course, Student>.self
         }
 
-        let science = Course.on(db) { new in
+        let science = try Course.on(db) { new in
             new.name = "science"
         }
-        let gym = Course.on(db) { new in
+        let gym = try Course.on(db) { new in
             new.name = "gym"
         }
 
 
         let student_names = ["jorb", "smalshe", "morp", "blarm"]
-        let students = student_names.map { name in
-            Student.on(db) { new in
+        let students = try student_names.map { name in
+            try Student.on(db) { new in
                 new.name = name
             }
         }
@@ -260,12 +260,95 @@ final class DBTests: XCTestCase {
         XCTAssert(columns.map(\.name).contains("power"))
     }
 
-    func testUnique() {
+    func testUnique() throws {
         let db = SeeQuel(storage: .memory)
-        struct Test {
+        struct Test: Schema {
             let id = PrimaryKey<Int>()
+
+            let favoriteColor = Unique<String>()
+            let favoriteNumber = Unique<Int>()
+            let favoriteWord = Unique<String>()
+
+            let boring = Column<Int>()
         }
-        
+
+        try db.prepare { Test.self }
+        let a = try Test.on(db) { new in
+            new.favoriteColor = "yellow"
+            new.favoriteNumber = 8
+            new.favoriteWord = "arbledarble"
+            new.boring = 111
+        }
+
+        let e = expectError {
+            try Test.on(db) { no in
+                no.favoriteColor = "yellow"
+                no.favoriteNumber = 4
+                no.favoriteWord = "copycats"
+                no.boring = 111
+            }
+        }
+        XCTAssert("\(e ?? "")".contains("UNIQUE"))
+        XCTAssert("\(e ?? "")".contains("favoriteColor"))
+
+        let n = expectError {
+            try Test.on(db) { new in
+                new.favoriteColor = "orignal-orange"
+                new.favoriteNumber = 8
+                new.favoriteWord = "yarmal"
+                new.boring = 111
+            }
+        }
+        XCTAssert("\(n ?? "")".contains("UNIQUE"))
+        XCTAssert("\(n ?? "")".contains("favoriteNumber"))
+
+
+        let w = expectError {
+            try Test.on(db) { new in
+                new.favoriteColor = "bluelicious"
+                new.favoriteNumber = 43
+                new.favoriteWord = "arbledarble"
+                new.boring = 111
+            }
+        }
+        XCTAssert("\(w)".contains("UNIQUE"))
+        XCTAssert("\(w)".contains("favoriteWord"))
+
+
+        try Test.on(db) { orig in
+            orig.favoriteColor = "sknvwob"
+            orig.favoriteNumber = 99877
+            orig.favoriteWord = "01111110"
+            orig.boring = 111
+        }
+
+        let all = try db.getAll() as [Ref<Test>]
+        XCTAssertEqual(all.count, 2)
+    }
+
+    func testBlob() throws {
+        let _url = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/440px-Image_created_with_a_mobile_phone.png"
+        let url = URL(string: _url)!
+        let data = try Data(contentsOf: url)
+
+        struct Blobby: Schema {
+            let id = PrimaryKey<Int>()
+            let img = Column<Data>()
+        }
+
+        let db = SeeQuel(storage: .memory)
+        try db.prepare {
+            Blobby.self
+        }
+        let blobster = try Blobby.on(db) { new in
+            new.img = data
+        }
+        XCTAssert(blobster.img == data)
+
+        let fetched: Ref<Blobby>? = db.getOne(where: "id", matches: blobster.id)
+        XCTAssertNotNil(fetched)
+        XCTAssert(fetched?.img == data)
+        XCTAssertFalse(fetched?.img.isEmpty ?? false)
     }
 
     func testIncompatiblePropertyWarn() {
@@ -434,29 +517,7 @@ final class DBTests: XCTestCase {
         cats.rating = 5
         try cats.save()
     }
-
-    func testFancy() throws {
-        let db = SeeQuel.shared
-        try! db.prepare { Team.self }
-        let columns = Team.template._unsafe_forceColumns()
-        let instance = Ref<Team>(db)
-        for column in columns {
-//            instance[keyPath: column] = ""
-        }
-    }
 }
-
-//protocol PrimaryKeyProtocol {}
-//
-//protocol ID {
-//    var id: PrimaryKeyProtocol { get }
-//}
-//
-//extension PrimaryKey: PrimaryKeyProtocol {}
-//
-//struct Foob: Schema, ID {
-//    var id = PrimaryKey<String>()
-//}
 
 class Grouped: Column<Grouped> {
     
@@ -510,10 +571,11 @@ extension Schema {
         return Ref(db)
     }
 
-    static func on(_ db: Database, creator: (Ref<Self>) -> Void) -> Ref<Self> {
+    @discardableResult
+    static func on(_ db: Database, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
         let new = Ref<Self>(db)
-        creator(new)
-        try! new.save()
+        try creator(new)
+        try new.save()
         return new
     }
 }
@@ -558,6 +620,16 @@ extension Schema {
        }
     static func query(on db: Database) -> Ref<Self> {
         return Ref<Self>(db)
+    }
+}
+
+func expectError(test: () throws -> Void) -> Error? {
+    do {
+        try test()
+        XCTFail("expected failure, but got success")
+        return nil
+    } catch {
+        return error
     }
 }
 
