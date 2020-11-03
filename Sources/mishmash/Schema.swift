@@ -19,8 +19,15 @@ extension Schema {
     var primaryKey: PrimaryKeyBase? {
         columns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
     }
+
     var isPrimaryKeyed: Bool {
         primaryKey != nil
+    }
+
+    var _primaryKeyColumn: PrimaryKeyBase {
+        let pk = primaryKey
+        assert(pk != nil, "no primary key found: \(Schema.self)")
+        return pk!
     }
 }
 
@@ -98,6 +105,7 @@ extension Schema {
     func unsafe_getColumns() -> [SQLColumn] {
         unsafe_getProperties().compactMap { prop in
             guard let column = prop.val as? SQLColumn else {
+                if "\(prop.columntype)".contains("Pivot") { return nil }
                 Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.columntype)")
                 Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
                 return nil
@@ -115,16 +123,7 @@ extension Schema {
     ///     if not properly hydrated, the column will have an empty string as a key
     ///
     private func hydrateColumnKeysWithPropertyLabels() {
-        let props = unsafe_getProperties()
-
-        props.forEach { prop in
-            guard let column = prop.val as? SQLColumn else {
-                Log.warn("unexpected property on schema: \(Self.self).\(prop.label)")
-                return
-            }
-            guard column.name.isEmpty else { return }
-            column.name = prop.label
-        }
+        let _ = unsafe_getColumns()
     }
 }
 
@@ -147,21 +146,23 @@ class SQLColumn {
     }
 
     open var name: String
-    open var type: SQLDataType
+    @Later open var type: SQLDataType
 
     /// using the Later attribute to allow nested columns to properly initialize
     @Later open var constraints: [SQLColumnConstraintAlgorithm]
 
     open var shouldSerialize = true
 
-    init(_ name: String, _ type: SQLDataType, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
+    init(_ name: String, _ type: Later<SQLDataType>, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
         self.name = name
-        self.type = type
+        self._type = type
         self._constraints = constraints
     }
 
-    convenience init(_ name: String, _ type: SQLDataType, _ constraints: [SQLColumnConstraintAlgorithm]) {
-        self.init(name, type, Later(constraints))
+    init(_ name: String, _ type: SQLDataType, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
+        self.name = name
+        self._type = Later(type)
+        self._constraints = constraints
     }
 
     convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
@@ -206,12 +207,12 @@ class UniqueKey<T: Hashable>: Column<T> {
 class PrimaryKeyBase: SQLColumn {
     enum Kind: Equatable {
         /// combining multiple keys not supported
-        case uuid, incrementing
+        case uuid, int
 
-        fileprivate var sqltype: SQLDataType {
+        var sqltype: SQLDataType {
             switch self {
             case .uuid: return .text
-            case .incrementing: return .int
+            case .int: return .int
             }
         }
 
@@ -220,7 +221,7 @@ class PrimaryKeyBase: SQLColumn {
             switch self {
             case .uuid:
                 auto = false
-            case .incrementing:
+            case .int:
                 auto = true
             }
             return .primaryKey(autoIncrement: auto)
@@ -228,10 +229,10 @@ class PrimaryKeyBase: SQLColumn {
     }
 
     // MARK: Attributes
-    let pk: Kind
+    let kind: Kind
 
-    fileprivate init(_ key: String, _ kind: Kind) {
-        self.pk = kind
+    init(_ key: String = "", _ kind: Kind) {
+        self.kind = kind
         super.init(key, kind.sqltype, Later([kind.constraint]))
     }
 }
@@ -257,7 +258,7 @@ class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     }
 
     init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == Int {
-        super.init(key, .incrementing)
+        super.init(key, .int)
     }
 }
 
@@ -447,6 +448,7 @@ protocol Database {
 
     func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
     func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>]
+//    func getAll<S: Schema, T: Encodable>(where key: String, containedIn: [T]) -> [Ref<S>]
 }
 
 extension Database {

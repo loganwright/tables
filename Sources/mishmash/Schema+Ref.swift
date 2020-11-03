@@ -122,7 +122,38 @@ final class Ref<S: Schema> {
 //        let id = self.backing[pointingTo.name]
         return db.getOne(where: pointingFrom.name, matches: id)
     }
+
+    // MARK: Pivots
+    subscript<R>(dynamicMember key: KeyPath<S, Pivot<S, R>>) -> [Ref<R>] {
+        get {
+            // we're not using the pivot object, could contain some meta info
+            let pivot = S.template[keyPath: key]
+            let pivotColumn = S.template._pivotIdKey
+            let myPrimary = S.template._primaryKeyColumn
+            let id = backing[myPrimary.name]
+
+            /// not very optimized fetching one at a time
+            let pivots: [Ref<PivotSchema<S, R>>] = db.getAll(where: pivotColumn, matches: id)
+            return pivots.map(\.right).compactMap { r in
+                guard let r = r else {
+                    Log.warn("unexpected nil on pivot, set cascade?")
+                    return nil
+                }
+                return r
+            }
+        }
+        set {
+            /// not efficient, and not handling cascades and stuff
+            newValue.forEach { incoming in
+                let pivot = PivotSchema<S, R>.on(db)
+                pivot.left = self
+                pivot.right = incoming
+                try! pivot.save()
+            }
+        }
+    }
 }
+
 
 /// should this be here?
 extension Ref {
@@ -177,30 +208,25 @@ extension SeeQuel: Database {
 
     func prepare(_ table: Table) throws {
         Log.info("preparing: \(table.name)")
-//        Log.warn("todo: validate template")
-//        Log.warn("todo: check if table exists")
 
         /// all objects have an id column
         var prepare = self.db.create(table: table.name)
 
-        var foreignKeys: [ForeignKeySettable] = []
+        var constraints: [PostCreateConstraints] = []
         table.columns.forEach { column in
             prepare = prepare.column(column.key, type: column.type, column.constraints)
-            if let column = column as? ForeignKeySettable {
-                foreignKeys.append(column)
+            if let column = column as? PostCreateConstraints {
+                constraints.append(column)
             }
         }
 
-        Log.warn("not just foreign keys, needs to be done for other table modifiers?")
-        // foreign keys should be at end of declaration
-        foreignKeys.forEach { column in
-            prepare = column.setForeignKeys(on: prepare)
+        /// a bit hacky, but need to put foreign keys should be at end of declaration
+        constraints.forEach { column in
+            prepare = column.add(to: prepare)
         }
 
-//        prepare.
-        let results = try prepare.run().wait()
-        print(results)
-        print("")
+
+        try prepare.run().wait()
     }
 
     func save(to table: String, _ body: [String : JSON]) {
@@ -220,13 +246,12 @@ extension SeeQuel: Database {
         let idKey = S.template.primaryKey
         let needsId = idKey != nil && ref.backing[idKey!.name] == nil
         if needsId, let id = idKey {
-            switch id.pk {
+            switch id.kind {
             case .uuid:
                 /// uuid not auto generated, needs to be made
                 ref.backing[id.name] = UUID().json
-            case .incrementing:
+            case .int:
                 // set automatically after save by sql
-//                incrementing = true
                 break
             }
         }
@@ -240,7 +265,7 @@ extension SeeQuel: Database {
         guard
             needsId,
             let pk = idKey,
-            pk.pk == .incrementing
+            pk.kind == .int
             else { return }
         let id = unsafe_lastInsertedRowId()
         ref.backing[pk.key] = id.json

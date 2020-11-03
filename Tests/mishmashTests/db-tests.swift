@@ -185,6 +185,58 @@ final class RelationTests: SieqlTersts {
     }
 
 
+    struct Course: Schema {
+        let id = PrimaryKey<String>()
+        let name = Column<String>()
+        let students = Pivot<Course, Student>()
+    }
+
+    struct Student: Schema {
+        let id = PrimaryKey<Int>()
+        let name = Column<String>()
+        let classes = Pivot<Student, Course>()
+
+    }
+
+    func testManyToMany() throws {
+        try db.prepare {
+            Course.self
+            Student.self
+            PivotSchema<Course, Student>.self
+        }
+
+        let science = Course.on(db) { new in
+            new.name = "science"
+        }
+        let gym = Course.on(db) { new in
+            new.name = "gym"
+        }
+
+
+        let student_names = ["jorb", "smalshe", "morp", "blarm"]
+        let students = student_names.map { name in
+            Student.on(db) { new in
+                new.name = name
+            }
+        }
+
+        let student_group_a = Array(students[0...1])
+        let student_group_b = Array(students[2...3])
+        science.students = student_group_a + student_group_b
+        gym.students = student_group_b
+
+        let science_only =  student_group_a.flatMap(\.classes)
+        let noGym = science_only.allSatisfy { $0.name == "science" }
+        XCTAssert(noGym == true)
+
+//        let both = student_group_b.flatMap(\.classes).map(\.name)
+        student_group_b.map(\.classes).forEach { classes in
+            let names = classes.map(\.name)
+            XCTAssert(names.contains("gym"))
+            XCTAssert(names.contains("science"))
+        }
+        XCTAssert(!student_group_b.isEmpty)
+    }
 }
 
 final class DBTests: XCTestCase {
@@ -375,6 +427,8 @@ final class DBTests: XCTestCase {
 //            instance[keyPath: column] = ""
         }
     }
+
+
 }
 
 //protocol PrimaryKeyProtocol {}

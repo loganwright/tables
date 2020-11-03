@@ -35,6 +35,7 @@ import SQLKit
 class ForeignKey<Foreign: Schema>: Column<Foreign?> {
     /// the column in the foreign table that is being pointed to
     @Later var pointingTo: PrimaryKeyBase
+    /// in this case, we are referring to the current column
     var pointingFrom: SQLColumn { self }
 
     override var wrappedValue: Foreign? { replacedDynamically() }
@@ -43,46 +44,54 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
     private var onUpdate: SQLForeignKeyAction?
 
     init(_ name: String = "",
-         pointingTo foreign: KeyPath<Foreign, PrimaryKey<Int>>,
-         onDelete: SQLForeignKeyAction? = nil,
-         onUpdate: SQLForeignKeyAction? = nil) {
+         pointingTo foreign: Later<PrimaryKeyBase>,
+         onUpdate: SQLForeignKeyAction? = nil,
+         onDelete: SQLForeignKeyAction? = nil) {
 
-        self._pointingTo = Later { Foreign.template[keyPath: foreign] }
-        super.init(name, Int.sqltype, Later([]))
+        self._pointingTo = foreign
+        let type = Later<SQLDataType> { foreign.wrappedValue.kind.sqltype }
+        super.init(name, type, Later([]))
 
         self.onDelete = onDelete
         self.onUpdate = onUpdate
     }
 
-    init(_ name: String = "",
+    // MARK: Type Constrained Primary Keys
+
+    convenience init(_ name: String = "",
+                     pointingTo foreign: KeyPath<Foreign, PrimaryKeyBase>,
+                     onUpdate: SQLForeignKeyAction? = nil,
+                     onDelete: SQLForeignKeyAction? = nil) {
+
+        let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
+        self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
+    }
+
+    convenience init(_ name: String = "",
+                     pointingTo foreign: KeyPath<Foreign, PrimaryKey<Int>>,
+                     onUpdate: SQLForeignKeyAction? = nil,
+                     onDelete: SQLForeignKeyAction? = nil) {
+        let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
+        self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
+    }
+
+    convenience init(_ name: String = "",
          pointingTo foreign: KeyPath<Foreign, PrimaryKey<String>>,
-         onDelete: SQLForeignKeyAction? = nil,
-         onUpdate: SQLForeignKeyAction? = nil) {
-
-        self._pointingTo = Later { Foreign.template[keyPath: foreign] }
-        super.init(name, String.sqltype, Later([]))
-
-        self.onDelete = onDelete
-        self.onUpdate = onUpdate
-    }
-
-    init(_ name: String = "",
-         pointingTo foreign: KeyPath<Foreign, PrimaryKeyBase>,
-         onDelete: SQLForeignKeyAction? = nil,
-         onUpdate: SQLForeignKeyAction? = nil) {
-
-        self._pointingTo = Later { Foreign.template[keyPath: foreign] }
-        super.init(name, String.sqltype, Later([]))
-
-        self.onDelete = onDelete
-        self.onUpdate = onUpdate
+         onUpdate: SQLForeignKeyAction? = nil,
+         onDelete: SQLForeignKeyAction? = nil) {
+        let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
+        self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
     }
 }
 
-extension ForeignKey: ForeignKeySettable {
-    func setForeignKeys(on builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder {
-        Log.info("fix the foreign key/referencing words, I think you (I) learned it backwards")
-        return builder.foreignKey([name],
+// TODO: make a proper way to add to table constraints
+///
+extension ForeignKey: PostCreateConstraints {
+    /// this is a hack because simply adding the column foreign key constraint doesn't work
+    /// we can fix it, but it still then breaks if there's two because serialization needs to happen
+    /// AFTER the table is done
+    func add(to builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder {
+        return builder.foreignKey([pointingFrom.name],
                                   references: SQLRawExecute(Foreign.table).raw,
                                   [pointingTo.name],
                                   onDelete: onDelete,
@@ -92,28 +101,23 @@ extension ForeignKey: ForeignKeySettable {
 }
 
 /// hacky just trying to work around problem for now
-protocol ForeignKeySettable {
-    func setForeignKeys(on builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder
+protocol PostCreateConstraints {
+    func add(to builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder
 }
 
 /**
  Use this type to attach to many references that are pointing at an object
  */
 @propertyWrapper
-class ToMany<Many: Schema>: Column<[Many]> {
-    override var wrappedValue: [Many] { replacedDynamically() }
+class ToMany<Many: Schema> {
+    var wrappedValue: [Many] { replacedDynamically() }
+
     /// the key on the current object to which the external objects are pointing
     @Later var pointingTo: PrimaryKeyBase
     /// the column in the 'Many' table that contains the unowned id
     @Later var pointingFrom: SQLColumn
-//    @Later var foreignIdKeyPath: AnyKeyPath
 
-    /// the key that is referencing something else, like game_id would be referencing the 'id' of 'game'
-    /// the column in the 'Many' table that corresponds to `OuterSchema`
-//    @Later var referencingKey: String
-//    @Later var referencingKeyPath: PartialKeyPath<Many>
-
-    init<OuterSchema: Schema>(_ key: String = "", linkedBy linkingKeyPath: KeyPath<Many, ForeignKey<OuterSchema>>) {
+    init<OuterSchema: Schema>(linkedBy linkingKeyPath: KeyPath<Many, ForeignKey<OuterSchema>>) {
         self._pointingTo = Later {
             let column = Many.template[keyPath: linkingKeyPath]
             return column.pointingTo
@@ -123,22 +127,6 @@ class ToMany<Many: Schema>: Column<[Many]> {
             let column = Many.template[keyPath: linkingKeyPath]
             return column.pointingFrom
         }
-
-//        self._foreignIdKeyPath = Later {
-//            let column = Many.template[keyPath: linkingKeyPath]
-//            return column.pointingToKeyPath
-//        }
-//
-//        self._referencingKey = Later {
-//            let column = Many.template[keyPath: linkingKeyPath]
-//            return column.pointingTo.name
-//        }
-
-//        self._referencingKeyPath = Later { linkingKeyPath }
-
-        /// not going to actually really store this key
-        super.init(key, .text, Later([]))
-        shouldSerialize = false
     }
 }
 
@@ -146,23 +134,13 @@ class ToMany<Many: Schema>: Column<[Many]> {
  for when their is a single object in another table that has declared us as a foreign key
  */
 @propertyWrapper
-class ToOne<One: Schema>: Column<One?> {
+class ToOne<One: Schema> {
+    var wrappedValue: One? { replacedDynamically() }
 
-    override var wrappedValue: One? { replacedDynamically() }
-
-    /// the column, on the current object, to which the foreign object points back
-    /// the other column is pointing to self
     @Later var pointingTo: PrimaryKeyBase
     @Later var pointingFrom: SQLColumn
 
-//    override var name: String { fatalError("unnamed column, not stored") }
-    /// referencing out
-//    @Later var referencingIdKey: String
-//    @Later var referencingIdKeyPath: PartialKeyPath<One>
-
-    init<Foreign: Schema>(
-        _ key: String = "",
-        linkedBy reference: KeyPath<One, ForeignKey<Foreign>>) {
+    init<Foreign: Schema>(linkedBy reference: KeyPath<One, ForeignKey<Foreign>>) {
         self._pointingTo = Later {
             let externalColumn = One.template[keyPath: reference]
             return externalColumn.pointingTo
@@ -172,77 +150,53 @@ class ToOne<One: Schema>: Column<One?> {
             let child = One.template[keyPath: reference]
             return child.pointingFrom
         }
-
-//        self._referencingIdKey = Later {
-//            let parent = One.template[keyPath: reference]
-//            return parent.referencingKey
-//        }
-//
-//        self._referencingIdKeyPath = Later { reference }
-
-        super.init(key, .text, Later([]))
-        /// hacky way  to keep it out of stuff
-        shouldSerialize = false
     }
 }
 
 
+// MARK: Pivots
 
-protocol KeyedSchema: Schema {
-    var _id: PrimaryKeyBase { get set }
-}
-
-
-/**
- pivot table
- */
-
-//struct LinkSchema<Left: KeyedSchema, Right: KeyedSchema>: Schema {
-//    KeyPath<Foreign, PrimaryKey<String>>
-//    var left = Foreign
-//}
-
-@propertyWrapper @dynamicMemberLookup
-class Link<Left: KeyedSchema, Right: KeyedSchema>: Column<(Left, Right)>  {
-    override var wrappedValue: (Left, Right) { replacedDynamically() }
-
-    private(set) var left = ForeignKey<Left>(pointingTo: \._id)
-    private(set) var right = ForeignKey<Right>(pointingTo: \._id)
-
-    required init(_ lk: KeyPath<Left, PrimaryKey<String>>, _ rk: KeyPath<Right, PrimaryKey<String>>) {
-        super.init("\(Self.self)", .custom(SQLRawExecute("")), Later([]))
-        shouldSerialize = false
+struct PivotSchema<Left: Schema, Right: Schema>: Schema {
+    static var table: String {
+        [Left.table, Right.table].sorted().joined(separator: "_")
     }
 
-//    init(_ name: String = "",
-//         linking foreign: KeyPath<Foreign, PrimaryKey<Int>>,
-//         onDelete: SQLForeignKeyAction? = nil,
-//         onUpdate: SQLForeignKeyAction? = nil) {
-//
-//        self._foreignIdKeyPath = Later { foreign }
-//        self._foreignIdColumn = Later { Foreign.template[keyPath: foreign] }
-//        super.init(name, Int.sqltype, Later([]))
-//
-//        self.onDelete = onDelete
-//        self.onUpdate = onUpdate
+    var left: ForeignKey<Left>
+    var right: ForeignKey<Right>
+
+    init() {
+        let lpk = \Left._primaryKeyColumn
+        let rpk = \Right._primaryKeyColumn
+        let ln = Left.template._pivotIdKey
+        let rn = Right.template._pivotIdKey
+        self.left = ForeignKey(ln, pointingTo: lpk)
+        self.right = ForeignKey(rn, pointingTo: rpk)
+    }
+}
+
+extension Schema {
+    var _pivotIdKey: String {
+        Self.table + "_" + _primaryKeyColumn.name
+    }
+}
+
+@propertyWrapper
+class Pivot<Left: Schema, Right: Schema>  {
+    var wrappedValue: [Ref<Right>] { replacedDynamically() }
+
+    @Later var lk: PrimaryKeyBase
+    @Later var rk: PrimaryKeyBase
+
+    //    init<T, U>(_ lk: KeyPath<Left, PrimaryKey<T>>,
+//               _ rk: KeyPath<Right, PrimaryKey<U>>) {
+//        self._lk = Later { Left.template[keyPath: lk] }
+//        self._rk = Later { Right.template[keyPath: rk] }
 //    }
 
-    subscript<T>(dynamicMember key: WritableKeyPath<ForeignKey<Left>, T>) -> T {
-        get {
-            left[keyPath: key]
-        }
-        set {
-            left[keyPath: key] = newValue
-        }
-    }
-
-    subscript<T>(dynamicMember key: WritableKeyPath<ForeignKey<Right>, T>) -> T {
-        get {
-            right[keyPath: key]
-        }
-        set {
-            right[keyPath: key] = newValue
-        }
+    init() {
+        /// this is maybe easier for now, upper version is easier to move to support unique keys
+        self._lk = Later { Left.template._primaryKeyColumn }
+        self._rk = Later { Right.template._primaryKeyColumn }
     }
 }
 
