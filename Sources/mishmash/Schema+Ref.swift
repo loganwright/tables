@@ -375,12 +375,12 @@ private struct SQLTableSchema: SQLExpression {
     }
 }
 
-@_functionBuilder
-struct Preparer {
-    static func buildBlock(_ schema: Schema.Type...) {
-
-    }
-}
+//@_functionBuilder
+//struct Preparer {
+//    static func buildBlock(_ schema: Schema.Type...) {
+//
+//    }
+//}
 
 
 //let db = TestDB()
