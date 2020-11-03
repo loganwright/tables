@@ -35,11 +35,11 @@ import SQLKit
 class ForeignKey<Foreign: Schema>: Column<Foreign?> {
     /// the column in the foreign table that is being pointed to
     @Later var pointingTo: PrimaryKeyBase
+//    var pointingToPath: PartialKeyPath<Foreign>
     /// in this case, we are referring to the current column
     var pointingFrom: SQLColumn { self }
 
     override var wrappedValue: Foreign? { replacedDynamically() }
-
     private var onDelete: SQLForeignKeyAction?
     private var onUpdate: SQLForeignKeyAction?
 
@@ -79,7 +79,9 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
          pointingTo foreign: KeyPath<Foreign, PrimaryKey<String>>,
          onUpdate: SQLForeignKeyAction? = nil,
          onDelete: SQLForeignKeyAction? = nil) {
-        let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
+        let _pointingTo = Later<PrimaryKeyBase> {
+            Foreign.template[keyPath: foreign]
+        }
         self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
     }
 }
@@ -105,11 +107,25 @@ protocol PostCreateConstraints {
     func add(to builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder
 }
 
+// MARK: EphemeralColumns (Not Persisted)
+
+protocol Relation {}
+
+//protocol BaseRelation: Relation {
+//    var pointingTo: PrimaryKeyBase { get }
+//    var pointingFrom: SQLColumn { get }
+//}
+
+//protocol : Relation {
+//    var left: PrimaryKeyBase
+//    var right: PrimaryKeyBase
+//}
+
 /**
  Use this type to attach to many references that are pointing at an object
  */
 @propertyWrapper
-class ToMany<Many: Schema> {
+class ToMany<Many: Schema>: Relation {
     var wrappedValue: [Many] { replacedDynamically() }
 
     /// the key on the current object to which the external objects are pointing
@@ -134,7 +150,7 @@ class ToMany<Many: Schema> {
  for when their is a single object in another table that has declared us as a foreign key
  */
 @propertyWrapper
-class ToOne<One: Schema> {
+class ToOne<One: Schema>: Relation {
     var wrappedValue: One? { replacedDynamically() }
 
     @Later var pointingTo: PrimaryKeyBase
@@ -166,8 +182,8 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
     var right: ForeignKey<Right>
 
     init() {
-        let lpk = \Left._primaryKeyColumn
-        let rpk = \Right._primaryKeyColumn
+        let lpk = \Left._primaryKey
+        let rpk = \Right._primaryKey
         let ln = Left.template._pivotIdKey
         let rn = Right.template._pivotIdKey
         self.left = ForeignKey(ln, pointingTo: lpk)
@@ -177,38 +193,106 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
 
 extension Schema {
     var _pivotIdKey: String {
-        Self.table + "_" + _primaryKeyColumn.name
+        Self.table + "_" + _primaryKey.name
     }
 }
 
+class Projection<S> {
+}
+
 @propertyWrapper
-class Pivot<Left: Schema, Right: Schema>  {
+class Pivot<Left: Schema, Right: Schema>: Relation {
     var wrappedValue: [Ref<Right>] { replacedDynamically() }
-    var projectedValue: Pivot<Left, Right> { self }
+    var projectedValue: Projection<Pivot<Left, Right>> { return .init() }
 
     @Later var lk: PrimaryKeyBase
     @Later var rk: PrimaryKeyBase
 
     init() {
         /// this is maybe easier for now, upper version is easier to move to support unique keys
-        self._lk = Later { Left.template._primaryKeyColumn }
-        self._rk = Later { Right.template._primaryKeyColumn }
+        self._lk = Later { Left.template._primaryKey }
+        self._rk = Later { Right.template._primaryKey }
     }
 }
 
 extension Pivot {
-    static var schema: PivotSchema<Left, Right> { .template }
+    var schema: PivotSchema<Left, Right>.Type { PivotSchema<Left, Right>.self }
+}
 
-    func drop(_ r: Right) {
-        fatalError()
-//        let lk = Left.template_.primary
-//
-//            try db.delete(from: "planets")
-//                .where("name", .equal, "Jupiter")
-//                .run().wait()
-//            XCTAssertEqual(db.re
-//        schema.
+let _db: SQLDatabase! = nil
+
+extension Ref {
+    var _id: String {
+        let id = S.template._primaryKey
+        return backing[id.name]!.string!
     }
+}
+
+extension SQLDatabase {
+    func delete<S: Schema>(_ ref: Ref<S>) throws {
+        let idColumn = S.template._primaryKey
+        let idValue = ref._id
+        try self.delete(from: S.table)
+            .where(SQLIdentifier(idColumn.name), .equal, idValue)
+            .run()
+            .wait()
+    }
+
+    static func fetch<S: Schema>(where path: KeyPath<S, SQLColumn>, equals: String) {
+
+    }
+}
+
+extension SQLColumn {
+    var _sqlIdentifier: SQLIdentifier { .init(name) }
+}
+
+extension Ref {
+    var _db: SQLDatabase { db as! SQLDatabase }
+
+    func add<R>(to pivot: KeyPath<S, Pivot<S, R>>, _ new: [Ref<R>]) throws {
+        /// not efficient, and not handling cascades and stuff
+        try new.forEach { incoming in
+            let pivot = PivotSchema<S, R>.on(db)
+            pivot.left = self
+            pivot.right = incoming
+            try pivot.save()
+        }
+    }
+
+    func remove<R>(from pivot: KeyPath<S, Pivot<S, R>>, _ remove: [Ref<R>]) throws {
+        let pivot = S.template[keyPath: pivot]
+        let schema = pivot.schema
+
+        let pivotIdKey = R.template._pivotIdKey
+        let ids = remove.map(\._id)
+        try self._db.delete(from: schema.table)
+            .where(SQLIdentifier(pivotIdKey), .in, ids)
+            .run()
+            .wait()
+    }
+}
+
+
+func asdfsdfOO() throws {
+    struct Course: Schema {
+        let id = PrimaryKey<String>()
+        let name = Column<String>()
+        let students = Pivot<Course, Student>()
+    }
+
+    struct Student: Schema {
+        let id = PrimaryKey<Int>()
+        let name = Column<String>()
+        let classes = Pivot<Student, Course>()
+    }
+
+    let s: Ref<Student>! = nil
+
+    try s.add(to: \.classes, [])
+    try s.remove(from: \.classes, [])
+
+//    Student.fet
 }
 
 /// there's a lot of initialization and intermixing, sometimes lazy loading helps with cycles

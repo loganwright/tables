@@ -13,8 +13,6 @@ class SQLColumn {
     /// using the Later attribute to allow nested columns to properly initialize
     @Later open var constraints: [SQLColumnConstraintAlgorithm]
 
-    open var shouldSerialize = true
-
     init(_ name: String, _ type: Later<SQLDataType>, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
         self.name = name
         self._type = type
@@ -29,5 +27,14 @@ class SQLColumn {
 
     convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
         self.init(name, type, Later(constraints))
+    }
+}
+
+extension SQLColumn {
+    var nullable: Bool {
+        constraints.first { constraint in
+            if case .notNull = constraint { return true }
+            else { return false }
+        } != nil
     }
 }

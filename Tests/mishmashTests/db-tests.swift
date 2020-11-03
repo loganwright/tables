@@ -237,8 +237,14 @@ final class RelationTests: SieqlTersts {
         }
         XCTAssert(!student_group_b.isEmpty)
 
-//        let jorb = students[0]
-//        jorb.$classes
+        let jorb = students[0]
+        jorb.drop(gym)
+    }
+}
+
+extension Ref {
+    func drop<Drop>(_ toRemove: Ref<Drop>) {
+//        S.template.sqlColumns
     }
 }
 
@@ -246,12 +252,20 @@ final class DBTests: XCTestCase {
     let sql = SQLManager.unsafe_testable
 
     func testExtractProperties() {
-        let properties = Item.template.unsafe_getProperties()
+        let properties = Item.template._unsafe_forceProperties()
         let columns = properties.compactMap { $0.val as? SQLColumn }
         XCTAssertEqual(properties.count, 3)
         XCTAssertEqual(properties.count, columns.count)
         XCTAssert(columns.map(\.name).contains("id"))
         XCTAssert(columns.map(\.name).contains("power"))
+    }
+
+    func testUnique() {
+        let db = SeeQuel(storage: .memory)
+        struct Test {
+            let id = PrimaryKey<Int>()
+        }
+        
     }
 
     func testIncompatiblePropertyWarn() {
@@ -262,7 +276,7 @@ final class DBTests: XCTestCase {
 
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
-        let _ = Foo.template.unsafe_getColumns()
+        let _ = Foo.template._unsafe_forceColumns()
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("incompatible schema property") }))
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
     }
@@ -304,7 +318,7 @@ final class DBTests: XCTestCase {
 
         let w_meta = try db.unsafe_table_meta("item")
         XCTAssertEqual(w_meta.count, 3)
-        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.unsafe_getColumns().map(\.name).sorted())
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template._unsafe_forceColumns().map(\.name).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
         print(h_meta)
@@ -424,7 +438,7 @@ final class DBTests: XCTestCase {
     func testFancy() throws {
         let db = SeeQuel.shared
         try! db.prepare { Team.self }
-        let columns = Team.template.unsafe_getColumns()
+        let columns = Team.template._unsafe_forceColumns()
         let instance = Ref<Team>(db)
         for column in columns {
 //            instance[keyPath: column] = ""
@@ -464,7 +478,7 @@ struct Team: Schema {
     let rating = Column<Int>()
 
     ///
-    let rival = ForeignKey<Team>(pointingTo: \.id)
+    let rival = ForeignKey<Team>("rival", pointingTo: \.id)
     ///
     let players = ToMany<Player>(linkedBy: \.team)
 }
@@ -499,11 +513,6 @@ extension Schema {
     static func on(_ db: Database, creator: (Ref<Self>) -> Void) -> Ref<Self> {
         let new = Ref<Self>(db)
         creator(new)
-        let attributes = template.columns.filter(\.shouldSerialize).filter { !($0 is PrimaryKeyBase)}
-
-        guard new.backing.keys.count == attributes.count else {
-            fatalError("\(Ref<Self>.self) not properly instantiated")
-        }
         try! new.save()
         return new
     }

@@ -43,10 +43,6 @@ struct RequestBuilder {
 
 
 
-struct Projection<T> {
-    let key: String
-}
-
 
 @dynamicMemberLookup
 struct Request {

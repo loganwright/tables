@@ -127,9 +127,9 @@ final class Ref<S: Schema> {
     subscript<R>(dynamicMember key: KeyPath<S, Pivot<S, R>>) -> [Ref<R>] {
         get {
             // we're not using the pivot object, could contain some meta info
-            let pivot = S.template[keyPath: key]
+            // for now, this works
             let pivotColumn = S.template._pivotIdKey
-            let myPrimary = S.template._primaryKeyColumn
+            let myPrimary = S.template._primaryKey
             let id = backing[myPrimary.name]
 
             /// not very optimized fetching one at a time
@@ -272,7 +272,7 @@ extension SeeQuel: Database {
     }
 
     func update<S>(_ ref: Ref<S>) where S: Schema {
-        let primary = S.template._primaryKeyColumn
+        let primary = S.template._primaryKey
         try! self.db
             .update(S.table)
             .where(primary.name.sqlid, .equal, ref.backing[primary.name])

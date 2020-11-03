@@ -144,6 +144,27 @@ extension JSON {
     }
 }
 
+//@dynamicMemberLookup
+//struct KeyedAccessor<KeyMap: Schema> {
+//    var backing: JSON
+//    init(_ backing: JSON) {
+//        self.backing = backing
+//    }
+//
+//    subscript<T: Codable>(dynamicMember key: WritableKeyPath<KeyMap, Column<T>>) -> T {
+//        get {
+//            let column = KeyMap.template[keyPath: key]
+//            let body = backing[column.name] ?? .null
+//            return try! T(json: body)
+//        }
+//        set {
+//            let column = KeyMap.template[keyPath: key]
+//            backing[column.name] = newValue.json
+//        }
+//    }
+//}
+
+
 // MARK: Codable Interops
 
 extension Decodable {

@@ -5,107 +5,56 @@ protocol Schema {
     static var table: String { get }
 }
 
-protocol Foojijij {
-    var id: PrimaryKeyBase { get }
-}
-
 extension Schema {
     static var table: String { "\(Self.self)".lowercased()}
 }
 
-// MARK:  
-
-extension Schema {
-    var primaryKey: PrimaryKeyBase? {
-        columns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
-    }
-
-    var isPrimaryKeyed: Bool {
-        primaryKey != nil
-    }
-
-    var _primaryKeyColumn: PrimaryKeyBase {
-        let pk = primaryKey
-        assert(pk != nil, "no primary key found: \(Schema.self)")
-        return pk!
-    }
-}
-
-//extension Ref {
-//    var primaryKey: PrimaryKeyBase? {
-//        S.template.primaryKey
-//    }
-//    var isPrimaryKeyed: Bool {
-//        S.template.isPrimaryKeyed
-//    }
-//}
-
-// MARK: Template
-
-/// templates help us to use instances of a schema as opposed to trying
-/// to infer information from it's more opaque type metadata
-/// this caches nicely
-private var templates: [String: Schema] = [:]
+// MARK:
 
 extension Schema {
     /// load the template for a given schema type
     /// loading this way also ensures that labels are set
     /// according to swift properties
     static var template: Self {
-        if let existing = templates[table] as? Self { return existing }
-        let new = Self.make()
-        templates[table] = new
-        return new
-    }
-
-    /// constructs a new schema to be used if necessary
-    /// calling `template` is usually enough as we should rarely be directly accessing
-    /// schema
-    static func make() -> Self {
+        if self is Team {
+            print("found team: \(Team.self)")
+        }
+        if let existing = _templates[table] as? Self { return existing }
         let new = Self.init()
-        new.hydrateColumnKeysWithPropertyLabels()
+        /// populates the names of the columns with introspected values
+        /// maybe a better way, but for now is helpful
+        let columns = new._unsafe_forceColumns()
+        _templates[table] = new
+        if self is Team {
+            print("loaded team: \(Team.self): \(columns)")
+            print("")
+        }
         return new
     }
-}
 
-// MARK: Introspection
-
-/// a model of mirror reflected properties
-struct SchemaProperty {
-    let label: String
-    let columntype: Any.Type
-    let val: Any
-
-    init(_ label: String, _ val: Any) {
-        self.label = label
-        let t = Swift.type(of: val)
-        self.columntype = t
-        self.val = val
+    static var _type_erased_template: Schema {
+        guard let type_erased = _templates[table] else { fatalError("template not yet created") }
+        return type_erased
     }
 }
 
 extension Schema {
     var columns: [SQLColumn] {
-        allColumns.filter(\.shouldSerialize)
+        _unsafe_forceColumns()
     }
 
-    var allColumns: [SQLColumn] {
-        unsafe_getColumns()
-    }
-
-    /// load all introspectable properties from an instance
-    func unsafe_getProperties() -> [SchemaProperty] {
-        Mirror(reflecting: self).children.compactMap { child in
-            guard let label = child.label else { fatalError("expected a label for template property") }
-            return SchemaProperty(label, child.value)
+    var relations: [Relation] {
+        _unsafe_forceProperties().compactMap {
+            $0.val as? Relation
         }
     }
+}
 
-    /// load all sqlcolumns associated with this schema
-    func unsafe_getColumns() -> [SQLColumn] {
-        unsafe_getProperties().compactMap { prop in
+extension Schema {
+    func _unsafe_forceColumns() -> [SQLColumn] {
+        _unsafe_forceProperties().compactMap { prop in
             guard let column = prop.val as? SQLColumn else {
-                if "\(prop.columntype)".contains("Pivot") { return nil }
+                if prop.val is Relation { return nil }
                 Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.columntype)")
                 Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
                 return nil
@@ -116,14 +65,68 @@ extension Schema {
         }
     }
 
-    /// we need to fill in the templating columns, for example
-    ///
-    ///  `let note = Column<String>()`
-    ///
-    ///     if not properly hydrated, the column will have an empty string as a key
-    ///
-    private func hydrateColumnKeysWithPropertyLabels() {
-        let _ = unsafe_getColumns()
+    /// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
+    /// load all introspectable properties from an instance
+    func _unsafe_forceProperties() -> [Property] {
+        Mirror(reflecting: self).children.compactMap { child in
+            guard let label = child.label else { fatalError("expected a label for template property") }
+            return Property(label, child.value)
+        }
+    }
+}
+
+// MARK: PrimaryKeys
+
+extension Schema {
+    /// whether the schema contains a primary key
+    /// one can name their primary key as they'd like, this is
+    /// a generic name that will extract
+    var primaryKey: PrimaryKeyBase? {
+        columns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
+    }
+
+    /// whether a schema is primary keyed
+    /// all relations require a schema to be primary keyed
+    var isPrimaryKeyed: Bool {
+        primaryKey != nil
+    }
+
+    /// this is a forced key that will assert that will fail if a schema has not declared
+    /// a primary key
+    /// currently only one primary key is supported
+    var _primaryKey: PrimaryKeyBase {
+        let pk = primaryKey
+        assert(pk != nil, "no primary key found: \(Schema.self)")
+        return pk!
+    }
+}
+
+// MARK: SchemaMaps
+
+/// templates help us to use instances of a schema as opposed to trying
+/// to infer information from it's more opaque type metadata
+/// this caches nicely
+private var _templates: [String: Schema] = [:]
+/// it's not sooo important, but caching maybe will help performance
+/// the amount of data isn't so much to add to memory
+/// but introspection processes are expensive
+private var _properties: [String: [Property]] = [:]
+private var _columns: [String: [SQLColumn]] = [:]
+private var _relations: [String: [Relation]] = [:]
+
+// MARK: Introspection
+
+/// a model of mirror reflected properties
+struct Property {
+    let label: String
+    let columntype: Any.Type
+    let val: Any
+
+    init(_ label: String, _ val: Any) {
+        self.label = label
+        let t = Swift.type(of: val)
+        self.columntype = t
+        self.val = val
     }
 }
 
@@ -280,7 +283,7 @@ struct TableBuilder {
     }
 
     static func buildBlock(_ schema: Schema.Type...) -> [Table] {
-        schema.map(Table.init)
+        schema.map { Table($0) }
     }
 }
 
@@ -309,8 +312,17 @@ struct Table {
     init(_ schema: Schema.Type) {
         /// ideally, all schema instances would use 'template' but here we need
         /// to set again
-        let columns = schema.init().unsafe_getColumns().filter(\.shouldSerialize)
+//        let template = schema._type_erased_template
+        let columns = schema.init().columns
+        print("columns: \(columns.map(\.name))")
+        columns.validate()
         self.init(schema.table, columns)
+    }
+}
+
+extension Array where Element: SQLColumn {
+    func validate() {
+        assert(map(\.name).first(where: \.isEmpty) == nil)
     }
 }
 
