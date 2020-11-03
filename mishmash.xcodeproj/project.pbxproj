@@ -21,8 +21,11 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		803F5E882551D61E00317F66 /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 803F5E872551D61E00317F66 /* SQLiteKit */; };
+		803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E8E2551F89C00317F66 /* Pivot.swift */; };
+		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
+		80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */; };
 		8082EE42254E336500ACBADA /* Schema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Schema.swift */; };
-		8082EE49254E7AFD00ACBADA /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8082EE48254E7AFD00ACBADA /* SQLiteKit */; };
 		8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
 		8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE5C254E8A8900ACBADA /* SQLManager.swift */; };
 		8082EE63254E8A9F00ACBADA /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE62254E8A9F00ACBADA /* Log.swift */; };
@@ -66,6 +69,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		803F5E8E2551F89C00317F66 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
+		803F5E9C2552023500317F66 /* Ref<Schema>.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ref<Schema>.swift"; sourceTree = "<group>"; };
+		80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SQLDatabase+Extensions.swift"; sourceTree = "<group>"; };
 		8082EE41254E336500ACBADA /* Schema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schema.swift; sourceTree = "<group>"; };
 		8082EE56254E89FD00ACBADA /* db-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "db-tests.swift"; sourceTree = "<group>"; };
 		8082EE5C254E8A8900ACBADA /* SQLManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLManager.swift; sourceTree = "<group>"; };
@@ -100,7 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 0;
 			files = (
-				8082EE49254E7AFD00ACBADA /* SQLiteKit in Frameworks */,
+				803F5E882551D61E00317F66 /* SQLiteKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +121,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		803F5E8D2551F89000317F66 /* tables */ = {
+			isa = PBXGroup;
+			children = (
+				803F5E8E2551F89C00317F66 /* Pivot.swift */,
+				8082EE41254E336500ACBADA /* Schema.swift */,
+				803F5E9C2552023500317F66 /* Ref<Schema>.swift */,
+				80B31F292551522C00CFA510 /* Schema+Columns.swift */,
+				80FAA557254FB4B2001F3528 /* Schema+Relations.swift */,
+				80FAA561254FBDB1001F3528 /* Schema+Maybe.swift */,
+				80FAA567254FBE3F001F3528 /* Schema+Ref.swift */,
+				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
+				80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */,
+			);
+			path = tables;
+			sourceTree = "<group>";
+		};
 		OBJ_10 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
@@ -167,6 +189,7 @@
 		OBJ_8 /* mishmash */ = {
 			isa = PBXGroup;
 			children = (
+				803F5E8D2551F89000317F66 /* tables */,
 				OBJ_9 /* mishmash.swift */,
 				80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */,
 				80F3CD8E254CE50B00EFA52F /* HTTP.swift */,
@@ -174,12 +197,6 @@
 				80F3CD9B254D23BF00EFA52F /* Request.swift */,
 				80F3CDB0254D3BC400EFA52F /* JSON.swift */,
 				80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */,
-				8082EE41254E336500ACBADA /* Schema.swift */,
-				80B31F292551522C00CFA510 /* Schema+Columns.swift */,
-				80FAA557254FB4B2001F3528 /* Schema+Relations.swift */,
-				80FAA561254FBDB1001F3528 /* Schema+Maybe.swift */,
-				80FAA567254FBE3F001F3528 /* Schema+Ref.swift */,
-				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
 				8082EE62254E8A9F00ACBADA /* Log.swift */,
 				8082EE68254E8B5200ACBADA /* ThreadSafe.swift */,
 				8082EE6E254E8B8200ACBADA /* Result+Extensions.swift */,
@@ -220,7 +237,7 @@
 			);
 			name = mishmash;
 			packageProductDependencies = (
-				8082EE48254E7AFD00ACBADA /* SQLiteKit */,
+				803F5E872551D61E00317F66 /* SQLiteKit */,
 			);
 			productName = mishmash;
 			productReference = "mishmash::mishmash::Product" /* mishmash.framework */;
@@ -261,7 +278,7 @@
 			);
 			mainGroup = OBJ_5;
 			packageReferences = (
-				8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */,
+				803F5E862551D61E00317F66 /* XCRemoteSwiftPackageReference "sqlite-kit" */,
 			);
 			productRefGroup = OBJ_14 /* Products */;
 			projectDirPath = "";
@@ -284,17 +301,20 @@
 				8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */,
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
 				8082EE63254E8A9F00ACBADA /* Log.swift in Sources */,
+				803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */,
 				OBJ_24 /* mishmash.swift in Sources */,
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
 				80B31F2A2551522C00CFA510 /* Schema+Columns.swift in Sources */,
 				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
 				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
+				803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */,
 				8082EE7F254E902500ACBADA /* Globals.swift in Sources */,
 				80FAA562254FBDB2001F3528 /* Schema+Maybe.swift in Sources */,
 				8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */,
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
 				80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */,
 				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
+				80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* Schema+Ref.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
 				80FAA558254FB4B2001F3528 /* Schema+Relations.swift in Sources */,
@@ -591,7 +611,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */ = {
+		803F5E862551D61E00317F66 /* XCRemoteSwiftPackageReference "sqlite-kit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/loganwright/sqlite-kit";
 			requirement = {
@@ -602,9 +622,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		8082EE48254E7AFD00ACBADA /* SQLiteKit */ = {
+		803F5E872551D61E00317F66 /* SQLiteKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8082EE47254E7AFD00ACBADA /* XCRemoteSwiftPackageReference "sqlite-kit" */;
+			package = 803F5E862551D61E00317F66 /* XCRemoteSwiftPackageReference "sqlite-kit" */;
 			productName = SQLiteKit;
 		};
 /* End XCSwiftPackageProductDependency section */

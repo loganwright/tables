@@ -1,13 +1,10 @@
 import SQLKit
 
 class SQLColumn {
-    /// can't decide on naming, going back and forth :/
-    var key: String {
-        get { name }
-        set { name = newValue }
-    }
-
+    /// the name of the column
     open var name: String
+
+    /// the type of data stored
     @Later open var type: SQLDataType
 
     /// using the Later attribute to allow nested columns to properly initialize
@@ -27,14 +24,5 @@ class SQLColumn {
 
     convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
         self.init(name, type, Later(constraints))
-    }
-}
-
-extension SQLColumn {
-    var nullable: Bool {
-        constraints.first { constraint in
-            if case .notNull = constraint { return true }
-            else { return false }
-        } != nil
     }
 }

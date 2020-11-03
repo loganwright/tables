@@ -1,4 +1,30 @@
+struct LogLevels {
+    let high = true
+    let info = true
+    let database = true
+}
+
+@dynamicMemberLookup
+struct _Log {
+    let levels = LogLevels()
+
+    static subscript(dynamicMember key: KeyPath<LogLevels, Bool>) -> Self {
+//        guard levels[keyPath: key] else { return "self" }
+        fatalError()
+    }
+
+    func callAsFunction(file: String = #file, line: Int = #line, _ msg: String) {
+
+    }
+}
+
+func demoooo() {
+    _Log.database("")
+}
+
 struct Log {
+    static func database(file: String = #file, line: Int = #line, _ msg: String) {
+    }
     static func info(file: String = #file, line: Int = #line, _ msg: String) {
         let file = file.components(separatedBy: "/").last ?? "<>"
         print("\(file):\(line) - \(msg)")

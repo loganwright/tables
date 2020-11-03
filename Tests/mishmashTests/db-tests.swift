@@ -1,33 +1,25 @@
 import XCTest
+import SQLKit
 @testable import mishmash
 
-/**
-
- database.prepare {
-    Table("user") {
-        Column("id", .text, ..primaryKey(autoIncrement: false), .notNull)
-        Column("name", .text, .notNull)
-        Column("age", .int, .notNull
-    }
- }
- */
 
 class SieqlTersts: XCTestCase {
-    var db: SeeQuel! = SeeQuel(storage: .memory(identifier: "tests"))
+    var sql: SQLManager! = SQLManager.unsafe_testable._unsafe_testable_setIsOpen(true)
+
     override func tearDown() {
         super.tearDown()
-        db = nil
+        sql = nil
     }
 
 }
 
-/**
-
- Car.on(db) { new in
-
- }
- */
+///
+///
+///
+///
+///
 final class RelationTests: SieqlTersts {
+    
     struct Car: Schema {
         let id = PrimaryKey<Int>()
         let color = Column<String>()
@@ -67,6 +59,8 @@ final class RelationTests: SieqlTersts {
         let title = Column<String>()
         let author = ForeignKey<Author>(pointingTo: \.id)
     }
+
+    var db: SQLDatabase { sql.testable_db }
 
     func testOneToManyKey() throws {
         try db.prepare {
@@ -226,8 +220,8 @@ final class RelationTests: SieqlTersts {
         gym.students = student_group_b
 
         let science_only =  student_group_a.flatMap(\.classes)
-        let noGym = science_only.allSatisfy { $0.name == "science" }
-        XCTAssert(noGym == true)
+        let allscienc = science_only.allSatisfy { $0.name == "science" }
+        XCTAssert(allscienc == true)
 
 //        let both = student_group_b.flatMap(\.classes).map(\.name)
         student_group_b.map(\.classes).forEach { classes in
@@ -238,18 +232,45 @@ final class RelationTests: SieqlTersts {
         XCTAssert(!student_group_b.isEmpty)
 
         let jorb = students[0]
-        jorb.drop(gym)
+        XCTAssertEqual(jorb.classes.count, 1)
+        try jorb.remove(from: \.classes, [gym])
+        XCTAssertEqual(jorb.classes.count, 1)
+        try jorb.remove(from: \.classes, [science])
+        XCTAssertEqual(jorb.classes.count, 0)
+        try jorb.add(to: \.classes, [gym, science])
+        XCTAssertEqual(jorb.classes.count, 2)
+        try gym.add(to: \.students, [jorb])
+
+        try jorb.remove(from: \.classes, [gym, science])
+        let a = jorb.classes
+        XCTAssertEqual(a.count, 0)
+        try jorb.add(to: \.classes, [gym, science])
+        let b = jorb.classes
+        XCTAssertEqual(b.count, 2)
+        try jorb.add(to: \.classes, [gym, science])
+        let c = jorb.classes
+        XCTAssertEqual(c.count, 2, "shouldn't duplicate")
+    }
+
+
+    func testDualForeignKey() {
+        struct Bargle: Schema {
+            let id = PrimaryKey<String>()
+            let a = Column<String>()
+            let b = Pivot<Course, Student>()
+        }
+
+        struct Student: Schema {
+            let id = PrimaryKey<Int>()
+            let name = Column<String>()
+            let classes = Pivot<Student, Course>()
+        }
+
     }
 }
 
-extension Ref {
-    func drop<Drop>(_ toRemove: Ref<Drop>) {
-//        S.template.sqlColumns
-    }
-}
-
-final class DBTests: XCTestCase {
-    let sql = SQLManager.unsafe_testable
+final class DBTests: SieqlTersts {
+    var db: SQLDatabase { sql.testable_db }
 
     func testExtractProperties() {
         let properties = Item.template._unsafe_forceProperties()
@@ -261,7 +282,6 @@ final class DBTests: XCTestCase {
     }
 
     func testUnique() throws {
-        let db = SeeQuel(storage: .memory)
         struct Test: Schema {
             let id = PrimaryKey<Int>()
 
@@ -273,7 +293,7 @@ final class DBTests: XCTestCase {
         }
 
         try db.prepare { Test.self }
-        let a = try Test.on(db) { new in
+        try Test.on(db) { new in
             new.favoriteColor = "yellow"
             new.favoriteNumber = 8
             new.favoriteWord = "arbledarble"
@@ -326,7 +346,7 @@ final class DBTests: XCTestCase {
         XCTAssertEqual(all.count, 2)
     }
 
-    func testBlob() throws {
+    func ignore_too_long_testBlob() throws {
         let _url = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/440px-Image_created_with_a_mobile_phone.png"
         let url = URL(string: _url)!
         let data = try Data(contentsOf: url)
@@ -336,8 +356,7 @@ final class DBTests: XCTestCase {
             let img = Column<Data>()
         }
 
-        let db = SeeQuel(storage: .memory)
-        try db.prepare {
+        try! db.prepare {
             Blobby.self
         }
         let blobster = try Blobby.on(db) { new in
@@ -364,36 +383,18 @@ final class DBTests: XCTestCase {
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
     }
 
-    func testPrepare() throws {
-        let db = SeeQuel(storage: .memory)
-        try db.prepare {
-            Table("item") {
-                PrimaryKey<Int>("id")
-                Column<Int>("power")
-            }
-            Table("food") {
-                PrimaryKey<Int>("id")
-                Column<String>("item")
-                Column<Int>("health")
-            }
-        }
-
-        let prepared = try db.unsafe_getAllTables()
-        XCTAssert(prepared.contains("item"))
-        XCTAssert(prepared.contains("food"))
-    }
-
 
     func testPrepareAuto() throws {
-        let db = SeeQuel(storage: .memory)
-        try! db.prepare {
+        try sql.unsafe_fatal_dropAllTables()
+
+        try db.prepare {
             Item.self
             Food.self
             Hero.self
         }
 
 
-        let prepared = try db.unsafe_getAllTables()
+        let prepared = try! db.unsafe_getAllTables()
         XCTAssert(prepared.contains("item"))
         XCTAssert(prepared.contains("food"))
         XCTAssert(prepared.contains("hero"))
@@ -404,13 +405,16 @@ final class DBTests: XCTestCase {
         XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template._unsafe_forceColumns().map(\.name).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
-        print(h_meta)
-        print()
+        XCTAssertEqual(h_meta.count, 5)
+        let storedNames = h_meta.map(\.name).sorted()
+        let expected = Hero.template.columns.map(\.name).sorted()
+        XCTAssertEqual(storedNames, expected)
     }
 
     func testParentChild() throws {
-        let db = SeeQuel(storage: .memory)
-        try! db.prepare {
+        try sql.unsafe_fatal_dropAllTables()
+
+        try db.prepare {
             Item.self
             Food.self
             Hero.self
@@ -427,18 +431,18 @@ final class DBTests: XCTestCase {
         let lorbo = Ref<Hero>(db)
         lorbo.name = "lorbo"
         lorbo.age = 234
-        print(lorbo.lunch)
-        XCTAssertNil(lorbo.lunch)
+        let lunch = lorbo.lunch
+        XCTAssertNil(lunch)
         try lorbo.save()
         banana.owner = lorbo
         try banana.save()
         let _banan = lorbo.lunch
         XCTAssertNotNil(_banan)
-//        print(lorbo.lunch)
     }
 
     func testSave() throws {
-        let db = SeeQuel(storage: .memory)
+        try sql.unsafe_fatal_dropAllTables()
+
         try db.prepare {
             Item.self
             Food.self
@@ -475,7 +479,8 @@ final class DBTests: XCTestCase {
     }
 
     func testOneToMany() throws {
-        let db = SeeQuel(storage: .memory)
+        let seq = SeeQuel.shared
+        let db = seq.db
         try db.prepare {
             ManyOb.self
             One.self
@@ -505,8 +510,7 @@ final class DBTests: XCTestCase {
     }
 
     func testMatch() throws {
-        let db = SeeQuel.shared
-        try! db.prepare {
+        try db.prepare {
             Team.self
             Player.self
         }
@@ -516,21 +520,9 @@ final class DBTests: XCTestCase {
         cats.mascot = "cats"
         cats.rating = 5
         try cats.save()
+        XCTAssertNotNil(cats.id)
     }
 }
-
-class Grouped: Column<Grouped> {
-    
-}
-
-protocol IDSchema: Schema {
-    var _id: PrimaryKeyBase { get set }
-}
-
-//struct Join<L: IDSchema, R: IDSchema>: Schema {
-//    let left = ForeignKey<L>(linking: \._id, primary: true)
-//    let right = ForeignKey<R>(linking: \._id, primary: true)
-//}
 
 struct Team: Schema {
     let id = PrimaryKey<String>()
@@ -547,80 +539,6 @@ struct Team: Schema {
 struct Player: Schema {
     let id = PrimaryKey<Int>()
     let team = ForeignKey<Team>(pointingTo: \.id)
-}
-
-@_functionBuilder
-struct FuzzyBuilder<S: Schema> {
-    static func buildBlock(_ db: Database) -> Database {
-        return db
-    }
-    static func buildBlock(_ db: Database, _ block: Default<S>...) -> Ref<S> {
-        return Ref(db)
-    }
-}
-struct Default<S: Schema> {
-
-    init<T>(_ kp: KeyPath<S, Column<T>>, _ def: T) {
-//        self.val = val
-        fatalError()
-    }
-}
-
-extension Schema {
-    static func on(_ db: Database) -> Ref<Self> {
-        return Ref(db)
-    }
-
-    @discardableResult
-    static func on(_ db: Database, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
-        let new = Ref<Self>(db)
-        try creator(new)
-        try new.save()
-        return new
-    }
-}
-
-func play() throws {
-    let db = SeeQuel.shared
-
-
-    try! db.prepare {
-        Team.self
-        Player.self
-    }
-
-    let bears = Team.on(db)
-    bears.mascot = "bear"
-    bears.rating = 8
-    try bears.save()
-
-    let ducks = Team.on(db)
-    ducks.mascot = "duck"
-    ducks.rating = 7
-    ducks.rival = bears
-    try ducks.save()
-
-    let al = Player.on(db)
-    al.team = bears
-
-    let gal = Player.on(db)
-    gal.team = bears
-
-    let dale = Player.on(db)
-    dale.team = ducks
-}
-
-func new<T>(_ t: T.Type) {
-
-}
-
-extension Schema {
-    static func make(on db: Database) -> Ref<Self> {
-        return Ref<Self>(db)
-       }
-    static func query(on db: Database) -> Ref<Self> {
-        return Ref<Self>(db)
-    }
 }
 
 func expectError(test: () throws -> Void) -> Error? {
@@ -646,7 +564,6 @@ struct Plant: Schema {
 }
 
 
-
 struct ManyOb: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
@@ -657,19 +574,8 @@ struct ManyOb: Schema {
 struct One: Schema {
     let id = PrimaryKey<Int>()
     let name = Column<String>()
-
     let many = ToMany<ManyOb>(linkedBy: \.oneyy)
 }
-
-import SQLKit
-
-
-//extension Schema {
-//    static func make(on: Database) -> Ref<Self> {
-//        return .init([:], on)
-//    }
-//}
-
 
 struct Item: Schema {
     var id = PrimaryKey<Int>()
@@ -696,7 +602,6 @@ struct Hero: Schema {
     var nickname = Column<String?>()
 
     // relations
-//    var equipped = Column<Item?>(foreignKey: \.id)
     var equipped = ForeignKey<Item>(pointingTo: \.id)
 
     var lunch = ToOne<Food>(linkedBy: \.owner)

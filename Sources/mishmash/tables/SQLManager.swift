@@ -149,8 +149,9 @@ final class SQLManager {
 
     @ThreadSafe
     fileprivate var isOpen: Bool = false
-    func _unsafe_testable_setIsOpen(_ isOpen: Bool) {
+    func _unsafe_testable_setIsOpen(_ isOpen: Bool) -> Self {
         self.isOpen = isOpen
+        return self
     }
 
     private(set) static var shared: SQLManager = .default
@@ -163,6 +164,9 @@ final class SQLManager {
     static let unsafe_testable = SQLManager(storage: .memory)
     private static let `default` = SQLManager(storage: .file(path: sql_directory.path))
 
+    var testable_db: SQLDatabase {
+        self.connection.sql()
+    }
     private var db: SQLDatabase {
         assert(isOpen, "sql manager must be opened before accessing")
         return self.connection.sql()
@@ -172,7 +176,7 @@ final class SQLManager {
     private let threadPool: NIOThreadPool
     private let connection: SQLiteConnection
 
-    private init(storage: SQLiteConfiguration.Storage) {
+    init(storage: SQLiteConfiguration.Storage) {
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
         self.threadPool = NIOThreadPool(numberOfThreads: 2)
         self.threadPool.start()
@@ -227,13 +231,6 @@ final class SQLManager {
                  whereKey key: String,
                  contains value: String,
                  limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
-//        let d = try self.db.select()
-//            .columns(columns)
-//            .where(SQLIdentifier(key), .like, "%\(value)%")
-//            .from(table)
-//            .all()
-////            .all(decoding: JSON.self)
-//            .wait()
         return try self.db.select()
             .columns(columns)
             .where(SQLIdentifier(key), .like, "%\(value)%")

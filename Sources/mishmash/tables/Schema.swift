@@ -58,7 +58,7 @@ extension Schema {
     func _unsafe_forceColumns() -> [SQLColumn] {
         _unsafe_forceProperties().compactMap { prop in
             guard let column = prop.val as? SQLColumn else {
-                if prop.val is Relation { return nil }
+                if let _ = prop.val as? Relation { return nil }
                 Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.columntype)")
                 Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
                 return nil
@@ -71,6 +71,11 @@ extension Schema {
 
     /// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
     /// load all introspectable properties from an instance
+    ///
+    /// ok, I was thinking about it.. when the nested key declares a key path of it's container
+    /// `let friend = ForeignKey<Self>(\.id)`
+    /// and if there's anything in the column creators, it seems to choke, idk, in that case, declare a key
+    ///
     func _unsafe_forceProperties() -> [Property] {
         Mirror(reflecting: self).children.compactMap { child in
             guard let label = child.label else { fatalError("expected a label for template property") }
@@ -165,7 +170,6 @@ protocol PrimaryKeyValue: DatabaseValue {}
 extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
 
-
 @propertyWrapper
 class Unique<Value: DatabaseValue>: Column<Value> {
     override var wrappedValue: Value { replacedDynamically() }
@@ -253,86 +257,10 @@ extension Column where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
 }
 
 // MARK: One to One
+///
+/// maybe just a restricted pivot somehow with dual primary key
+///
 
-
-// MARK: Relationships
-
-extension SQLColumnConstraintAlgorithm {
-    /// working around inline foreign key support
-    static func inlineForeignKey(name: String) -> SQLColumnConstraintAlgorithm {
-        return .custom(SQLRawExecute(", FOREIGN KEY (\"\(name)\")"))
-    }
-}
-
-
-/**
- parentIdKey
- * parentIdValue
- childAssociatedIdKey
- * childAssociatedValue
- */
-
-
-
-
-final class Box<T> {
-    var boxed: T
-
-    init(_ boxed: T) {
-        self.boxed = boxed
-    }
-}
-
-
-@_functionBuilder
-struct TableBuilder {
-    static func buildBlock(_ tables: Table...) -> [Table] {
-        return tables
-    }
-
-    static func buildBlock(_ schema: Schema.Type...) -> [Table] {
-        schema.map { Table($0) }
-    }
-}
-
-@_functionBuilder
-struct ListBuilder<T> {
-    static func buildBlock(_ list: T...) -> [T] {
-        return list
-    }
-}
-
-
-struct Table {
-    let name: String
-    let columns: [SQLColumn]
-
-    init(_ name: String, _ columns: [SQLColumn]) {
-        self.name = name
-        self.columns = columns
-    }
-
-    init(_ name: String, @ListBuilder<SQLColumn> _ builder: () -> [SQLColumn]) {
-        let columns = builder()
-        self.init(name, columns)
-    }
-
-    init(_ schema: Schema.Type) {
-        /// ideally, all schema instances would use 'template' but here we need
-        /// to set again
-//        let template = schema._type_erased_template
-        let columns = schema.init().columns
-        print("columns: \(columns.map(\.name))")
-        columns.validate()
-        self.init(schema.table, columns)
-    }
-}
-
-extension Array where Element: SQLColumn {
-    func validate() {
-        assert(map(\.name).first(where: \.isEmpty) == nil)
-    }
-}
 
 import Logging
 import SQLiteKit
@@ -349,12 +277,73 @@ private var seequel_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
+//// TEMPORARY ShOEHORN
+extension SQLiteDatabase {
+    func _sql() -> _SQLiteSQLDatabase {
+        _SQLiteSQLDatabase(database: self)
+    }
+}
+
+struct _SQLiteSQLDatabase: SQLDatabase {
+    let database: SQLiteDatabase
+
+    var eventLoop: EventLoop {
+        return self.database.eventLoop
+    }
+
+    var logger: Logger {
+        return self.database.logger
+    }
+
+    var dialect: SQLDialect {
+        SQLiteDialect()
+    }
+
+    func execute(
+        sql query: SQLExpression,
+        _ onRow: @escaping (SQLRow) -> ()
+    ) -> EventLoopFuture<Void> {
+        var serializer = SQLSerializer(database: self)
+        query.serialize(to: &serializer)
+        let binds: [SQLiteData]
+        do {
+            binds = try serializer.binds.map { encodable in
+                return try SQLiteDataEncoder().encode(encodable)
+            }
+        } catch {
+            return self.eventLoop.makeFailedFuture(error)
+        }
+        return self.database.query(
+            serializer.sql,
+            binds,
+            logger: self.logger
+        ) { row in
+            onRow(row)
+        }
+    }
+}
+/////
+extension Schema {
+    static func on(_ db: SQLDatabase) -> Ref<Self> {
+        return Ref(db)
+    }
+
+    @discardableResult
+    static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
+        let new = Ref<Self>(db)
+        try creator(new)
+        try new.save()
+        return new
+    }
+}
+
 final class SeeQuel {
     static let shared: SeeQuel = SeeQuel(storage: .memory) // SeeQuel(storage: .file(path: seequel_directory.path))
 
 //    private var db: SQLDatabase = TestDatabase()
-    var db: SQLDatabase {
-        self.connection.sql()
+    var db: SQLWrappedLogging<_SQLiteSQLDatabase> {
+        let db = self.connection._sql()
+        return SQLWrappedLogging(db)
     }
 
     private let eventLoopGroup: EventLoopGroup
@@ -422,8 +411,8 @@ protocol Database {
     func load<S>(id: String) -> Ref<S>?
     func load<S>(ids: [String]) -> [Ref<S>]
 
-    func prepare(_ table: Table) throws
-    func prepare(_ tables: [Table]) throws
+//    func prepare(_ table: Table) throws
+//    func prepare(_ tables: [Table]) throws
 
     func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
     func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>]
@@ -437,18 +426,18 @@ extension Database {
         try refs.forEach(save)
     }
 
-    func prepare(_ tables: [Table]) {
-        do {
-            try tables.forEach(prepare)
-        } catch {
-            Log.error("table prepare failed: \(error)")
-        }
-    }
-}
-
-extension Database {
-    func prepare(@TableBuilder _ builder: () -> [Table]) throws {
-        let tables = builder()
-        try self.prepare(tables)
-    }
+//    func prepare(_ tables: [Table]) {
+//        do {
+//            try tables.forEach(prepare)
+//        } catch {
+//            Log.error("table prepare failed: \(error)")
+//        }
+//    }
+//}
+//
+//extension Database {
+//    func prepare(@TableBuilder _ builder: () -> [Table]) throws {
+//        let tables = builder()
+//        try self.prepare(tables)
+//    }
 }
