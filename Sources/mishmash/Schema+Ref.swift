@@ -375,6 +375,35 @@ private struct SQLTableSchema: SQLExpression {
     }
 }
 
+@_functionBuilder
+struct Preparer {
+    static func buildBlock(_ schema: Schema.Type...) {
+
+    }
+}
+
+
+//let db = TestDB()
+
+struct Human: Schema {
+    var id = PrimaryKey<String>()
+    var name = Column<String>("name")
+    var nickname = Column<String?>("nickname")
+    var age = Column<Int>("age")
+
+    // MARK: RELATIONS
+    /// one to one
+    /// should be able to infer a single id column from type, as well as label,
+    /// and have just
+    /// `var nemesis = Column<Human?>()`
+    /// for now taking out, need to address infinite cycle for schema linking to schema
+//    var nemesis = Column<Human?>("nemesis", foreignKey: \.id)
+//
+//    /// one to many
+//    var pets = Column<[Pet]>("pets", containsForeignKey: \.id)
+//    var friends = Column<[Human]>("friends", containsForeignKey: \.id)
+}
+
 extension Schema {
     static func prepare(in db: Database, paths: [PartialKeyPath<Self>]) {
         print("got paths: \(paths)")
@@ -382,6 +411,21 @@ extension Schema {
         print("loadedd: \(loaded)")
     }
 }
+
+extension KeyPath where Root: Schema {
+    func prepare() {
+
+    }
+}
+
+//struct Pet: Schema {
+//    var id = IDColumn<Int>()
+//    var name = Column<String>("name")
+//}
+//
+//protocol ColumnMeta {
+//
+//}
 
 private func unsafe_getProperties<R>(template: Ref<R>) -> [(label: String, type: String)] {
     Mirror(reflecting: template).children.compactMap { child in
@@ -404,6 +448,132 @@ private func _unsafe_getProperties<S: Schema>(template: S) -> [(label: String, t
         guard let label = child.label else { return nil }
         return (label, "\(type(of: child.value))", child.value)
     }
+}
+
+//@_functionBuilder
+//struct PreparationBuilder<S: Schema> {
+//    static func buildBlock(_ paths: PartialKeyPath<S>...) {
+//        let temp = S.template
+//        let loaded = paths.map { temp[keyPath: $0] }
+//        print("loaded: \(loaded)")
+//    }
+//}
+
+//@_functionBuilder
+//struct ColumnBuilder<S: Schema> {
+//    static func buildBlock(_ paths: KeyPath<S, ColumnBase>...) {
+//
+//    }
+//}
+//
+//extension Schema {
+//    static func prepare(on db: Database, @PreparationBuilder<Self> _ builder: () -> Void) {
+//
+//    }
+//}
+
+func testDatabaseStuff() {
+    let huprops = _unsafe_getProperties(template: Human.template)
+    print(huprops)
+//    Human.prepare(on: db) {
+//        \.age
+//        \.friends
+//        \.name
+//        \.pets
+//    }
+//    Human.prepare(on: db) {
+//        \Human.age
+//        \Human.friends
+//        \Human.name
+////        \.age
+////        \.friends
+////        \.name
+////        \.pets
+//    }
+//
+//    Human.prepare(in: db, paths: [\Human.age, \Human.friends, \Human.name, \Human.pets])
+//
+//    let joe = Ref<Human>(database: db)
+//    joe.id = "0"
+//    joe.name = "joe"
+//    joe.age = 13
+//
+//    let jan = Ref<Human>(database: db)
+//    jan.id = "1"
+//    jan.name = "jane"
+//    jan.age = 14
+//    let frand = jan.nemesis
+//    print(frand)
+//
+//    joe.nemesis = jan
+//    jan.nemesis = joe
+//
+//    joe.friends = [joe, jan]
+
+//    let bobo = Ref<Pet>(db)
+//    bobo.name = "bobo"
+//    try! bobo.save()
+//    let spike = Ref<Pet>(db)
+//    spike.name = "spike"
+//    try! spike.save()
+//    let dolly = Ref<Pet>(db)
+//    dolly.name = "dolly"
+//    try! dolly.save()
+//
+////    joe.pets = [bobo, spike, dolly]
+////    jan.pets = [bobo]
+//
+//    print(db.tables[Human.table])
+//    try! joe.save()
+//    try! jan.save()
+//    print(db.tables[Human.table]!)
+//    try! joe.save()
+//    jan.friend = joe
+//    try! jan.save()
+//    joe.friend()
+//    joe.save()
+
+//    print("Hi: \(joe.friends)")
+}
+
+func orig_testDatabaseStuff() {
+//    Database.shared.prepare {
+//        Pet.self
+//        Human.self
+//    }
+
+//    Human.prepare {
+//        \Human.id
+//        \Human._dad
+//    }
+
+//    Pet.fetch(where: \.friend, .equals, "joe")
+//    newhh.id = ""
+
+//    let new = Ref<Human>()
+//    new.id = "asdf"
+//    new.age = 13
+//    print("Hi: \(new.friend)")
+//    let pets = new.pets
+//    let a = new.pets
+//    let pets = new.relations(matching: \Pet.friend)
+//    let parent = new.parent(matching: \._dad) as Ref<Human>
+//    new.child(matching: <#T##KeyPath<Schema, Column<Decodable & Encodable>>#>)
+
+//    let a = new.age
+//    let asd = unsafe_getProperties(template: new)
+//    print(asd)
+//    let props = unsafe_getProperties(template: Human.self)
+//    print(props)
+//    \Human.id
+//    let all = Human.template.allKeyPaths
+    print()
+//    new.name = "blorgop"
+
+//    new.age.
+    let ref: Ref<Human>! = nil
+
+//    let a = ref.age
 }
 
 import Foundation
