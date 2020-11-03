@@ -272,7 +272,7 @@ extension SeeQuel: Database {
     }
 
     func update<S>(_ ref: Ref<S>) where S: Schema {
-        guard let primary = ref.primaryKey else { fatalError("can only update with primary keyed objects currently") }
+        let primary = S.template._primaryKeyColumn
         try! self.db
             .update(S.table)
             .where(primary.name.sqlid, .equal, ref.backing[primary.name])

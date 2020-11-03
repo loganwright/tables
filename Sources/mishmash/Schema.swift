@@ -31,14 +31,14 @@ extension Schema {
     }
 }
 
-extension Ref {
-    var primaryKey: PrimaryKeyBase? {
-        S.template.primaryKey
-    }
-    var isPrimaryKeyed: Bool {
-        S.template.isPrimaryKeyed
-    }
-}
+//extension Ref {
+//    var primaryKey: PrimaryKeyBase? {
+//        S.template.primaryKey
+//    }
+//    var isPrimaryKeyed: Bool {
+//        S.template.isPrimaryKeyed
+//    }
+//}
 
 // MARK: Template
 
@@ -128,47 +128,6 @@ extension Schema {
 }
 
 import SQLKit
-
-extension SQLTableConstraintAlgorithm {
-
-}
-extension SQLColumnConstraintAlgorithm {
-//    var validInSQLite: Bool {
-//
-//    }
-}
-
-class SQLColumn {
-    /// can't decide on naming, going back and forth :/
-    var key: String {
-        get { name }
-        set { name = newValue }
-    }
-
-    open var name: String
-    @Later open var type: SQLDataType
-
-    /// using the Later attribute to allow nested columns to properly initialize
-    @Later open var constraints: [SQLColumnConstraintAlgorithm]
-
-    open var shouldSerialize = true
-
-    init(_ name: String, _ type: Later<SQLDataType>, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
-        self.name = name
-        self._type = type
-        self._constraints = constraints
-    }
-
-    init(_ name: String, _ type: SQLDataType, _ constraints: Later<[SQLColumnConstraintAlgorithm]>) {
-        self.name = name
-        self._type = Later(type)
-        self._constraints = constraints
-    }
-
-    convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
-        self.init(name, type, Later(constraints))
-    }
-}
 
 protocol DatabaseValue {
     static var sqltype: SQLDataType { get }
@@ -449,6 +408,8 @@ protocol Database {
     func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
     func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>]
 //    func getAll<S: Schema, T: Encodable>(where key: String, containedIn: [T]) -> [Ref<S>]
+
+//    func delete<T>(where key: String, contains: T)
 }
 
 extension Database {

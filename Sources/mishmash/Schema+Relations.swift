@@ -156,6 +156,7 @@ class ToOne<One: Schema> {
 
 // MARK: Pivots
 
+/// the underlying schema for storing the pivot
 struct PivotSchema<Left: Schema, Right: Schema>: Schema {
     static var table: String {
         [Left.table, Right.table].sorted().joined(separator: "_")
@@ -183,20 +184,30 @@ extension Schema {
 @propertyWrapper
 class Pivot<Left: Schema, Right: Schema>  {
     var wrappedValue: [Ref<Right>] { replacedDynamically() }
+    var projectedValue: Pivot<Left, Right> { self }
 
     @Later var lk: PrimaryKeyBase
     @Later var rk: PrimaryKeyBase
-
-    //    init<T, U>(_ lk: KeyPath<Left, PrimaryKey<T>>,
-//               _ rk: KeyPath<Right, PrimaryKey<U>>) {
-//        self._lk = Later { Left.template[keyPath: lk] }
-//        self._rk = Later { Right.template[keyPath: rk] }
-//    }
 
     init() {
         /// this is maybe easier for now, upper version is easier to move to support unique keys
         self._lk = Later { Left.template._primaryKeyColumn }
         self._rk = Later { Right.template._primaryKeyColumn }
+    }
+}
+
+extension Pivot {
+    static var schema: PivotSchema<Left, Right> { .template }
+
+    func drop(_ r: Right) {
+        fatalError()
+//        let lk = Left.template_.primary
+//
+//            try db.delete(from: "planets")
+//                .where("name", .equal, "Jupiter")
+//                .run().wait()
+//            XCTAssertEqual(db.re
+//        schema.
     }
 }
 

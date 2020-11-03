@@ -236,6 +236,9 @@ final class RelationTests: SieqlTersts {
             XCTAssert(names.contains("science"))
         }
         XCTAssert(!student_group_b.isEmpty)
+
+//        let jorb = students[0]
+//        jorb.$classes
     }
 }
 
@@ -427,8 +430,6 @@ final class DBTests: XCTestCase {
 //            instance[keyPath: column] = ""
         }
     }
-
-
 }
 
 //protocol PrimaryKeyProtocol {}
