@@ -4,6 +4,7 @@ import SQLKit
 
 
 class SieqlTersts: XCTestCase {
+    var db: SQLDatabase { sql.testable_db }
     var sql: SQLManager! = SQLManager.unsafe_testable._unsafe_testable_setIsOpen(true)
 
     override func tearDown() {
@@ -59,8 +60,6 @@ final class RelationTests: SieqlTersts {
         let title = Column<String>()
         let author = ForeignKey<Author>(pointingTo: \.id)
     }
-
-    var db: SQLDatabase { sql.testable_db }
 
     func testOneToManyKey() throws {
         try db.prepare {
@@ -189,7 +188,6 @@ final class RelationTests: SieqlTersts {
         let id = PrimaryKey<Int>()
         let name = Column<String>()
         let classes = Pivot<Student, Course>()
-
     }
 
     func testManyToMany() throws {
@@ -270,10 +268,9 @@ final class RelationTests: SieqlTersts {
 }
 
 final class DBTests: SieqlTersts {
-    var db: SQLDatabase { sql.testable_db }
 
     func testExtractProperties() {
-        let properties = Item.template._unsafe_forceProperties()
+        let properties = _unsafe_force_Load_properties_on(Item.template)
         let columns = properties.compactMap { $0.val as? SQLColumn }
         XCTAssertEqual(properties.count, 3)
         XCTAssertEqual(properties.count, columns.count)
@@ -378,7 +375,7 @@ final class DBTests: SieqlTersts {
 
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
-        let _ = Foo.template._unsafe_forceColumns()
+        let _ = Foo.template._allColumns
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("incompatible schema property") }))
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
     }
@@ -402,12 +399,12 @@ final class DBTests: SieqlTersts {
 
         let w_meta = try db.unsafe_table_meta("item")
         XCTAssertEqual(w_meta.count, 3)
-        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template._unsafe_forceColumns().map(\.name).sorted())
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.sqlColumns.map(\.name).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
         XCTAssertEqual(h_meta.count, 5)
         let storedNames = h_meta.map(\.name).sorted()
-        let expected = Hero.template.columns.map(\.name).sorted()
+        let expected = Hero.template.sqlColumns.map(\.name).sorted()
         XCTAssertEqual(storedNames, expected)
     }
 
@@ -512,7 +509,7 @@ final class DBTests: SieqlTersts {
     func testMatch() throws {
         try db.prepare {
             Team.self
-            Player.self
+            SportsFan.self
         }
 
         let cats = Ref<Team>(db)
@@ -524,6 +521,7 @@ final class DBTests: SieqlTersts {
     }
 }
 
+
 struct Team: Schema {
     let id = PrimaryKey<String>()
     let name = Column<String>()
@@ -533,10 +531,10 @@ struct Team: Schema {
     ///
     let rival = ForeignKey<Team>("rival", pointingTo: \.id)
     ///
-    let players = ToMany<Player>(linkedBy: \.team)
+    let fans = ToMany<SportsFan>(linkedBy: \.team)
 }
 
-struct Player: Schema {
+struct SportsFan: Schema {
     let id = PrimaryKey<Int>()
     let team = ForeignKey<Team>(pointingTo: \.id)
 }

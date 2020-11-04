@@ -20,19 +20,12 @@ extension Schema {
     /// loading this way also ensures that labels are set
     /// according to swift properties
     static var template: Self {
-        if self is Team {
-            print("found team: \(Team.self)")
-        }
         if let existing = _templates[table] as? Self { return existing }
         let new = Self.init()
         /// populates the names of the columns with introspected values
         /// maybe a better way, but for now is helpful
-        let columns = new._unsafe_forceColumns()
+        let _ = _unsafe_force_hydrate_columns_on(new)
         _templates[table] = new
-        if self is Team {
-            print("loaded team: \(Team.self): \(columns)")
-            print("")
-        }
         return new
     }
 
@@ -43,43 +36,84 @@ extension Schema {
 }
 
 extension Schema {
-    var columns: [SQLColumn] {
-        _unsafe_forceColumns()
+    /// SQLColumn and ComositeCollection
+    var _allColumns: [Any] {
+        _unsafe_force_hydrate_columns_on(self)
     }
 
-    var relations: [Relation] {
-        _unsafe_forceProperties().compactMap {
-            $0.val as? Relation
-        }
+    /// these discourage bad things and are confusing, organize when time
+    var sqlColumns: [SQLColumn] {
+        _allColumns.compactMap { $0 as? SQLColumn }
+    }
+
+    /// compositeColumn or constraintGroup
+    var compositeColumns: [CompositeColumn] {
+        _allColumns.compactMap { $0 as? CompositeColumn }
+    }
+
+    var _relations: [Relation] {
+        _unsafe_force_Load_properties_on(self)
+            .compactMap { $0.val as? Relation }
     }
 }
 
-extension Schema {
-    func _unsafe_forceColumns() -> [SQLColumn] {
-        _unsafe_forceProperties().compactMap { prop in
-            guard let column = prop.val as? SQLColumn else {
-                if let _ = prop.val as? Relation { return nil }
-                Log.warn("incompatible schema property: \(Self.self).\(prop.label): \(prop.columntype)")
-                Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
-                return nil
-            }
-
-            if column.name.isEmpty { column.name = prop.label }
-            return column
-        }
+extension CompositeKeys {
+    /// SQLColumn and ComositeCollection
+    var _allColumns: [Any] {
+        _unsafe_force_hydrate_columns_on(self)
     }
 
-    /// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
-    /// load all introspectable properties from an instance
-    ///
-    /// ok, I was thinking about it.. when the nested key declares a key path of it's container
-    /// `let friend = ForeignKey<Self>(\.id)`
-    /// and if there's anything in the column creators, it seems to choke, idk, in that case, declare a key
-    ///
-    func _unsafe_forceProperties() -> [Property] {
-        Mirror(reflecting: self).children.compactMap { child in
-            guard let label = child.label else { fatalError("expected a label for template property") }
-            return Property(label, child.value)
+    /// these discourage bad things and are confusing, organize when time
+    var sqlColumns: [SQLColumn] {
+        _allColumns.compactMap { $0 as? SQLColumn }
+    }
+
+    /// compositeColumn or constraintGroup
+    var compositeColumns: [CompositeColumn] {
+        _allColumns.compactMap { $0 as? CompositeColumn }
+    }
+
+    var _relations: [Relation] {
+        _unsafe_force_Load_properties_on(self)
+            .compactMap { $0.val as? Relation }
+    }
+}
+
+/// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
+/// load all introspectable properties from an instance
+///
+/// ok, I was thinking about it.. when the nested key declares a key path of it's container
+/// `let friend = ForeignKey<Self>(\.id)`
+/// and if there's anything in the column creators, it seems to choke, idk, in that case, declare a key
+///
+/// that was when it was nested tho
+///
+func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
+    Mirror(reflecting: subject).children.compactMap { child in
+        assert(child.label != nil, "expected a label for template property")
+        return Property(child.label!, child.value)
+    }
+}
+
+/// should this use a base 'Column' protocol? it's nice having them separate at the moment
+func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [Any] {
+    let properties = _unsafe_force_Load_properties_on(subject)
+    return properties.compactMap { prop in
+        switch prop.val {
+        /// standard persisted column
+        case let column as SQLColumn:
+            if column.name.isEmpty { column.name = prop.label }
+            return column
+        /// standard reulation, not a column, but ok
+        case _ as Relation:
+            return nil
+        /// not a column, but sort of, special considerations
+        case let composite as CompositeColumn:
+            return composite
+        default:
+            Log.warn("incompatible schema property: \(type(of: subject)).\(prop.label): \(prop.columntype)")
+            Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
+            return nil
         }
     }
 }
@@ -91,7 +125,7 @@ extension Schema {
     /// one can name their primary key as they'd like, this is
     /// a generic name that will extract
     var primaryKey: PrimaryKeyBase? {
-        columns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
+        sqlColumns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
     }
 
     /// whether a schema is primary keyed
@@ -107,6 +141,10 @@ extension Schema {
         let pk = primaryKey
         assert(pk != nil, "no primary key found: \(Schema.self)")
         return pk!
+    }
+
+    var primaryKeyGroup: Any? {
+        fatalError()
     }
 }
 
@@ -169,6 +207,7 @@ func replacedDynamically() -> Never { fatalError() }
 protocol PrimaryKeyValue: DatabaseValue {}
 extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
+
 
 @propertyWrapper
 class Unique<Value: DatabaseValue>: Column<Value> {

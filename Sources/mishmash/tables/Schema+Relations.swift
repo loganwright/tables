@@ -237,6 +237,73 @@ extension SQLCreateTableBuilder {
     }
 }
 
+protocol CompositeKeyConstraint: CompositeKeys {
+
+}
+
+extension SQLCreateTableBuilder {
+    /// There's a lot of subtle differences in how foreign constraints are grouped
+    /// for now, it's best to assume foreign keys
+    func add(compositeKey fc: CompositeKeys) throws -> SQLCreateTableBuilder {
+        let columns = fc.sqlColumns
+        if fc.constraint == .primary, columns.allPrimaryKeys {
+            Log.warn("make composite primary key")
+        } else if fc.constraint == .foreign, columns.allForeignKeys {
+            Log.warn("make composite foreign keys")
+            let foreignConstraints = columns._foreignConstraints
+            guard foreignConstraints.validateTableMatch else {
+                throw "composite foreign keys must point to the same external table"
+            }
+
+            let pointingFrom = foreignConstraints.map(\.pointingFrom).map(\.name)
+            let table = foreignConstraints[0].pointingToRemoteTable
+            let pointingTo = foreignConstraints.map(\.pointingTo).map(\.name)
+            assert(pointingFrom.count == pointingTo.count)
+            let onDelete = foreignConstraints.compactMap(\.onDelete)
+            let onUpdate = foreignConstraints.compactMap(\.onUpdate)
+            assert(0...1 ~= onDelete.count,
+                   "multiple actions not supported on composite foreign keys")
+            assert(0...1 ~= onUpdate.count,
+                   "multiple actions not supported on composite foreign keys")
+            // do they all have to go to same table? idk
+            return self.foreignKey(pointingFrom,
+                                   references: table,
+                                   pointingTo,
+                                   onDelete: onDelete.first,
+                                   onUpdate: onUpdate.first,
+                                   named: nil)
+        } else if fc.constraint == .unique, !columns.allPrimaryKeys {
+            let names = columns.map(\.name)
+            return self.unique(names, named: nil)
+        }
+
+        throw "unexpected columns found for compositeKeys: \(columns)"
+    }
+}
+
+extension Array where Element == ForeignKeyConstraint {
+    var validateTableMatch: Bool {
+        Set(map(\.pointingToRemoteTable)).count == 1
+    }
+}
+
+extension Array where Element == SQLColumn {
+    var _foreignConstraints: [ForeignKeyConstraint] {
+        compactMap { $0 as? ForeignKeyConstraint }
+    }
+    var allPrimaryKeys: Bool {
+        allSatisfy { $0 is PrimaryKeyBase }
+    }
+
+    var allForeignKeys: Bool {
+        allSatisfy { $0 is ForeignKeyConstraint }
+    }
+
+    var allUniqueable: Bool {
+        filter { $0 is PrimaryKeyBase || $0 is ForeignKeyConstraint } .isEmpty
+    }
+}
+
 /// overkill prolly, lol
 @_functionBuilder
 class Preparer {
@@ -255,7 +322,47 @@ extension SQLDatabase {
 
         let template = schema.init()
         var prepare = self.create(table: schema.table)
-        prepare = template.columns.compactMap { column in
+        let allColumns = template._allColumns
+        prepare = try allColumns.flatMap(sqlColumns).compactMap { column in
+            prepare = prepare.column(column.name,
+                                     type: column.type,
+                                     column.constraints)
+
+            return column as? ForeignKeyConstraint
+        } .reduce(prepare) { prepare, constraint in
+            prepare.add(foreignConstraint: constraint)
+        }
+
+        /// set composite key
+        prepare = try allColumns.compactMap {
+            $0 as? CompositeKeys
+        } .reduce(prepare) { prepare, constraint in
+            try prepare.add(compositeKey: constraint)
+        }
+
+
+        try prepare.run().wait()
+    }
+
+    /// a bit lazy at this point, will try to clean up
+    private func sqlColumns(with input: Any) throws -> [SQLColumn] {
+        switch input {
+        case let column as SQLColumn:
+            return [column]
+        case let column as CompositeKeys:
+            return column.sqlColumns
+        default:
+            throw "unexpected row"
+        }
+    }
+
+    func orig_prepare(_ schema: Schema.Type) throws {
+        Log.info("preparing: \(schema.table)")
+
+        let template = schema.init()
+        var prepare = self.create(table: schema.table)
+        
+        prepare = template.sqlColumns.compactMap { column in
             prepare = prepare.column(column.name, type: column.type, column.constraints)
             return column as? ForeignKeyConstraint
         } .reduce(prepare) { prepare, constraint in
@@ -425,7 +532,12 @@ func asdfsdfOO() throws {
 @propertyWrapper
 final class Later<T> {
     var wrappedValue: T {
-        loader()
+        get {
+            loader()
+        }
+        set {
+            loader = { newValue }
+        }
     }
     var projectedValue: Later<T> { self }
 

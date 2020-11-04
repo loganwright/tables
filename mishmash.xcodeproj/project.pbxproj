@@ -34,6 +34,8 @@
 		8082EE75254E8B9500ACBADA /* String+Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE74254E8B9500ACBADA /* String+Error.swift */; };
 		8082EE7F254E902500ACBADA /* Globals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE7E254E902500ACBADA /* Globals.swift */; };
 		80B31F2A2551522C00CFA510 /* Schema+Columns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B31F292551522C00CFA510 /* Schema+Columns.swift */; };
+		80F1272F25524EE300A11019 /* ConstraintGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1272E25524EE300A11019 /* ConstraintGroup.swift */; };
+		80F1273525526FED00A11019 /* CompositeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1273425526FED00A11019 /* CompositeTests.swift */; };
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
@@ -81,6 +83,8 @@
 		8082EE74254E8B9500ACBADA /* String+Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Error.swift"; sourceTree = "<group>"; };
 		8082EE7E254E902500ACBADA /* Globals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Globals.swift; sourceTree = "<group>"; };
 		80B31F292551522C00CFA510 /* Schema+Columns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Schema+Columns.swift"; sourceTree = "<group>"; };
+		80F1272E25524EE300A11019 /* ConstraintGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstraintGroup.swift; sourceTree = "<group>"; };
+		80F1273425526FED00A11019 /* CompositeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeTests.swift; sourceTree = "<group>"; };
 		80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctionBuilders.swift; sourceTree = "<group>"; };
 		80F3CD8E254CE50B00EFA52F /* HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTP.swift; sourceTree = "<group>"; };
 		80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyPathListable.swift; sourceTree = "<group>"; };
@@ -133,6 +137,7 @@
 				80FAA567254FBE3F001F3528 /* Schema+Ref.swift */,
 				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
 				80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */,
+				80F1272E25524EE300A11019 /* ConstraintGroup.swift */,
 			);
 			path = tables;
 			sourceTree = "<group>";
@@ -152,6 +157,7 @@
 				OBJ_13 /* mishmashTests.swift */,
 				80F3CDA1254D24AD00EFA52F /* http-tests.swift */,
 				8082EE56254E89FD00ACBADA /* db-tests.swift */,
+				80F1273425526FED00A11019 /* CompositeTests.swift */,
 			);
 			name = mishmashTests;
 			path = Tests/mishmashTests;
@@ -314,9 +320,11 @@
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
 				80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */,
 				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
+				80F1272F25524EE300A11019 /* ConstraintGroup.swift in Sources */,
 				80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* Schema+Ref.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
+				80F1273525526FED00A11019 /* CompositeTests.swift in Sources */,
 				80FAA558254FB4B2001F3528 /* Schema+Relations.swift in Sources */,
 				8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */,
 			);

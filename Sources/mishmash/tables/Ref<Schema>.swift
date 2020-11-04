@@ -171,6 +171,139 @@ final class Ref<S: Schema> {
     }
 }
 
+//struct HockeyPlayer: Schema {
+//    class Group: KeyGroup {
+//        let team = Column<String>()
+//        let number = Column<Int>()
+//        let nickname = Column<String>()
+//    }
+//
+//
+//    let group = Composite<Group>()
+//}
+//
+//struct DualKey: Schema {
+//    struct Group: KeyGroup {
+//        let userId = PrimaryKey<Int>()
+//        let studentId = PrimaryKey<String>()
+//    }
+//
+//    let group = Composite<Group>()
+//}
+
+//struct Playera: Schema {
+//    @Grouppp
+//    var team = Column<String>()
+//    @Grouppp
+//    var jersey = Column<Int>()
+//}
+
+struct Primaries {
+//    @Grouppp
+}
+
+
+struct Gamer: Schema {
+    let id = PrimaryKey<Int>()
+    let gamerTag = PrimaryKey<String>()
+
+    let adsf = compounding(\.id, \.gamerTag)
+}
+
+
+@propertyWrapper
+struct Grouppp<T> {
+    var wrappedValue: T
+    init(wrappedValue: T) {
+        self.wrappedValue = wrappedValue
+    }
+    init<U, V>(wrappedValue: T, _ a: KeyPath<U, V>) {
+        self.wrappedValue = wrappedValue
+    }
+}
+
+
+
+protocol KeyGroup { }
+protocol UniqueKeyGroup: KeyGroup { }
+protocol PrimaryKeyGroup: UniqueKeyGroup { }
+
+//protocl _Column {}
+
+typealias CompositeKeys = CompositeColumn
+enum Constraint: Equatable {
+    case unique, primary, foreign
+}
+protocol CompositeColumn {
+    var constraint: Constraint { get }
+}
+
+struct Player: Schema {
+    struct Group: CompositeColumn {
+        let team = Column<String>()
+        let jersey = Column<Int>()
+        var constraint: Constraint = .unique
+    }
+    let group = Group()
+}
+
+/**
+
+ we might not need this class, just declare it directly
+ */
+//@dynamicMemberLookup
+//class Composite<Group: KeyGroup> {
+//    subscript<T>(dynamicMember key: KeyPath<Group, Column<T>>) -> T {
+//        fatalError()
+//    }
+//}
+
+extension Ref {
+    subscript<P: CompositeColumn>(dynamicMember key: KeyPath<S, P>) -> P {
+        fatalError()
+    }
+}
+func asdflsdjalfjkasdlkfj() {
+    let a = Player.on(SQLManager.shared.testable_db)
+    a.group.jersey
+}
+
+//
+//struct Player: Schema {
+//    struct Group: UniqueKeyGroup {
+//        let team = Column<String>()
+//        let jersey = Column<Int>()
+//    }
+//    let group = Composite<Group>()
+//}
+
+
+protocol GroupSchema {}
+//
+//extension Ref {
+////    subscript<P>(dynamicMember key: KeyPath<S, Composite<P>>) -> Composite<P> {
+////        fatalError()
+////    }
+//    subscript<P: GroupSchema>(dynamicMember key: KeyPath<S, Composite<P>>) -> Int {
+//        fatalError()
+//    }
+//}
+//
+//@dynamicMemberLookup
+//class Composite<Group: GroupSchema> {
+//    subscript<T>(dynamicMember key: KeyPath<Group, Column<T>>) -> T {
+//        fatalError()
+//    }
+//}
+//
+//
+//
+//func asdflsdjalfjkasdlkfj() {
+//
+//    let player = HockeyPlayer.on(SQLManager.shared.testable_db)
+//    let a = \HockeyPlayer.group.team
+//}
+
 import SQLiteKit
 import Foundation
 
