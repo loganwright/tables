@@ -25,6 +25,7 @@
 		803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E8E2551F89C00317F66 /* Pivot.swift */; };
 		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
 		80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */; };
+		805DD3F9255361CB0089FE32 /* TableConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805DD3F8255361CB0089FE32 /* TableConstraints.swift */; };
 		8082EE42254E336500ACBADA /* Schema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Schema.swift */; };
 		8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
 		8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE5C254E8A8900ACBADA /* SQLManager.swift */; };
@@ -74,6 +75,7 @@
 		803F5E8E2551F89C00317F66 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		803F5E9C2552023500317F66 /* Ref<Schema>.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ref<Schema>.swift"; sourceTree = "<group>"; };
 		80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SQLDatabase+Extensions.swift"; sourceTree = "<group>"; };
+		805DD3F8255361CB0089FE32 /* TableConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableConstraints.swift; sourceTree = "<group>"; };
 		8082EE41254E336500ACBADA /* Schema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schema.swift; sourceTree = "<group>"; };
 		8082EE56254E89FD00ACBADA /* db-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "db-tests.swift"; sourceTree = "<group>"; };
 		8082EE5C254E8A8900ACBADA /* SQLManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLManager.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
 				80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */,
 				80F1272E25524EE300A11019 /* ConstraintGroup.swift */,
+				805DD3F8255361CB0089FE32 /* TableConstraints.swift */,
 			);
 			path = tables;
 			sourceTree = "<group>";
@@ -308,6 +311,7 @@
 				80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */,
 				8082EE63254E8A9F00ACBADA /* Log.swift in Sources */,
 				803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */,
+				805DD3F9255361CB0089FE32 /* TableConstraints.swift in Sources */,
 				OBJ_24 /* mishmash.swift in Sources */,
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
 				80B31F2A2551522C00CFA510 /* Schema+Columns.swift in Sources */,

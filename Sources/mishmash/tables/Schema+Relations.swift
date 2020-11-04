@@ -204,7 +204,7 @@ postfix func /(_ a: Alert) -> Never {
 ///
 /// foreign keys (and in the future, composite primary keys) need to be declared at end of file
 ///
-protocol ForeignKeyConstraint {
+protocol ForeignColumnKeyConstraint {
     var pointingFrom: SQLColumn { get }
     // todo: support multikeys
     var pointingTo: PrimaryKeyBase { get }
@@ -214,11 +214,11 @@ protocol ForeignKeyConstraint {
     var named: String? { get }
 }
 
-extension ForeignKeyConstraint {
+extension ForeignColumnKeyConstraint {
     var named: String? { nil }
 }
 
-extension ForeignKey: ForeignKeyConstraint {
+extension ForeignKey: ForeignColumnKeyConstraint {
     var pointingToRemoteTable: String { Foreign.table }
 }
 
@@ -227,7 +227,7 @@ extension ForeignKey: ForeignKeyConstraint {
 extension SQLCreateTableBuilder {
     /// There's a lot of subtle differences in how foreign constraints are grouped
     /// for now, it's best to assume foreign keys
-    func add(foreignConstraint fc: ForeignKeyConstraint) -> SQLCreateTableBuilder {
+    func add(foreignConstraint fc: ForeignColumnKeyConstraint) -> SQLCreateTableBuilder {
         foreignKey([fc.pointingFrom.name],
                    references: fc.pointingToRemoteTable,
                    [fc.pointingTo.name],
@@ -237,15 +237,12 @@ extension SQLCreateTableBuilder {
     }
 }
 
-protocol CompositeKeyConstraint: CompositeKeys {
-
-}
 
 extension SQLCreateTableBuilder {
     /// There's a lot of subtle differences in how foreign constraints are grouped
     /// for now, it's best to assume foreign keys
-    func add(compositeKey fc: CompositeKeys) throws -> SQLCreateTableBuilder {
-        let columns = fc.sqlColumns
+    func add(compositeKey fc: CompositeKey) throws -> SQLCreateTableBuilder {
+        let columns = [] as! [SQLColumn] // fc.sqlColumns
         if fc.constraint == .primary, columns.allPrimaryKeys {
             Log.warn("make composite primary key")
         } else if fc.constraint == .foreign, columns.allForeignKeys {
@@ -281,26 +278,26 @@ extension SQLCreateTableBuilder {
     }
 }
 
-extension Array where Element == ForeignKeyConstraint {
+extension Array where Element == ForeignColumnKeyConstraint {
     var validateTableMatch: Bool {
         Set(map(\.pointingToRemoteTable)).count == 1
     }
 }
 
 extension Array where Element == SQLColumn {
-    var _foreignConstraints: [ForeignKeyConstraint] {
-        compactMap { $0 as? ForeignKeyConstraint }
+    var _foreignConstraints: [ForeignColumnKeyConstraint] {
+        compactMap { $0 as? ForeignColumnKeyConstraint }
     }
     var allPrimaryKeys: Bool {
         allSatisfy { $0 is PrimaryKeyBase }
     }
 
     var allForeignKeys: Bool {
-        allSatisfy { $0 is ForeignKeyConstraint }
+        allSatisfy { $0 is ForeignColumnKeyConstraint }
     }
 
     var allUniqueable: Bool {
-        filter { $0 is PrimaryKeyBase || $0 is ForeignKeyConstraint } .isEmpty
+        filter { $0 is PrimaryKeyBase || $0 is ForeignColumnKeyConstraint } .isEmpty
     }
 }
 
@@ -327,30 +324,48 @@ extension SQLDatabase {
             prepare = prepare.column(column.name,
                                      type: column.type,
                                      column.constraints)
-
-            return column as? ForeignKeyConstraint
+            return column as? ForeignColumnKeyConstraint
         } .reduce(prepare) { prepare, constraint in
             prepare.add(foreignConstraint: constraint)
         }
 
         /// set composite key
         prepare = try allColumns.compactMap {
-            $0 as? CompositeKeys
+            $0 as? CompositeKey
         } .reduce(prepare) { prepare, constraint in
             try prepare.add(compositeKey: constraint)
         }
 
+        let tableConstraints = schema.tableConstraints
+        if !tableConstraints.isEmpty {
+            print("found a constraint!")
+            prepare = tableConstraints.reduce(prepare) { prepare, builder in
+                builder(prepare)
+            }
+            print("")
+        }
 
         try prepare.run().wait()
     }
+    /**
+
+
+                            - check if collumn has group constraint, if yes, ignore that constraint
+        -
+
+
+
+
+     */
 
     /// a bit lazy at this point, will try to clean up
     private func sqlColumns(with input: Any) throws -> [SQLColumn] {
         switch input {
         case let column as SQLColumn:
             return [column]
-        case let column as CompositeKeys:
-            return column.sqlColumns
+        case let column as CompositeKey:
+            fatalError()
+//            return column.sqlColumns
         default:
             throw "unexpected row"
         }
@@ -364,7 +379,7 @@ extension SQLDatabase {
         
         prepare = template.sqlColumns.compactMap { column in
             prepare = prepare.column(column.name, type: column.type, column.constraints)
-            return column as? ForeignKeyConstraint
+            return column as? ForeignColumnKeyConstraint
         } .reduce(prepare) { prepare, constraint in
             prepare.add(foreignConstraint: constraint)
         }
@@ -387,9 +402,10 @@ extension Array where Element: SQLColumn {
 /// schema fields that are not persisted, but a reference to something
 /// in another table
 protocol Relation {}
+
 /// the key is not stored on this user
 /// they query their id in other tables
-protocol EphemeralRelation {
+protocol EphemeralRelation: Relation {
     /// the key on the current object to which the external objects are pointing
     var pointingTo: PrimaryKeyBase { get }
     /// column in the 'Many' table that contains the unowned id

@@ -53,6 +53,12 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
         self.right = right
 //        self.group = Group(left: left, right: right)
     }
+
+    static var tableConstraints: [QueryBuildStep] {
+        TableConstraints {
+            PrimaryKeyGroup(\.left, \.right)
+        }
+    }
 }
 
 ///

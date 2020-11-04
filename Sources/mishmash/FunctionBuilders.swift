@@ -7,23 +7,23 @@
 
 import Foundation
 
-
-@_functionBuilder
-struct Builder {
-    static func buildBlock(_ strs: String...) -> String {
-        return strs.joined(separator: " – ")
-    }
-
-    static func buildBlock(_ strs: Any...) -> String {
-        return strs.map { "\($0)" } .joined(separator: " – ")
-    }
-}
-
-struct Combiner {
-    init(@Builder builder: () -> String) {
-
-    }
-}
+//
+//@_functionBuilder
+//struct Builder {
+//    static func buildBlock(_ strs: String...) -> String {
+//        return strs.joined(separator: " – ")
+//    }
+//
+//    static func buildBlock(_ strs: Any...) -> String {
+//        return strs.map { "\($0)" } .joined(separator: " – ")
+//    }
+//}
+//
+//struct Combiner {
+//    init(@Builder builder: () -> String) {
+//
+//    }
+//}
 
 struct Foo {
     var name: String
@@ -36,8 +36,8 @@ func go() {
     let value = a[keyPath: b]
     print(value)
     [1,2,3].map(\.words)
-    let c = Combiner {
-        "a"
-    }
+//    let c = Combiner {
+//        "a"
+//    }
 }
 

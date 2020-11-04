@@ -224,25 +224,24 @@ struct Grouppp<T> {
 
 
 
-protocol KeyGroup { }
-protocol UniqueKeyGroup: KeyGroup { }
-protocol PrimaryKeyGroup: UniqueKeyGroup { }
+//protocol KeyGroup { }
+//protocol UniqueKeyGroup: KeyGroup { }
+//protocol PrimaryKeyGroup: UniqueKeyGroup { }
 
 //protocl _Column {}
 
-typealias CompositeKeys = CompositeColumn
-enum Constraint: Equatable {
+enum ConstraintType: Equatable {
     case unique, primary, foreign
 }
-protocol CompositeColumn {
-    var constraint: Constraint { get }
+protocol CompositeKey {
+    var constraint: ConstraintType { get }
 }
 
 struct Player: Schema {
-    struct Group: CompositeColumn {
+    struct Group: CompositeKey {
         let team = Column<String>()
         let jersey = Column<Int>()
-        var constraint: Constraint = .unique
+        var constraint: ConstraintType = .unique
     }
     let group = Group()
 }
@@ -259,7 +258,7 @@ struct Player: Schema {
 //}
 
 extension Ref {
-    subscript<P: CompositeColumn>(dynamicMember key: KeyPath<S, P>) -> P {
+    subscript<P: CompositeKey>(dynamicMember key: KeyPath<S, P>) -> P {
         fatalError()
     }
 }
@@ -327,10 +326,15 @@ extension Ref {
             switch id.kind {
             case .uuid:
                 /// uuid not auto generated, needs to be made
+                Log.info("allow a more general string type for like email")
+                Log.info("this one should be PrimaryKey<UUID>")
                 self.backing[id.name] = UUID().json
             case .int:
+                Log.warn("in multi groups, autoincrement fails..")
                 // set automatically after save by sql
-                break
+            case .composite:
+                Log.error("composite support not yet implemented")
+                alert/
             }
         }
 

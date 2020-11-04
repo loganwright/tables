@@ -3,10 +3,12 @@
 protocol Schema {
     init()
     static var table: String { get }
+    static var tableConstraints: [QueryBuildStep] { get }
 }
 
 extension Schema {
     static var table: String { "\(Self.self)".lowercased()}
+    static var tableConstraints: [QueryBuildStep] { [] }
 }
 
 protocol TableBindings: Schema {
@@ -47,8 +49,8 @@ extension Schema {
     }
 
     /// compositeColumn or constraintGroup
-    var compositeColumns: [CompositeColumn] {
-        _allColumns.compactMap { $0 as? CompositeColumn }
+    var compositeColumns: [CompositeKey] {
+        _allColumns.compactMap { $0 as? CompositeKey }
     }
 
     var _relations: [Relation] {
@@ -57,26 +59,29 @@ extension Schema {
     }
 }
 
-extension CompositeKeys {
-    /// SQLColumn and ComositeCollection
-    var _allColumns: [Any] {
-        _unsafe_force_hydrate_columns_on(self)
+extension CompositeKey {
+    var _groupedKeys: [Any] {
+        fatalError()
     }
-
-    /// these discourage bad things and are confusing, organize when time
-    var sqlColumns: [SQLColumn] {
-        _allColumns.compactMap { $0 as? SQLColumn }
-    }
-
-    /// compositeColumn or constraintGroup
-    var compositeColumns: [CompositeColumn] {
-        _allColumns.compactMap { $0 as? CompositeColumn }
-    }
-
-    var _relations: [Relation] {
-        _unsafe_force_Load_properties_on(self)
-            .compactMap { $0.val as? Relation }
-    }
+//    /// SQLColumn and ComositeCollection
+//    var _allColumns: [Any] {
+//        _unsafe_force_hydrate_columns_on(self)
+//    }
+//
+//    /// these discourage bad things and are confusing, organize when time
+//    var sqlColumns: [SQLColumn] {
+//        _allColumns.compactMap { $0 as? SQLColumn }
+//    }
+//
+//    /// compositeColumn or constraintGroup
+//    var compositeColumns: [CompositeColumn] {
+//        _allColumns.compactMap { $0 as? CompositeColumn }
+//    }
+//
+//    var _relations: [Relation] {
+//        _unsafe_force_Load_properties_on(self)
+//            .compactMap { $0.val as? Relation }
+//    }
 }
 
 /// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
@@ -108,7 +113,7 @@ func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [Any] {
         case _ as Relation:
             return nil
         /// not a column, but sort of, special considerations
-        case let composite as CompositeColumn:
+        case let composite as CompositeKey:
             return composite
         default:
             Log.warn("incompatible schema property: \(type(of: subject)).\(prop.label): \(prop.columntype)")
@@ -120,12 +125,37 @@ func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [Any] {
 
 // MARK: PrimaryKeys
 
+//class PrimaryKeyGroup: PrimaryKeyBase {
+//    let keys: [PrimaryKeyBase]
+//    init(_ keys: [PrimaryKeyBase]) {
+//        Log.warn("making note, autoincrement wasn't working with multi")
+//        self.keys = keys
+//        fatalError()
+//    }
+//}
+
+extension PrimaryKeyBase {
+    var toBaseType: PrimaryKeyBase {
+        return self
+    }
+}
+
+extension KeyPath where Value: PrimaryKeyBase {
+    var toBaseType: KeyPath<Root, PrimaryKeyBase> {
+        appending(path: \.toBaseType)
+    }
+}
+
 extension Schema {
     /// whether the schema contains a primary key
     /// one can name their primary key as they'd like, this is
     /// a generic name that will extract
     var primaryKey: PrimaryKeyBase? {
-        sqlColumns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
+
+        let all = sqlColumns.compactMap { $0 as? PrimaryKeyBase }
+        assert(0...1 ~= all.count, "multiple primary keys not currently supported")
+        return all.first
+//        sqlColumns.lazy.compactMap { $0 as? PrimaryKeyBase } .first
     }
 
     /// whether a schema is primary keyed
@@ -220,12 +250,14 @@ class Unique<Value: DatabaseValue>: Column<Value> {
 class PrimaryKeyBase: SQLColumn {
     enum Kind: Equatable {
         /// combining multiple keys not supported
-        case uuid, int
+        case uuid, int, composite([Kind])
 
         var sqltype: SQLDataType {
             switch self {
             case .uuid: return .text
             case .int: return .int
+            case .composite:
+                fatalError("composite requires special handling")
             }
         }
 
@@ -236,6 +268,8 @@ class PrimaryKeyBase: SQLColumn {
                 auto = false
             case .int:
                 auto = true
+            case .composite:
+                fatalError("auto requires special case")
             }
             return .primaryKey(autoIncrement: auto)
         }

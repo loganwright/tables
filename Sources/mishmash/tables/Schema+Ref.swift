@@ -233,6 +233,7 @@ private func _unsafe_getProperties<S: Schema>(template: S) -> [(label: String, t
     }
 }
 
+
 //@_functionBuilder
 //struct PreparationBuilder<S: Schema> {
 //    static func buildBlock(_ paths: PartialKeyPath<S>...) {
