@@ -51,13 +51,10 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
             .constrainig(by: .notNull)
         self.left = left
         self.right = right
-//        self.group = Group(left: left, right: right)
     }
 
-    static var tableConstraints: [QueryBuildStep] {
-        TableConstraints {
-            PrimaryKeyGroup(\.left, \.right)
-        }
+    let tableConstraints = TableConstraints {
+        PrimaryKeyGroup(\.left, \.right)
     }
 }
 

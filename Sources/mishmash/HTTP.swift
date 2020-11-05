@@ -80,8 +80,8 @@ struct GroupB {
 }
 
 func groooups() {
-    let ab: Group<GroupA, GroupB>! = nil
-    let abc: Group<Group<GroupA, GroupB>, GroupC>! = nil
+//    let ab: Group<GroupA, GroupB>! = nil
+//    let abc: Group<Group<GroupA, GroupB>, GroupC>! = nil
 //    abc.
 }
 

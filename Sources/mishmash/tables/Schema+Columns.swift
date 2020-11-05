@@ -1,5 +1,6 @@
 import SQLKit
 
+/// should this be BaseColumn?
 class SQLColumn {
     /// the name of the column
     open var name: String
@@ -24,5 +25,19 @@ class SQLColumn {
 
     convenience init(_ name: String, _ type: SQLDataType, _ constraints: SQLColumnConstraintAlgorithm...) {
         self.init(name, type, Later(constraints))
+    }
+}
+
+// MARK: KeyPath
+
+extension SQLColumn {
+    var detyped: SQLColumn {
+        return self
+    }
+}
+
+extension KeyPath where Value: SQLColumn {
+    var detyped: KeyPath<Root, SQLColumn> {
+        appending(path: \.detyped)
     }
 }

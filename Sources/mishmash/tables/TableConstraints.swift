@@ -34,7 +34,26 @@ struct ListBuilder<T> {
     }
 }
 
+final class TableConstraints {
+    @Later var steps: [QueryBuildStep]
+    init(@ListBuilder<QueryBuildStep> _ build: @escaping () -> [QueryBuildStep]) {
+        self._steps = Later(build)
+    }
 
+    func prepare(_ builder: SQLCreateTableBuilder) -> SQLCreateTableBuilder {
+        steps.reduce(builder) { builder, constraint in
+            constraint(builder)
+        }
+    }
+}
+
+extension SQLCreateTableBuilder {
+    func add(tableConstraints: TableConstraints) -> SQLCreateTableBuilder {
+        tableConstraints.steps.reduce(self) { prepare, constraint in
+            constraint(prepare)
+        }
+    }
+}
 
 /**
  For table constraints, we will only support PRIMARY KEY and UNIQUE
@@ -56,11 +75,6 @@ struct ListBuilder<T> {
  actually, I believe all of the relationships can then be inferred except for unique groups
  */
 extension Schema {
-    static func TableConstraints(@ListBuilder<QueryBuildStep> _ build: () -> [QueryBuildStep])
-    -> [QueryBuildStep] {
-        build()
-    }
-
     // MARK: PRIMARY KEY
 
     static func PrimaryKeyGroup<A: SQLColumn, B: SQLColumn>(

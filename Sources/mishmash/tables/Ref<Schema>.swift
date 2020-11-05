@@ -264,7 +264,7 @@ extension Ref {
 }
 func asdflsdjalfjkasdlkfj() {
     let a = Player.on(SQLManager.shared.testable_db)
-    a.group.jersey
+//    a.group.jersey
 }
 
 //

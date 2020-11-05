@@ -271,7 +271,7 @@ final class DBTests: SieqlTersts {
 
     func testExtractProperties() {
         let properties = _unsafe_force_Load_properties_on(Item.template)
-        let columns = properties.compactMap { $0.val as? SQLColumn }
+        let columns = properties.compactMap { $0.val as? mishmash.SQLColumn }
         XCTAssertEqual(properties.count, 3)
         XCTAssertEqual(properties.count, columns.count)
         XCTAssert(columns.map(\.name).contains("id"))

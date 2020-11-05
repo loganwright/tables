@@ -3,16 +3,12 @@
 protocol Schema {
     init()
     static var table: String { get }
-    static var tableConstraints: [QueryBuildStep] { get }
+    var tableConstraints: TableConstraints { get }
 }
 
 extension Schema {
     static var table: String { "\(Self.self)".lowercased()}
-    static var tableConstraints: [QueryBuildStep] { [] }
-}
-
-protocol TableBindings: Schema {
-    
+    var tableConstraints: TableConstraints { TableConstraints { } }
 }
 
 // MARK:

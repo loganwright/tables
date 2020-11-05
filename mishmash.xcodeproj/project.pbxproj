@@ -26,8 +26,9 @@
 		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
 		80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80584C6E2552106400C61913 /* SQLDatabase+Extensions.swift */; };
 		805DD3F9255361CB0089FE32 /* TableConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805DD3F8255361CB0089FE32 /* TableConstraints.swift */; };
+		805DD402255377B70089FE32 /* CompositeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1273425526FED00A11019 /* CompositeTests.swift */; };
+		805DD40B255377BF0089FE32 /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
 		8082EE42254E336500ACBADA /* Schema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE41254E336500ACBADA /* Schema.swift */; };
-		8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
 		8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE5C254E8A8900ACBADA /* SQLManager.swift */; };
 		8082EE63254E8A9F00ACBADA /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE62254E8A9F00ACBADA /* Log.swift */; };
 		8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE68254E8B5200ACBADA /* ThreadSafe.swift */; };
@@ -36,7 +37,6 @@
 		8082EE7F254E902500ACBADA /* Globals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE7E254E902500ACBADA /* Globals.swift */; };
 		80B31F2A2551522C00CFA510 /* Schema+Columns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B31F292551522C00CFA510 /* Schema+Columns.swift */; };
 		80F1272F25524EE300A11019 /* ConstraintGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1272E25524EE300A11019 /* ConstraintGroup.swift */; };
-		80F1273525526FED00A11019 /* CompositeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1273425526FED00A11019 /* CompositeTests.swift */; };
 		80F3CD89254CE0AA00EFA52F /* FunctionBuilders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD88254CE0AA00EFA52F /* FunctionBuilders.swift */; };
 		80F3CD8F254CE50B00EFA52F /* HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD8E254CE50B00EFA52F /* HTTP.swift */; };
 		80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CD94254D0FC100EFA52F /* KeyPathListable.swift */; };
@@ -328,9 +328,7 @@
 				80584C6F2552106400C61913 /* SQLDatabase+Extensions.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* Schema+Ref.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
-				80F1273525526FED00A11019 /* CompositeTests.swift in Sources */,
 				80FAA558254FB4B2001F3528 /* Schema+Relations.swift in Sources */,
-				8082EE57254E89FD00ACBADA /* db-tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,7 +345,9 @@
 			buildActionMask = 0;
 			files = (
 				OBJ_42 /* XCTestManifests.swift in Sources */,
+				805DD402255377B70089FE32 /* CompositeTests.swift in Sources */,
 				80F3CDAB254D24EC00EFA52F /* http-tests.swift in Sources */,
+				805DD40B255377BF0089FE32 /* db-tests.swift in Sources */,
 				OBJ_43 /* mishmashTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -227,7 +227,7 @@ extension ForeignKey: ForeignColumnKeyConstraint {
 extension SQLCreateTableBuilder {
     /// There's a lot of subtle differences in how foreign constraints are grouped
     /// for now, it's best to assume foreign keys
-    func add(foreignConstraint fc: ForeignColumnKeyConstraint) -> SQLCreateTableBuilder {
+    func add(foreignColumnConstraint fc: ForeignColumnKeyConstraint) -> SQLCreateTableBuilder {
         foreignKey([fc.pointingFrom.name],
                    references: fc.pointingToRemoteTable,
                    [fc.pointingTo.name],
@@ -325,25 +325,11 @@ extension SQLDatabase {
                                      type: column.type,
                                      column.constraints)
             return column as? ForeignColumnKeyConstraint
-        } .reduce(prepare) { prepare, constraint in
-            prepare.add(foreignConstraint: constraint)
         }
-
-        /// set composite key
-        prepare = try allColumns.compactMap {
-            $0 as? CompositeKey
-        } .reduce(prepare) { prepare, constraint in
-            try prepare.add(compositeKey: constraint)
+        .reduce(prepare) { prepare, constraint in
+            prepare.add(foreignColumnConstraint: constraint)
         }
-
-        let tableConstraints = schema.tableConstraints
-        if !tableConstraints.isEmpty {
-            print("found a constraint!")
-            prepare = tableConstraints.reduce(prepare) { prepare, builder in
-                builder(prepare)
-            }
-            print("")
-        }
+        .add(tableConstraints: template.tableConstraints)
 
         try prepare.run().wait()
     }
@@ -371,21 +357,6 @@ extension SQLDatabase {
         }
     }
 
-    func orig_prepare(_ schema: Schema.Type) throws {
-        Log.info("preparing: \(schema.table)")
-
-        let template = schema.init()
-        var prepare = self.create(table: schema.table)
-        
-        prepare = template.sqlColumns.compactMap { column in
-            prepare = prepare.column(column.name, type: column.type, column.constraints)
-            return column as? ForeignColumnKeyConstraint
-        } .reduce(prepare) { prepare, constraint in
-            prepare.add(foreignConstraint: constraint)
-        }
-
-        try prepare.run().wait()
-    }
 }
 
 

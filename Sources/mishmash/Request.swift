@@ -164,44 +164,6 @@ struct Keyyer {
 }
 
 
-@dynamicMemberLookup
-class Orig_Template<T> {
-    typealias Keys = T
-    private var backing: JSON
-    init(_ backing: JSON) {
-        self.backing = backing
-    }
-
-
-//    #if XCODE
-    subscript<C: Codable>(dynamicMember key: KeyPath<T, C>) -> C {
-//        fatalError()
-        get {
-//            Data(conte)
-            let data = NSArchiver.archivedData(withRootObject: key)
-            print(data)
-            fatalError()
-//            let val = backing[keyPath: key]
-//            return try! C(json: val)
-        }
-        set {
-            fatalError()
-//            backing[keyPath: key] = newValue.json
-        }
-    }
-//    #else
-//    subscript<C: Codable>(dynamicMember key: String) -> C {
-//        get {
-//            let val = backing[key] ?? .null
-//            return try! C(json: val)
-//        }
-//        set {
-//            backing[key] = newValue.json
-//        }
-//    }
-//    #endif
-}
-
 protocol Derpy: class {
     var isDerp: Bool { get set }
 }
@@ -712,7 +674,7 @@ func requestRun() {
 //    Request
     let pack = Package(id: "asdf")
 
-    let req = Request {
+    let _ = Request {
         Method(.GET)
         Headers {
             Entry(key: "Authorization", val: "Bearer token")
