@@ -45,9 +45,9 @@ extension Schema {
     }
 
     /// compositeColumn or constraintGroup
-    var compositeColumns: [CompositeKey] {
-        _allColumns.compactMap { $0 as? CompositeKey }
-    }
+//    var compositeColumns: [CompositeKey] {
+//        _allColumns.compactMap { $0 as? CompositeKey }
+//    }
 
     var _relations: [Relation] {
         _unsafe_force_Load_properties_on(self)
@@ -55,30 +55,30 @@ extension Schema {
     }
 }
 
-extension CompositeKey {
-    var _groupedKeys: [Any] {
-        fatalError()
-    }
-//    /// SQLColumn and ComositeCollection
-//    var _allColumns: [Any] {
-//        _unsafe_force_hydrate_columns_on(self)
+//extension CompositeKey {
+//    var _groupedKeys: [Any] {
+//        fatalError()
 //    }
-//
-//    /// these discourage bad things and are confusing, organize when time
-//    var sqlColumns: [SQLColumn] {
-//        _allColumns.compactMap { $0 as? SQLColumn }
-//    }
-//
-//    /// compositeColumn or constraintGroup
-//    var compositeColumns: [CompositeColumn] {
-//        _allColumns.compactMap { $0 as? CompositeColumn }
-//    }
-//
-//    var _relations: [Relation] {
-//        _unsafe_force_Load_properties_on(self)
-//            .compactMap { $0.val as? Relation }
-//    }
-}
+////    /// SQLColumn and ComositeCollection
+////    var _allColumns: [Any] {
+////        _unsafe_force_hydrate_columns_on(self)
+////    }
+////
+////    /// these discourage bad things and are confusing, organize when time
+////    var sqlColumns: [SQLColumn] {
+////        _allColumns.compactMap { $0 as? SQLColumn }
+////    }
+////
+////    /// compositeColumn or constraintGroup
+////    var compositeColumns: [CompositeColumn] {
+////        _allColumns.compactMap { $0 as? CompositeColumn }
+////    }
+////
+////    var _relations: [Relation] {
+////        _unsafe_force_Load_properties_on(self)
+////            .compactMap { $0.val as? Relation }
+////    }
+//}
 
 /// storing this in any way kills everything, I can't explain why, everything is identical, but it's subtle
 /// load all introspectable properties from an instance
@@ -111,8 +111,8 @@ func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [Any] {
         case _ as TableConstraints:
             return nil
         /// not a column, but sort of, special considerations
-        case let composite as CompositeKey:
-            return composite
+//        case let composite as CompositeKey:
+//            return composite
         default:
             Log.warn("incompatible schema property: \(type(of: subject)).\(prop.label): \(prop.columntype)")
             Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")

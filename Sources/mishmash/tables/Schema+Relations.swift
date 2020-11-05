@@ -236,46 +236,46 @@ extension SQLCreateTableBuilder {
     }
 }
 
-
-extension SQLCreateTableBuilder {
-    /// There's a lot of subtle differences in how foreign constraints are grouped
-    /// for now, it's best to assume foreign keys
-    func add(compositeKey fc: CompositeKey) throws -> SQLCreateTableBuilder {
-        let columns = [] as! [SQLColumn] // fc.sqlColumns
-        if fc.constraint == .primary, columns.allPrimaryKeys {
-            Log.warn("make composite primary key")
-        } else if fc.constraint == .foreign, columns.allForeignKeys {
-            Log.warn("make composite foreign keys")
-            let foreignConstraints = columns._foreignConstraints
-            guard foreignConstraints.validateTableMatch else {
-                throw "composite foreign keys must point to the same external table"
-            }
-
-            let pointingFrom = foreignConstraints.map(\.pointingFrom).map(\.name)
-            let table = foreignConstraints[0].pointingToRemoteTable
-            let pointingTo = foreignConstraints.map(\.pointingTo).map(\.name)
-            assert(pointingFrom.count == pointingTo.count)
-            let onDelete = foreignConstraints.compactMap(\.onDelete)
-            let onUpdate = foreignConstraints.compactMap(\.onUpdate)
-            assert(0...1 ~= onDelete.count,
-                   "multiple actions not supported on composite foreign keys")
-            assert(0...1 ~= onUpdate.count,
-                   "multiple actions not supported on composite foreign keys")
-            // do they all have to go to same table? idk
-            return self.foreignKey(pointingFrom,
-                                   references: table,
-                                   pointingTo,
-                                   onDelete: onDelete.first,
-                                   onUpdate: onUpdate.first,
-                                   named: nil)
-        } else if fc.constraint == .unique, !columns.allPrimaryKeys {
-            let names = columns.map(\.name)
-            return self.unique(names, named: nil)
-        }
-
-        throw "unexpected columns found for compositeKeys: \(columns)"
-    }
-}
+//
+//extension SQLCreateTableBuilder {
+//    /// There's a lot of subtle differences in how foreign constraints are grouped
+//    /// for now, it's best to assume foreign keys
+//    func add(compositeKey fc: CompositeKey) throws -> SQLCreateTableBuilder {
+//        let columns = [] as! [SQLColumn] // fc.sqlColumns
+//        if fc.constraint == .primary, columns.allPrimaryKeys {
+//            Log.warn("make composite primary key")
+//        } else if fc.constraint == .foreign, columns.allForeignKeys {
+//            Log.warn("make composite foreign keys")
+//            let foreignConstraints = columns._foreignConstraints
+//            guard foreignConstraints.validateTableMatch else {
+//                throw "composite foreign keys must point to the same external table"
+//            }
+//
+//            let pointingFrom = foreignConstraints.map(\.pointingFrom).map(\.name)
+//            let table = foreignConstraints[0].pointingToRemoteTable
+//            let pointingTo = foreignConstraints.map(\.pointingTo).map(\.name)
+//            assert(pointingFrom.count == pointingTo.count)
+//            let onDelete = foreignConstraints.compactMap(\.onDelete)
+//            let onUpdate = foreignConstraints.compactMap(\.onUpdate)
+//            assert(0...1 ~= onDelete.count,
+//                   "multiple actions not supported on composite foreign keys")
+//            assert(0...1 ~= onUpdate.count,
+//                   "multiple actions not supported on composite foreign keys")
+//            // do they all have to go to same table? idk
+//            return self.foreignKey(pointingFrom,
+//                                   references: table,
+//                                   pointingTo,
+//                                   onDelete: onDelete.first,
+//                                   onUpdate: onUpdate.first,
+//                                   named: nil)
+//        } else if fc.constraint == .unique, !columns.allPrimaryKeys {
+//            let names = columns.map(\.name)
+//            return self.unique(names, named: nil)
+//        }
+//
+//        throw "unexpected columns found for compositeKeys: \(columns)"
+//    }
+//}
 
 extension Array where Element == ForeignColumnKeyConstraint {
     var validateTableMatch: Bool {
@@ -348,9 +348,9 @@ extension SQLDatabase {
         switch input {
         case let column as SQLColumn:
             return [column]
-        case let column as CompositeKey:
-            fatalError()
-//            return column.sqlColumns
+//        case let column as CompositeKey:
+//            fatalError()
+////            return column.sqlColumns
         default:
             throw "unexpected row"
         }
