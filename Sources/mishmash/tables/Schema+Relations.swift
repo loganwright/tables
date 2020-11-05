@@ -318,8 +318,8 @@ extension SQLDatabase {
 
         let template = schema.init()
         var prepare = self.create(table: schema.table)
-        let allColumns = template._allColumns
-        prepare = try allColumns.flatMap(sqlColumns).compactMap { column in
+
+        prepare = template.columns.compactMap { column in
             prepare = prepare.column(column.name,
                                      type: column.type,
                                      column.constraints)
@@ -332,38 +332,18 @@ extension SQLDatabase {
 
         try prepare.run().wait()
     }
-    /**
 
-
-                            - check if collumn has group constraint, if yes, ignore that constraint
-        -
-
-
-
-
-     */
 
     /// a bit lazy at this point, will try to clean up
-    private func sqlColumns(with input: Any) throws -> [SQLColumn] {
-        switch input {
-        case let column as SQLColumn:
-            return [column]
-//        case let column as CompositeKey:
-//            fatalError()
-////            return column.sqlColumns
-        default:
-            throw "unexpected row"
-        }
-    }
+//    private func sqlColumns(with input: Any) throws -> [SQLColumn] {
+//        switch input {
+//        case let column as SQLColumn:
+//            return [column]
+//        default:
+//            throw "unexpected row"
+//        }
+//    }
 
-}
-
-
-extension Array where Element: SQLColumn {
-    func validate() {
-        // do we need to do this? sqlite will do it
-        assert(map(\.name).first(where: \.isEmpty) == nil)
-    }
 }
 
 
@@ -429,9 +409,6 @@ class ToOne<One: Schema>: EphemeralRelation {
         }
     }
 }
-
-// MARK: DB Accessors (needs work)
-let _db: SQLDatabase! = nil
 
 extension Ref {
     var _id: String {
@@ -506,26 +483,6 @@ extension Ref {
             .run()
             .wait()
     }
-}
-
-
-func asdfsdfOO() throws {
-    struct Course: Schema {
-        let id = PrimaryKey<String>()
-        let name = Column<String>()
-        let students = Pivot<Course, Student>()
-    }
-
-    struct Student: Schema {
-        let id = PrimaryKey<Int>()
-        let name = Column<String>()
-        let classes = Pivot<Student, Course>()
-    }
-
-    let s: Ref<Student>! = nil
-
-    try s.add(to: \.classes, [])
-    try s.remove(from: \.classes, [])
 }
 
 /// there's a lot of initialization and intermixing, sometimes lazy loading helps with cycles

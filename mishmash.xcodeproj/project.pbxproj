@@ -22,6 +22,7 @@
 
 /* Begin PBXBuildFile section */
 		802156BE2553A71D000E89E5 /* Columns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802156BD2553A71D000E89E5 /* Columns.swift */; };
+		802156C4255434BF000E89E5 /* Schema+Mirror.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802156C3255434BF000E89E5 /* Schema+Mirror.swift */; };
 		803F5E882551D61E00317F66 /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 803F5E872551D61E00317F66 /* SQLiteKit */; };
 		803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E8E2551F89C00317F66 /* Pivot.swift */; };
 		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
@@ -73,6 +74,7 @@
 
 /* Begin PBXFileReference section */
 		802156BD2553A71D000E89E5 /* Columns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Columns.swift; sourceTree = "<group>"; };
+		802156C3255434BF000E89E5 /* Schema+Mirror.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Schema+Mirror.swift"; sourceTree = "<group>"; };
 		803F5E8E2551F89C00317F66 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		803F5E9C2552023500317F66 /* Ref<Schema>.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ref<Schema>.swift"; sourceTree = "<group>"; };
 		805DD3F8255361CB0089FE32 /* TableConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableConstraints.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				80FAA567254FBE3F001F3528 /* Schema+Ref.swift */,
 				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
 				805DD3F8255361CB0089FE32 /* TableConstraints.swift */,
+				802156C3255434BF000E89E5 /* Schema+Mirror.swift */,
 			);
 			path = tables;
 			sourceTree = "<group>";
@@ -327,6 +330,7 @@
 				80B31F2A2551522C00CFA510 /* Schema+Columns.swift in Sources */,
 				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
 				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
+				802156C4255434BF000E89E5 /* Schema+Mirror.swift in Sources */,
 				803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */,
 				8082EE7F254E902500ACBADA /* Globals.swift in Sources */,
 				80FAA562254FBDB2001F3528 /* Schema+Maybe.swift in Sources */,

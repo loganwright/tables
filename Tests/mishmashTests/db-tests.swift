@@ -375,7 +375,7 @@ final class DBTests: SieqlTersts {
 
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
-        let _ = Foo.template._allColumns
+        let _ = Foo.template.columns
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("incompatible schema property") }))
         XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
     }
@@ -399,12 +399,12 @@ final class DBTests: SieqlTersts {
 
         let w_meta = try db.unsafe_table_meta("item")
         XCTAssertEqual(w_meta.count, 3)
-        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.sqlColumns.map(\.name).sorted())
+        XCTAssertEqual(w_meta.map(\.name).sorted(),Item.template.columns.map(\.name).sorted())
 
         let h_meta = try db.unsafe_table_meta(Hero.table)
         XCTAssertEqual(h_meta.count, 5)
         let storedNames = h_meta.map(\.name).sorted()
-        let expected = Hero.template.sqlColumns.map(\.name).sorted()
+        let expected = Hero.template.columns.map(\.name).sorted()
         XCTAssertEqual(storedNames, expected)
     }
 
