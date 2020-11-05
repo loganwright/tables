@@ -351,7 +351,7 @@ final class SQLManager {
         }
 
         /// all objects have an id column
-        var prepare = self.db.create(table: Ob.table)
+        let prepare = self.db.create(table: Ob.table)
             .column("id", type: .text, .primaryKey(autoIncrement: false), .notNull)
 
         throw "no longer doing json hack"
@@ -360,7 +360,7 @@ final class SQLManager {
 //        }
 
         let properties = unsafe_getProperties(template: template)
-        let nullableProperties = properties
+        let _ = properties
             .filter { $0.type.contains("NullEncoding<") }
             .map(\.label)
             // property wrappers serialize w leading `_`

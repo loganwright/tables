@@ -410,7 +410,7 @@ struct Oaavnw {
     }
 
     func ooo() {
-        self._count
+//        self._count
     }
 }
 
@@ -495,73 +495,73 @@ func asdfsadfsd() {
 //    var node = Node<GeneralKeys>()
 //    node.createdAt
 
-    let ob = Obbi(name: "obbbbi", ownsShirt: true)
-//    ob.encodeSchema {
-//        \Obbi.name
+//    let ob = Obbi(name: "obbbbi", ownsShirt: true)
+////    ob.encodeSchema {
+////        \Obbi.name
+////    }
+//
+//    let aob = \Obbi.self
+//    aob.appending(path: \.name)
+//    Obbi.encodeSchema {
+//        \Obbi.name.js
+////        Write(key: "name", \.name)
+//
 //    }
-
-    let aob = \Obbi.self
-    aob.appending(path: \.name)
-    Obbi.encodeSchema {
-        \Obbi.name.js
-//        Write(key: "name", \.name)
-
-    }
-
-    Obbi.encodeSchema {
-        Obbi.key("asfd", \.ownsShirt)
-    }
-
-    Obbi.encodeSchema {
-        SchemaEntry(key: "shirt", \Obbi.ownsShirt)
-    }
-
-    let a = Obbi.key("asfd", \.ownsShirt)
-
-
-    let o = Oaavnw(count: 10)
-    print(o.count)
-    print(o.$count)
-    print(\Oaavnw.$count)
-    let y = \Oaavnw.count
-    print(y)
-    print()
-//    let l = PairLeft(id: "left")
-//    let r = PairRight(id: "right")
-//    let l_k: AnyKeyPath = \PairLeft.id
-//    let r_k: AnyKeyPath = \PairRight.id
-//    let l_from_r = l[keyPath: r_k]
-//    let r_from_1 = l[keyPath: r_k]
-//    keypathlistable()
-    let basb = Baa(id: "sadf")
-    basb.paaarths(\.id)
-//    JSONEncoder().keyEncodingStrategy = .custom({ input in
-//        input == \Baa.id
-//    })
-
-    let idKey = \Baa.id
-    let mir = Mirror(reflecting: \Baa.self)
-    let found = mir.children.first {
-        print("value is: \(type(of: $0.value))")
-        guard let kp = $0.value as? AnyKeyPath else { return false }
-        return kp == idKey
-    }!.label!
-
-    let _ = EncodingStrategy {
-        Key<Alien>("name", \.age)
-    }
-//    basb.omitting(\.id)
-    let fuzz = Fuzzy()
-    fuzz.name = "lolololo"
-    fuzz.canThisWork(with: \.name)
-    let iadKey = \Baa.id
-    let keyMirror = Mirror(reflecting: idKey)
-//    keyMirror.
-    let refl = Mirror(reflecting: Baa(id: "basdvb"))
-    refl.children.forEach { $0.label}
-    let t = Wrapper("hi")
-    let funcs = DynamicFuncs()
-    funcs.doWhatever("hi")
+//
+//    Obbi.encodeSchema {
+//        Obbi.key("asfd", \.ownsShirt)
+//    }
+//
+//    Obbi.encodeSchema {
+//        SchemaEntry(key: "shirt", \Obbi.ownsShirt)
+//    }
+//
+//    let a = Obbi.key("asfd", \.ownsShirt)
+//
+//
+//    let o = Oaavnw(count: 10)
+//    print(o.count)
+//    print(o.$count)
+//    print(\Oaavnw.$count)
+//    let y = \Oaavnw.count
+//    print(y)
+//    print()
+////    let l = PairLeft(id: "left")
+////    let r = PairRight(id: "right")
+////    let l_k: AnyKeyPath = \PairLeft.id
+////    let r_k: AnyKeyPath = \PairRight.id
+////    let l_from_r = l[keyPath: r_k]
+////    let r_from_1 = l[keyPath: r_k]
+////    keypathlistable()
+//    let basb = Baa(id: "sadf")
+//    basb.paaarths(\.id)
+////    JSONEncoder().keyEncodingStrategy = .custom({ input in
+////        input == \Baa.id
+////    })
+//
+//    let idKey = \Baa.id
+//    let mir = Mirror(reflecting: \Baa.self)
+//    let found = mir.children.first {
+//        print("value is: \(type(of: $0.value))")
+//        guard let kp = $0.value as? AnyKeyPath else { return false }
+//        return kp == idKey
+//    }!.label!
+//
+//    let _ = EncodingStrategy {
+//        Key<Alien>("name", \.age)
+//    }
+////    basb.omitting(\.id)
+//    let fuzz = Fuzzy()
+//    fuzz.name = "lolololo"
+//    fuzz.canThisWork(with: \.name)
+//    let iadKey = \Baa.id
+//    let keyMirror = Mirror(reflecting: idKey)
+////    keyMirror.
+//    let refl = Mirror(reflecting: Baa(id: "basdvb"))
+//    refl.children.forEach { $0.label}
+//    let t = Wrapper("hi")
+//    let funcs = DynamicFuncs()
+//    funcs.doWhatever("hi")
 
 
 //    let dyno = Dynamic()

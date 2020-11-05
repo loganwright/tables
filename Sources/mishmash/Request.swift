@@ -554,13 +554,13 @@ func propertyAttaching() {
     // Dynamic<Thing>(.sqlite)
 //    let dyn = Dynamic<Thing>()
 //    let g = dyn.goob
-    let a = [ASF]()
-    var json = JSON.emptyObj
-    json["bgColor"] = "#ff889a".json
-    json["favoriteColor"] = "#9a88af".json
-    json["title"] = "Cool Swift".json
-
-    print(json.colorKeys.$bg)
+//    let a = [ASF]()
+//    var json = JSON.emptyObj
+//    json["bgColor"] = "#ff889a".json
+//    json["favoriteColor"] = "#9a88af".json
+//    json["title"] = "Cool Swift".json
+//
+//    print(json.colorKeys.$bg)
 
 //    let ob = Ob<UserBase & User>(json.obj!)
 
@@ -615,8 +615,8 @@ func propertyAttaching() {
 //    let c = \One.id
 //    let d = \One.id
 //    print("1 match: \(c == d)")
-////    let e = \One.base
-////    let f = \Keyyyys.base
+////    let e = \One.root
+////    let f = \Keyyyys.root
 ////    print("2 match: \(e == f)")
 //
 //

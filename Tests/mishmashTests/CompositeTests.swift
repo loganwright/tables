@@ -30,7 +30,7 @@ class CompositeKeyTests: SieqlTersts {
 
         let teams = try! Team.make(
             on: db,
-            columns: \.name.base, \.id.base,
+            columns: \.name.root, \.id.root,
             rows: [
                 ["cats", 921],
                 ["bears", 12],
@@ -98,7 +98,7 @@ class CompositeKeyTests: SieqlTersts {
     ///   AND MAP THE GROUPED KEYS UNDER THE HOOD AS WITH CORE API
     ///
     ///
-    func testMultipleForeignKeys() {
+    func testMultipleForeignAndPrimaryKeys() {
         try! db.prepare {
             Guest.self
             Reservation.self
@@ -125,6 +125,16 @@ class CompositeKeyTests: SieqlTersts {
             XCTAssertEqual(guest.firstName, reservation.guestFirstName)
             XCTAssertEqual(guest.lastName, reservation.guestLastName)
         }
+
+
+        let guest = guests[2]
+        let check = try! db.fetch(Reservation.self,
+                                  where: [
+                                    \.guestEmail.root,
+                                    \.guestFirstName.root,
+                                    \.guestLastName.root],
+                             equal: [guest.email, guest.firstName, guest.lastName])
+        XCTAssertEqual(check.count, 1)
     }
 
 //    @dynamicMemberLookup

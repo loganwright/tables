@@ -43,7 +43,7 @@ extension KeyPath where Value: SQLColumn {
 }
 
 extension SQLColumn {
-    var base: SQLColumn {
+    var root: SQLColumn {
         return self
     }
 }
@@ -52,7 +52,7 @@ extension KeyPath where Value: SQLColumn {
     /// this is a concession to it being difficult to work with
     /// key types on their own especially groups of them
     ///
-    var base: KeyPath<Root, SQLColumn> {
+    var root: KeyPath<Root, SQLColumn> {
         appending(path: \.detyped)
     }
 }

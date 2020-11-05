@@ -450,7 +450,7 @@ extension SQLDatabase {
             .wait()
     }
 
-    func fetch<S: Schema>(where column: KeyPath<S, SQLColumn>, equals value: String) throws -> Ref<S> {
+    func fetch<S: Schema>(where column: KeyPath<S, SQLColumn>, equals value: String) throws -> [Ref<S>] {
         let column = S.template[keyPath: column]
         let results = try self.select()
             .columns(["*"])
@@ -458,8 +458,23 @@ extension SQLDatabase {
             .from(S.table)
             .all(decoding: [String: JSON].self)
             .wait()
-        fatalError()
-//        return all.map { Ref($0, fatalError()) }
+        return results.map { Ref($0, self) }
+    }
+
+    func fetch<S: Schema>(_ type: S.Type = S.self, where columns: [KeyPath<S, SQLColumn>], equal matches: [Any]) throws -> [Ref<S>] {
+        /// star here is columns to return
+        var query = self.select().columns(["*"]).from(S.table)
+
+        assert(columns.count == matches.count)
+        let columns = columns.map { S.template[keyPath: $0]._sqlIdentifier }
+        let values = try matches.map { try JSON(fuzzy: $0) }
+
+        query = zip(columns, values).reduce(query) { query, pair in
+            query.where(pair.0, .equal, pair.1)
+        }
+
+        let results = try query.all(decoding: [String: JSON].self).wait()
+        return results.map { Ref($0, self) }
     }
 }
 
