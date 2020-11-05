@@ -173,7 +173,7 @@ final class Ref<S: Schema> {
 }
 
 extension Ref {
-    func _unsafe_setBacking(column: SQLColumn, value: JSON?) {
+    func _unsafe_setBacking(column: BaseColumn, value: JSON?) {
         backing[column.name] = value
     }
 }
@@ -207,9 +207,6 @@ extension Ref {
             case .int:
                 Log.warn("in multi groups, autoincrement fails..")
                 // set automatically after save by sql
-            case .composite:
-                Log.error("composite support not yet implemented")
-                alert/
             }
         }
 

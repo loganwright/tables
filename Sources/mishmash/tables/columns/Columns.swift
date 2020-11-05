@@ -1,8 +1,20 @@
-//
-//  Columns.swift
-//  mishmash
-//
-//  Created by Logan Wright on 11/5/20.
-//
+import SQLKit
 
-import Foundation
+// MARK: Column
+
+@propertyWrapper
+class Column<Value>: BaseColumn {
+    open var wrappedValue: Value { replacedDynamically() }
+}
+
+extension Column where Value: DatabaseValue {
+    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+        self.init(key, Value.sqltype, Later(constraints + [.notNull]))
+    }
+}
+
+extension Column where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
+    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
+        self.init(key, Value.Wrapped.sqltype, Later(constraints))
+    }
+}

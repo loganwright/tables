@@ -77,20 +77,20 @@ extension SQLCreateTableBuilder {
 extension Schema {
     // MARK: PRIMARY KEY
 
-    static func PrimaryKeyGroup<A: SQLColumn, B: SQLColumn>(
+    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _primary_key(t.detyped, u.detyped)
     }
 
-    static func PrimaryKeyGroup<A: SQLColumn, B: SQLColumn, C: SQLColumn>(
+    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _primary_key(t.detyped, u.detyped, v.detyped)
     }
 
-    static func PrimaryKeyGroup<A: SQLColumn, B: SQLColumn, C: SQLColumn, D: SQLColumn>(
+    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>,
@@ -98,7 +98,7 @@ extension Schema {
         _primary_key(t.detyped, u.detyped, v.detyped, x.detyped)
     }
 
-    private static func _primary_key(_ paths: KeyPath<Self, SQLColumn>...)
+    private static func _primary_key(_ paths: KeyPath<Self, BaseColumn>...)
     -> (SQLCreateTableBuilder) -> SQLCreateTableBuilder {
         assert(!Self.template.isPrimaryKeyed,
                "composite primaries not yet exposed to the general api")
@@ -113,14 +113,14 @@ extension Schema {
 
     // MARK: UNIQUE
 
-    static func UniqueGroup<A: SQLColumn, B: SQLColumn>(
+    static func UniqueGroup<A: BaseColumn, B: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>
     ) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _unique_key(t.detyped, u.detyped)
     }
 
-    static func UniqueGroup<A: SQLColumn, B: SQLColumn, C: SQLColumn>(
+    static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>
@@ -128,7 +128,7 @@ extension Schema {
         _unique_key(t.detyped, u.detyped, v.detyped)
     }
 
-    static func UniqueGroup<A: SQLColumn, B: SQLColumn, C: SQLColumn, D: SQLColumn>(
+    static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>,
@@ -138,7 +138,7 @@ extension Schema {
     }
 
     private static func _unique_key(
-        _ paths: KeyPath<Self, SQLColumn>...
+        _ paths: KeyPath<Self, BaseColumn>...
     ) -> (SQLCreateTableBuilder) -> SQLCreateTableBuilder {
         return { builder in
             let template = Self.template
@@ -149,7 +149,7 @@ extension Schema {
 
     // MARK: FOREIGN KEY
 
-    static func ForeignKeyGroup<Foreign: Schema, A: SQLColumn, B: SQLColumn>(
+    static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn>(
         _ a_: KeyPath<Self, A>,
         _ b_: KeyPath<Self, B>,
         referencing _a: KeyPath<Foreign, A>,
@@ -160,7 +160,7 @@ extension Schema {
         return _foreign_key(from, referencing: to)
     }
 
-    static func ForeignKeyGroup<Foreign: Schema, A: SQLColumn, B: SQLColumn, C: SQLColumn>(
+    static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ a_: KeyPath<Self, A>,
         _ b_: KeyPath<Self, B>,
         _ c_: KeyPath<Self, B>,
@@ -174,8 +174,8 @@ extension Schema {
     }
 
     private static func _foreign_key<Foreign: Schema>(
-        _ from: [KeyPath<Self, SQLColumn>],
-        referencing to: [KeyPath<Foreign, SQLColumn>])
+        _ from: [KeyPath<Self, BaseColumn>],
+        referencing to: [KeyPath<Foreign, BaseColumn>])
     -> (SQLCreateTableBuilder) -> SQLCreateTableBuilder {
         return { builder in
             let from_template = Self.template

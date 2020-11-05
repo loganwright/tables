@@ -24,7 +24,7 @@ private var _templates: [String: Schema] = [:]
 
 extension Schema {
     /// these discourage bad things and are confusing, organize when time
-    var columns: [SQLColumn] {
+    var columns: [BaseColumn] {
         _unsafe_force_hydrate_columns_on(self)
     }
 
@@ -68,12 +68,12 @@ func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
 }
 
 /// should this use a base 'Column' protocol? it's nice having them separate at the moment
-func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [SQLColumn] {
+func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [BaseColumn] {
     let properties = _unsafe_force_Load_properties_on(subject)
     return properties.compactMap { prop in
         switch prop.val {
         /// standard persisted column
-        case let column as SQLColumn:
+        case let column as BaseColumn:
             if column.name.isEmpty { column.name = prop.label }
             return column
         /// standard reulation, not a column, but ok
@@ -83,7 +83,7 @@ func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [SQLColumn] {
             return nil
         default:
             Log.warn("incompatible schema property: \(type(of: subject)).\(prop.label): \(prop.columntype)")
-            Log.info("expected \(SQLColumn.self), ie: \(Column<String>.self)")
+            Log.info("expected \(BaseColumn.self), ie: \(Column<String>.self)")
             return nil
         }
     }

@@ -13,22 +13,12 @@ extension Schema {
 
 // MARK: PrimaryKeys
 
-extension PrimaryKeyBase {
-    var toBaseType: PrimaryKeyBase {
-        return self
-    }
-}
-
-extension KeyPath where Value: PrimaryKeyBase {
-    var toBaseType: KeyPath<Root, PrimaryKeyBase> {
-        appending(path: \.toBaseType)
-    }
-}
-
 extension Schema {
     /// whether the schema contains a primary key
     /// one can name their primary key as they'd like, this is
     /// a generic name that will extract
+    ///
+    /// currently composite primary keys will need to be worked around
     var primaryKey: PrimaryKeyBase? {
         let all = columns.compactMap { $0 as? PrimaryKeyBase }
         assert(0...1 ~= all.count,
@@ -82,89 +72,6 @@ extension Optional: OptionalProtocol {}
 
 func replacedDynamically() -> Never { fatalError() }
 
-
-protocol PrimaryKeyValue: DatabaseValue {}
-extension String: PrimaryKeyValue {}
-extension Int: PrimaryKeyValue {}
-
-
-@propertyWrapper
-class Unique<Value: DatabaseValue>: Column<Value> {
-    override var wrappedValue: Value { replacedDynamically() }
-    init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        super.init(key, Value.sqltype, Later([.notNull, .unique] + constraints))
-    }
-}
-
-class PrimaryKeyBase: SQLColumn {
-    enum Kind: Equatable {
-        /// combining multiple keys not supported
-        case uuid, int, composite([Kind])
-
-        var sqltype: SQLDataType {
-            switch self {
-            case .uuid: return .text
-            case .int: return .int
-            case .composite:
-                fatalError("composite requires special handling")
-            }
-        }
-
-        fileprivate var constraint: SQLColumnConstraintAlgorithm {
-            let auto: Bool
-            switch self {
-            case .uuid:
-                auto = false
-            case .int:
-                auto = true
-            case .composite:
-                fatalError("auto requires special case")
-            }
-            return .primaryKey(autoIncrement: auto)
-        }
-    }
-
-    // MARK: Attributes
-    let kind: Kind
-
-    init(_ key: String = "", _ kind: Kind) {
-        self.kind = kind
-        super.init(key, kind.sqltype, Later([kind.constraint]))
-    }
-}
-
-import SQLiteKit
-@propertyWrapper
-class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
-    var wrappedValue: RawType? { replacedDynamically() }
-
-    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
-        super.init(key, .uuid)
-    }
-
-    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == Int {
-        super.init(key, .int)
-    }
-}
-
-// MARK: Column
-
-@propertyWrapper
-class Column<Value>: SQLColumn {
-    open var wrappedValue: Value { replacedDynamically() }
-}
-
-extension Column where Value: DatabaseValue {
-    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        self.init(key, Value.sqltype, Later(constraints + [.notNull]))
-    }
-}
-
-extension Column where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
-    convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        self.init(key, Value.Wrapped.sqltype, Later(constraints))
-    }
-}
 
 // MARK: One to One
 ///
@@ -232,10 +139,11 @@ struct _SQLiteSQLDatabase: SQLDatabase {
         }
     }
 }
-/////
+
+///
 extension Schema {
     static func on(_ db: SQLDatabase) -> Ref<Self> {
-        Log.warn("should use constructor")
+        Log.warn("unsafe constructor")
         return Ref(db)
     }
 
@@ -247,7 +155,7 @@ extension Schema {
         return new
     }
 
-    static func make<C: SQLColumn>(on db: SQLDatabase,
+    static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
                                    rows: [[Any]]) throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
@@ -264,7 +172,7 @@ extension Schema {
         }
     }
 
-    static func make<C: SQLColumn>(on db: SQLDatabase,
+    static func make<C: BaseColumn>(on db: SQLDatabase,
                                    with columns: KeyPath<Self, C>...,
                                    and rows: [[JSON]]) throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
@@ -285,9 +193,9 @@ final class SeeQuel {
     static let shared: SeeQuel = SeeQuel(storage: .memory) // SeeQuel(storage: .file(path: seequel_directory.path))
 
 //    private var db: SQLDatabase = TestDatabase()
-    var db: SQLWrappedLogging<_SQLiteSQLDatabase> {
+    var db: SQLDatabase {
         let db = self.connection._sql()
-        return SQLWrappedLogging(db)
+        return SQLLoggingDatabase(db)
     }
 
     private let eventLoopGroup: EventLoopGroup

@@ -1,7 +1,7 @@
 import SQLKit
 
 /// should this be BaseColumn?
-class SQLColumn {
+class BaseColumn {
     /// the name of the column
     open var name: String
 
@@ -30,34 +30,60 @@ class SQLColumn {
 
 // MARK: KeyPath
 
-extension SQLColumn {
-    var detyped: SQLColumn {
+extension BaseColumn {
+    /// we need to occasionallly detype key paths, these can't be recast
+    /// but they can append this to the key path to assist the compiler
+    var detyped: BaseColumn {
         return self
     }
 }
 
-extension KeyPath where Value: SQLColumn {
-    var detyped: KeyPath<Root, SQLColumn> {
+extension KeyPath where Value: BaseColumn {
+    var detyped: KeyPath<Root, BaseColumn> {
         appending(path: \.detyped)
     }
 }
 
-extension SQLColumn {
-    var root: SQLColumn {
+extension BaseColumn {
+    var root: BaseColumn {
         return self
     }
 }
 
-extension KeyPath where Value: SQLColumn {
+extension KeyPath where Value: BaseColumn {
     /// this is a concession to it being difficult to work with
     /// key types on their own especially groups of them
     ///
-    var root: KeyPath<Root, SQLColumn> {
+    var root: KeyPath<Root, BaseColumn> {
         appending(path: \.detyped)
     }
 }
 
-//postfix func /<S: Schema, C: SQLColumn>(_ kp: KeyPath<S, C>)
-//-> KeyPath<S, SQLColumn> {
-//    kp.detyped
-//}
+extension BaseColumn {
+    var k: BaseColumn {
+        return self
+    }
+}
+
+extension KeyPath where Value: BaseColumn {
+    /// this is a concession to it being difficult to work with
+    /// key types on their own especially groups of them
+    ///
+    var k: KeyPath<Root, BaseColumn> {
+        appending(path: \.detyped)
+    }
+}
+extension BaseColumn {
+    var base: BaseColumn {
+        return self
+    }
+}
+
+extension KeyPath where Value: BaseColumn {
+    /// this is a concession to it being difficult to work with
+    /// key types on their own especially groups of them
+    ///
+    var base: KeyPath<Root, BaseColumn> {
+        appending(path: \.detyped)
+    }
+}

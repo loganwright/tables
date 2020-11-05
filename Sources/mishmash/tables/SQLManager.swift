@@ -294,14 +294,6 @@ final class SQLManager {
 
     // MARK: SQL Interactors
 
-    func unsafe_createTable(name: String) throws {
-        try self.db.create(table: name)
-            .ifNotExists()
-            .column("id", type: .text, .primaryKey(autoIncrement: false), .notNull)
-            .run()
-            .wait()
-    }
-
     func unsafe_getAllTables() throws -> [String] {
         struct Table: Decodable {
             let name: String
@@ -326,8 +318,6 @@ final class SQLManager {
     }
 
     func unsafe_dropTable(_ table: String) throws {
-//        let disable = SQLRawExecute("SET FOREIGN_KEY_CHECKS = 0;\n")
-//        let enable = SQLRawExecute("SET FOREIGN_KEY_CHECKS = 1;\n")
         let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
         try self.db.execute(sql: disable) { row in
@@ -337,56 +327,6 @@ final class SQLManager {
         try self.db.execute(sql: enable) { row in
             Log.info("ENABLED foreign key checks: \(row)")
         } .wait()
-    }
-
-    // MARK: Preparations
-
-    /// right now reflection requires an empty object if we mirror on the type itself
-    /// it always seems to return empty, seek to avoid when possible
-//    func unsafe_prepareTable<Ob: Schema>(template: Ob) throws {
-//        try unsafe_validateTemplate(template: template)
-//
-//        guard try !unsafe_tableExists(Ob.table) else {
-//            throw "table already exists: \(Ob.table)"
-//        }
-//
-//        /// all objects have an id column
-//        let prepare = self.db.create(table: Ob.table)
-//            .column("id", type: .text, .primaryKey(autoIncrement: false), .notNull)
-//
-//        throw "no longer doing json hack"
-////        guard let obj = template.json.obj else {
-////            throw "can't prepare table w non object: \(template)"
-////        }
-//
-//        let properties = unsafe_getProperties(template: template)
-//        let _ = properties
-//            .filter { $0.type.contains("NullEncoding<") }
-//            .map(\.label)
-//            // property wrappers serialize w leading `_`
-//            .map { $0.dropFirst() }
-//            .map(String.init)
-//
-//        throw "not implemented object stuff"
-////        obj.forEach { key, val in
-////            /// id is special case prepared above
-////            guard key != "id" else { return }
-////
-////            if nullableProperties.contains(key) {
-////                prepare = prepare.column(key, type: val.sqlDataType)
-////            } else {
-////                prepare = prepare.column(key, type: val.sqlDataType, .notNull)
-////            }
-////        }
-//
-//        try prepare.run().wait()
-//    }
-    private func unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String, val: Any)] {
-        Mirror(reflecting: template).children.compactMap { child in
-            assert(child.label != nil, "expected a label for template property")
-            guard let label = child.label else { return nil }
-            return (label, "\(type(of: child.value))", child.value)
-        }
     }
 
     // MARK: FATAL

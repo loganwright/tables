@@ -271,7 +271,7 @@ final class DBTests: SieqlTersts {
 
     func testExtractProperties() {
         let properties = _unsafe_force_Load_properties_on(Item.template)
-        let columns = properties.compactMap { $0.val as? mishmash.SQLColumn }
+        let columns = properties.compactMap { $0.val as? mishmash.BaseColumn }
         XCTAssertEqual(properties.count, 3)
         XCTAssertEqual(properties.count, columns.count)
         XCTAssert(columns.map(\.name).contains("id"))
@@ -605,4 +605,12 @@ struct Hero: Schema {
     var equipped = ForeignKey<Item>(pointingTo: \.id)
 
     var lunch = ToOne<Food>(linkedBy: \.owner)
+}
+
+struct Human: Schema {
+    var id = PrimaryKey<String>()
+    var name = Column<String>("name")
+    var nickname = Column<String?>("nickname")
+    var age = Column<Int>("age")
+    var nemesis = ForeignKey(pointingTo: \Human.id)
 }

@@ -46,9 +46,9 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
         let ln = Left.template._pivotIdKey
         let rn = Right.template._pivotIdKey
         let left = ForeignKey(ln, pointingTo: lpk)
-            .constrainig(by: .notNull)
+            .constraining(by: .notNull)
         let right = ForeignKey(rn, pointingTo: rpk)
-            .constrainig(by: .notNull)
+            .constraining(by: .notNull)
         self.left = left
         self.right = right
     }
@@ -59,9 +59,9 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
 }
 
 
-extension SQLColumn {
+extension BaseColumn {
     @discardableResult
-    func constrainig(by constraints: SQLColumnConstraintAlgorithm...) -> Self {
+    func constraining(by constraints: SQLColumnConstraintAlgorithm...) -> Self {
         assert(constraints.allSatisfy(\.isValidColumnAddConstraint),
                "invalid add on constraint, these are usually supported via types")
         self.constraints.append(contentsOf: constraints)
@@ -75,8 +75,9 @@ extension SQLColumnConstraintAlgorithm {
         switch self {
         /// just foreign key it seems now needs to be declared at end
         /// or if things are grouped or so
-        case .unique, .foreignKey, .primaryKey, .unique:
-            Log.warn("invalid additional constraint use a corresponding type")
+        case .unique, .foreignKey, .primaryKey:
+            Log.warn("invalid additional constraint use a corresponding column type")
+            Log.info("ie: .unique => Unique<Type>(), .foreignKey => ForeignKey<Type>()")
             return false
         default:
             return true
@@ -92,3 +93,4 @@ extension Schema {
 extension Pivot {
     var schema: PivotSchema<Left, Right>.Type { PivotSchema<Left, Right>.self }
 }
+

@@ -322,27 +322,27 @@ extension Encodable {
 //        fatalError()
 //    }
 //}
+//
+//extension Fuzzy {
+//    func canThisWork(with arg: WritableKeyPath<Fuzzy, String?>) {
+//        print(self[keyPath: arg])
+//    }
+//}
 
-extension Fuzzy {
-    func canThisWork(with arg: WritableKeyPath<Fuzzy, String?>) {
-        print(self[keyPath: arg])
-    }
-}
-
-struct Baa: Codable {
-    let id: String
-
-    func asdf() {
-//        CodingKeys(stringValue:
-    }
-}
-
-
-extension Baa {
-    func paaarths<A>(_ a: KeyPath<Self, A>) {
-
-    }
-}
+//struct Baa: Codable {
+//    let id: String
+//
+//    func asdf() {
+////        CodingKeys(stringValue:
+//    }
+//}
+//
+//
+//extension Baa {
+//    func paaarths<A>(_ a: KeyPath<Self, A>) {
+//
+//    }
+//}
 
 @_functionBuilder
 struct _KeyBuilder<Root> {
