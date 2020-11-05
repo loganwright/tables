@@ -326,7 +326,17 @@ final class SQLManager {
     }
 
     func unsafe_dropTable(_ table: String) throws {
+//        let disable = SQLRawExecute("SET FOREIGN_KEY_CHECKS = 0;\n")
+//        let enable = SQLRawExecute("SET FOREIGN_KEY_CHECKS = 1;\n")
+        let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
+        let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
+        try self.db.execute(sql: disable) { row in
+            Log.warn("disabling foreign key checks: \(row)")
+        }.wait()
         try self.db.drop(table: table).run().wait()
+        try self.db.execute(sql: enable) { row in
+            Log.info("ENABLED foreign key checks: \(row)")
+        } .wait()
     }
 
     // MARK: Preparations

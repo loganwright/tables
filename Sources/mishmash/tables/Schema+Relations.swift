@@ -199,7 +199,6 @@ postfix func /(_ a: Alert) -> Never {
     fatalError()
 }
 
-
 /// MARK: Table Constraints
 ///
 /// foreign keys (and in the future, composite primary keys) need to be declared at end of file

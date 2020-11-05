@@ -507,6 +507,8 @@ final class DBTests: SieqlTersts {
     }
 
     func testMatch() throws {
+        try sql.unsafe_fatal_dropAllTables()
+
         try db.prepare {
             Team.self
             SportsFan.self

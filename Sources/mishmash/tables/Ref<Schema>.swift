@@ -171,6 +171,11 @@ final class Ref<S: Schema> {
     }
 }
 
+extension Ref {
+    func _unsafe_setBacking(column: SQLColumn, value: JSON?) {
+        backing[column.name] = value
+    }
+}
 //struct HockeyPlayer: Schema {
 //    class Group: KeyGroup {
 //        let team = Column<String>()

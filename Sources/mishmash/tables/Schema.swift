@@ -108,6 +108,8 @@ func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [Any] {
         /// standard reulation, not a column, but ok
         case _ as Relation:
             return nil
+        case _ as TableConstraints:
+            return nil
         /// not a column, but sort of, special considerations
         case let composite as CompositeKey:
             return composite
@@ -394,6 +396,7 @@ struct _SQLiteSQLDatabase: SQLDatabase {
 /////
 extension Schema {
     static func on(_ db: SQLDatabase) -> Ref<Self> {
+        Log.warn("should use constructor")
         return Ref(db)
     }
 
@@ -404,6 +407,72 @@ extension Schema {
         try new.save()
         return new
     }
+
+    static func make<C: SQLColumn>(on db: SQLDatabase,
+                                   columns: KeyPath<Self, C>...,
+                                   rows: [[Any]]) throws -> [Ref<Self>] {
+        let counts = rows.map(\.count)
+        assert(counts.allSatisfy { columns.count == $0 })
+        return try rows.map { row in
+            try Self.on(db) { new in
+                try zip(columns, row).forEach { k, v in
+                    let column = template[keyPath: k]
+                    let js = try JSON(fuzzy: v)
+                    new._unsafe_setBacking(column: column, value: js)
+
+                }
+            }
+        }
+    }
+
+    static func make<C: SQLColumn>(on db: SQLDatabase,
+                                   with columns: KeyPath<Self, C>...,
+                                   and rows: [[JSON]]) throws -> [Ref<Self>] {
+        let counts = rows.map(\.count)
+        assert(counts.allSatisfy { columns.count == $0 })
+        return try rows.map { row in
+            try Self.on(db) { new in
+                zip(columns, row).forEach { k, v in
+                    let column = template[keyPath: k]
+                    new._unsafe_setBacking(column: column, value: v)
+
+                }
+            }
+        }
+    }
+
+//    static func make<C: SQLColumn>(on db: SQLDatabase,
+//                                   with inserts: (KeyPath<Self, C>, [JSON])...) throws -> [Ref<Self>] {
+//
+//        Log.warn("maybe remove, I think this is confusing")
+//
+//        /// dictionary ints just cuz I'm lazy
+//        var rows = [Int: [(KeyPath<Self, C>, JSON)]]()
+//        var valuesCount: Int? = nil
+//        try inserts.forEach { (column, values) in
+//            if let count = valuesCount {
+//                guard values.count == count else {
+//                    throw "the number of values for each column must match"
+//                }
+//            } else {
+//                valuesCount = values.count
+//            }
+//
+//            values.enumerated().forEach { idx, value in
+//                var row = rows[idx] ?? []
+//                row.append((column, value))
+//                rows[idx] = row
+//            }
+//        }
+//        return try rows.values.map { row in
+//            try Self.on(db) { new in
+//                row.forEach { k, v in
+//                    let column = template[keyPath: k]
+//                    new._unsafe_setBacking(column: column, value: v)
+//                }
+//            }
+//        }
+//    }
 }
 
 final class SeeQuel {

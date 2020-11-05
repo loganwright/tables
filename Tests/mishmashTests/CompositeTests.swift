@@ -1,9 +1,13 @@
+import XCTest
 @testable import mishmash
 
 class CompositeKeyTests: SieqlTersts {
 
     struct Team: Schema {
         let id = PrimaryKey<Int>()
+
+        /// unique column is not same as unique row
+        let name = Unique<String>()
     }
 
     struct Player: Schema {
@@ -19,8 +23,43 @@ class CompositeKeyTests: SieqlTersts {
     }
 
     func testUniqueGroup() {
-        
+        try! db.prepare {
+            Team.self
+            Player.self
+        }
+
+        let teams = try! Team.make(
+            on: db,
+            columns: \.name.base, \.id.base,
+            rows: [
+                ["cats", 921],
+                ["bears", 12],
+                ["barvos", 123],
+                ["snardies", 3829384]
+            ]
+        )
+        XCTAssertEqual(teams.count, 4)
+
+        let joe = try! Player.on(db) { joe in
+            joe.team = teams[0]
+            joe.jerseyNumber = 13
+        }
+
+        let jan = try! Player.on(db) { jan in
+            jan.team = teams[0]
+            jan.jerseyNumber = 84
+        }
+
+        let ohno = try? Player.on(db) { ohno in
+            ohno.team = teams[0]
+            ohno.jerseyNumber = 84
+        }
+        XCTAssertNil(ohno)
+
+        XCTAssert(joe.team?.name == jan.team?.name)
+        XCTAssertNotNil(joe.team)
     }
+
 //    @dynamicMemberLookup
 //    class Composite<Group: KeyGroup> {
 //        subscript<T>(dynamicMember key: KeyPath<Group, Column<T>>) -> T {
