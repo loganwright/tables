@@ -144,5 +144,5 @@ struct Critter: Schema {
     var name = Column<String>("name")
     var nickname = Column<String?>("nickname")
     var age = Column<Int>("age")
-    var nemesis = ForeignKey(pointingTo: \Human.id)
+    var nemesis = ForeignKey(pointingTo: \Hero.id)
 }

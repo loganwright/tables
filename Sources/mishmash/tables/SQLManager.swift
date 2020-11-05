@@ -343,73 +343,44 @@ final class SQLManager {
 
     /// right now reflection requires an empty object if we mirror on the type itself
     /// it always seems to return empty, seek to avoid when possible
-    func unsafe_prepareTable<Ob: Schema>(template: Ob) throws {
-        try unsafe_validateTemplate(template: template)
-
-        guard try !unsafe_tableExists(Ob.table) else {
-            throw "table already exists: \(Ob.table)"
-        }
-
-        /// all objects have an id column
-        let prepare = self.db.create(table: Ob.table)
-            .column("id", type: .text, .primaryKey(autoIncrement: false), .notNull)
-
-        throw "no longer doing json hack"
-//        guard let obj = template.json.obj else {
-//            throw "can't prepare table w non object: \(template)"
-//        }
-
-        let properties = unsafe_getProperties(template: template)
-        let _ = properties
-            .filter { $0.type.contains("NullEncoding<") }
-            .map(\.label)
-            // property wrappers serialize w leading `_`
-            .map { $0.dropFirst() }
-            .map(String.init)
-
-        throw "not implemented object stuff"
-//        obj.forEach { key, val in
-//            /// id is special case prepared above
-//            guard key != "id" else { return }
+//    func unsafe_prepareTable<Ob: Schema>(template: Ob) throws {
+//        try unsafe_validateTemplate(template: template)
 //
-//            if nullableProperties.contains(key) {
-//                prepare = prepare.column(key, type: val.sqlDataType)
-//            } else {
-//                prepare = prepare.column(key, type: val.sqlDataType, .notNull)
-//            }
+//        guard try !unsafe_tableExists(Ob.table) else {
+//            throw "table already exists: \(Ob.table)"
 //        }
-
-        try prepare.run().wait()
-    }
-
-    /// do as much front loading as possible on expectations of models to allow early detection of issues with models
-    private func unsafe_validateTemplate<Ob: Schema>(template: Ob) throws {
-        throw "not implemented"
-//        let json = template.json.obj ?? [:]
-//        guard !json.isEmpty else { throw "expected object" }
+//
+//        /// all objects have an id column
+//        let prepare = self.db.create(table: Ob.table)
+//            .column("id", type: .text, .primaryKey(autoIncrement: false), .notNull)
+//
+//        throw "no longer doing json hack"
+////        guard let obj = template.json.obj else {
+////            throw "can't prepare table w non object: \(template)"
+////        }
 //
 //        let properties = unsafe_getProperties(template: template)
-//        let invalid = properties.filter { $0.type.contains("Optional<") }
-//        let list = invalid.map { "\t\(Ob.self).\($0.label): \($0.type)" } .joined(separator: ",\n")
+//        let _ = properties
+//            .filter { $0.type.contains("NullEncoding<") }
+//            .map(\.label)
+//            // property wrappers serialize w leading `_`
+//            .map { $0.dropFirst() }
+//            .map(String.init)
 //
-//        let msg = "optionals are not supported, use @NullEncoding property wrapper on:\n\(list)\n"
-//        guard invalid.isEmpty else { throw msg }
+//        throw "not implemented object stuff"
+////        obj.forEach { key, val in
+////            /// id is special case prepared above
+////            guard key != "id" else { return }
+////
+////            if nullableProperties.contains(key) {
+////                prepare = prepare.column(key, type: val.sqlDataType)
+////            } else {
+////                prepare = prepare.column(key, type: val.sqlDataType, .notNull)
+////            }
+////        }
 //
-//        let bools = properties.filter { $0.type == "\(Bool.self)" }
-//        guard bools.isEmpty else { throw "boolean values not supported, use @FuzzyBool attribute" }
-//
-//        guard json.values.filter({ $0 == .null }).isEmpty else {
-//            throw "templates must not use null values or types can not be inferred"
-//        }
-//        guard json.keys.count == properties.count else {
-//            throw "template mapped keys don't match"
-//        }
-//
-//        guard json.keys.contains("id") else {
-//            throw "id must serialize"
-//        }
-    }
-
+//        try prepare.run().wait()
+//    }
     private func unsafe_getProperties<S: Schema>(template: S) -> [(label: String, type: String, val: Any)] {
         Mirror(reflecting: template).children.compactMap { child in
             assert(child.label != nil, "expected a label for template property")
