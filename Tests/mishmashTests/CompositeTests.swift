@@ -60,6 +60,73 @@ class CompositeKeyTests: SieqlTersts {
         XCTAssertNotNil(joe.team)
     }
 
+
+    struct Guest: Schema {
+        let firstName = Column<String>()
+        let lastName = Column<String>()
+        let email = Column<String>()
+
+
+        /// I think there's better fits for this in practice, but I couldn't think of an
+        let tableConstraints = TableConstraints {
+            PrimaryKeyGroup(\.firstName, \.lastName, \.email)
+        }
+    }
+
+    struct Reservation: Schema {
+        let id = PrimaryKey<Int>()
+
+        let guestFirstName = Column<String>()
+        let guestLastName = Column<String>()
+        let guestEmail = Column<String>()
+
+        /// note,
+        let tableConstraints = TableConstraints {
+            ForeignKeyGroup(\.guestFirstName, \.guestLastName, \.guestEmail,
+                            referencing: \Guest.firstName, \Guest.lastName, \Guest.email)
+        }
+    }
+
+    ///
+    ///
+    ///
+    ///   NOTE THIS ISN'T THE BEST API YET, I'M JUST VERIFYING FUNCTIONALITY
+    ///   IT'S NOT THE CORE USE CASE TO USE MULTIPLE PRIMARY KEYS RHIS WAY
+    ///   SO I'M JUST MAKING SURE IT'S POSSIBLE
+    ///
+    ///   FUTURE API WILL EXPOSE A SINGLE PRIMARY/FOREIGN KEY RELATIONSHIP
+    ///   AND MAP THE GROUPED KEYS UNDER THE HOOD AS WITH CORE API
+    ///
+    ///
+    func testMultipleForeignKeys() {
+        try! db.prepare {
+            Guest.self
+            Reservation.self
+        }
+
+        let guests = try! Guest.make(
+            on: db,
+            columns: \.firstName, \.lastName, \.email,
+            rows: [
+                ["jorny", "blorny", "sadlkfj@123.co"],
+                ["vlorb", "sleojj", "snclw@sd.co"],
+                ["slarni", "kadorpin", "slar.kad@garboogle.come"]
+            ]
+        )
+
+        let reservations = try! Reservation.make(
+            on: db,
+            columns: \.guestFirstName, \.guestLastName, \.guestEmail,
+            rows: guests.map({[$0.firstName, $0.lastName, $0.email]})
+        )
+
+        zip(guests, reservations).forEach { guest, reservation in
+            XCTAssertEqual(guest.email, reservation.guestEmail)
+            XCTAssertEqual(guest.firstName, reservation.guestFirstName)
+            XCTAssertEqual(guest.lastName, reservation.guestLastName)
+        }
+    }
+
 //    @dynamicMemberLookup
 //    class Composite<Group: KeyGroup> {
 //        subscript<T>(dynamicMember key: KeyPath<Group, Column<T>>) -> T {

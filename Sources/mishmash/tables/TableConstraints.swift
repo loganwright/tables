@@ -185,12 +185,12 @@ extension Schema {
             let from_collumns =  from_collumnRefs.map(\.name)
             let hasForeignColumnConstraints = from_collumnRefs.lazy.compactMap {
                 $0 as? ForeignColumnKeyConstraint
-            } .first == nil
+            } .first != nil
             assert(!hasForeignColumnConstraints,
                    "ForeignKey<> column attribute not currently supported as also part of group")
             let to_collumn_refs = to.map { to_template[keyPath: $0] }
             let to_collumns = to_collumn_refs.map(\.name)
-            let to = to_collumn_refs[0].name
+            let to = Foreign.table
             assert(from_collumnRefs.count == to_collumns.count)
             return builder.foreignKey(from_collumns, references: to, to_collumns)
         }
