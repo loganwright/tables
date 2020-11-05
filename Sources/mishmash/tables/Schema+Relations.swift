@@ -445,7 +445,7 @@ extension SQLDatabase {
         let idColumn = S.template._primaryKey
         let idValue = ref._id
         try self.delete(from: S.table)
-            .where(SQLIdentifier(idColumn.name), .equal, idValue)
+            .where(idColumn._sqlIdentifier, .equal, idValue)
             .run()
             .wait()
     }

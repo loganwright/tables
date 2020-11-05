@@ -283,17 +283,6 @@ class PrimaryKeyBase: SQLColumn {
 }
 
 import SQLiteKit
-struct PrimaryKeyed {
-    func asdf() {
-//        SQLiteData
-    }
-//    var key([SQLD])
-}
-
-//protocol
-//@propertyWrapper
-//class Unique<
-
 @propertyWrapper
 class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     var wrappedValue: RawType? { replacedDynamically() }
@@ -307,8 +296,7 @@ class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
     }
 }
 
-//@propertyWrapper
-//class _Column<Value>: SQLColumn
+// MARK: Column
 
 @propertyWrapper
 class Column<Value>: SQLColumn {
@@ -440,39 +428,6 @@ extension Schema {
             }
         }
     }
-
-//    static func make<C: SQLColumn>(on db: SQLDatabase,
-//                                   with inserts: (KeyPath<Self, C>, [JSON])...) throws -> [Ref<Self>] {
-//
-//        Log.warn("maybe remove, I think this is confusing")
-//
-//        /// dictionary ints just cuz I'm lazy
-//        var rows = [Int: [(KeyPath<Self, C>, JSON)]]()
-//        var valuesCount: Int? = nil
-//        try inserts.forEach { (column, values) in
-//            if let count = valuesCount {
-//                guard values.count == count else {
-//                    throw "the number of values for each column must match"
-//                }
-//            } else {
-//                valuesCount = values.count
-//            }
-//
-//            values.enumerated().forEach { idx, value in
-//                var row = rows[idx] ?? []
-//                row.append((column, value))
-//                rows[idx] = row
-//            }
-//        }
-//        return try rows.values.map { row in
-//            try Self.on(db) { new in
-//                row.forEach { k, v in
-//                    let column = template[keyPath: k]
-//                    new._unsafe_setBacking(column: column, value: v)
-//                }
-//            }
-//        }
-//    }
 }
 
 final class SeeQuel {
