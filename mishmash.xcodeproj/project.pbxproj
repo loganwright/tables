@@ -29,6 +29,10 @@
 		802156E025543DE6000E89E5 /* SQL+Meta.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802156DF25543DE6000E89E5 /* SQL+Meta.swift */; };
 		802156F225544189000E89E5 /* PrimaryKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802156F125544189000E89E5 /* PrimaryKey.swift */; };
 		802156FC255441EB000E89E5 /* Unique.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802156FB255441EB000E89E5 /* Unique.swift */; };
+		8021570625544520000E89E5 /* ToMany.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8021570525544520000E89E5 /* ToMany.swift */; };
+		8021570C2554453C000E89E5 /* Later.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8021570B2554453C000E89E5 /* Later.swift */; };
+		8021571225544554000E89E5 /* ForeignKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8021571125544554000E89E5 /* ForeignKey.swift */; };
+		8021571D25544615000E89E5 /* AddConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8021571C25544615000E89E5 /* AddConstraints.swift */; };
 		803F5E882551D61E00317F66 /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 803F5E872551D61E00317F66 /* SQLiteKit */; };
 		803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E8E2551F89C00317F66 /* Pivot.swift */; };
 		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
@@ -51,7 +55,7 @@
 		80F3CDAB254D24EC00EFA52F /* http-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDA1254D24AD00EFA52F /* http-tests.swift */; };
 		80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDB0254D3BC400EFA52F /* JSON.swift */; };
 		80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */; };
-		80FAA558254FB4B2001F3528 /* Schema+Relations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FAA557254FB4B2001F3528 /* Schema+Relations.swift */; };
+		80FAA558254FB4B2001F3528 /* Relations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FAA557254FB4B2001F3528 /* Relations.swift */; };
 		80FAA562254FBDB2001F3528 /* SQL+Prepare.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FAA561254FBDB1001F3528 /* SQL+Prepare.swift */; };
 		80FAA568254FBE3F001F3528 /* SQLDatabase+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FAA567254FBE3F001F3528 /* SQLDatabase+Extensions.swift */; };
 		OBJ_24 /* mishmash.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_9 /* mishmash.swift */; };
@@ -87,6 +91,10 @@
 		802156DF25543DE6000E89E5 /* SQL+Meta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SQL+Meta.swift"; sourceTree = "<group>"; };
 		802156F125544189000E89E5 /* PrimaryKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryKey.swift; sourceTree = "<group>"; };
 		802156FB255441EB000E89E5 /* Unique.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unique.swift; sourceTree = "<group>"; };
+		8021570525544520000E89E5 /* ToMany.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToMany.swift; sourceTree = "<group>"; };
+		8021570B2554453C000E89E5 /* Later.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Later.swift; sourceTree = "<group>"; };
+		8021571125544554000E89E5 /* ForeignKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForeignKey.swift; sourceTree = "<group>"; };
+		8021571C25544615000E89E5 /* AddConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddConstraints.swift; sourceTree = "<group>"; };
 		803F5E8E2551F89C00317F66 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		803F5E9C2552023500317F66 /* Ref<Schema>.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ref<Schema>.swift"; sourceTree = "<group>"; };
 		805DD3F8255361CB0089FE32 /* TableConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableConstraints.swift; sourceTree = "<group>"; };
@@ -108,7 +116,7 @@
 		80F3CDA1254D24AD00EFA52F /* http-tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "http-tests.swift"; sourceTree = "<group>"; };
 		80F3CDB0254D3BC400EFA52F /* JSON.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSON.swift; sourceTree = "<group>"; };
 		80F3CDB6254D3C3D00EFA52F /* Codable+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Codable+Extensions.swift"; sourceTree = "<group>"; };
-		80FAA557254FB4B2001F3528 /* Schema+Relations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Schema+Relations.swift"; sourceTree = "<group>"; };
+		80FAA557254FB4B2001F3528 /* Relations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Relations.swift; sourceTree = "<group>"; };
 		80FAA561254FBDB1001F3528 /* SQL+Prepare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SQL+Prepare.swift"; sourceTree = "<group>"; };
 		80FAA567254FBE3F001F3528 /* SQLDatabase+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SQLDatabase+Extensions.swift"; sourceTree = "<group>"; };
 		OBJ_12 /* XCTestManifests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestManifests.swift; sourceTree = "<group>"; };
@@ -144,30 +152,42 @@
 		802156BC2553A70F000E89E5 /* columns */ = {
 			isa = PBXGroup;
 			children = (
+				8021571725544583000E89E5 /* Relations */,
 				80B31F292551522C00CFA510 /* BaseColumn.swift */,
 				802156BD2553A71D000E89E5 /* Columns.swift */,
 				802156F125544189000E89E5 /* PrimaryKey.swift */,
 				802156FB255441EB000E89E5 /* Unique.swift */,
+				8021571125544554000E89E5 /* ForeignKey.swift */,
 			);
 			path = columns;
+			sourceTree = "<group>";
+		};
+		8021571725544583000E89E5 /* Relations */ = {
+			isa = PBXGroup;
+			children = (
+				803F5E8E2551F89C00317F66 /* Pivot.swift */,
+				802156D925543D60000E89E5 /* Pivot+Ref.swift */,
+				80FAA557254FB4B2001F3528 /* Relations.swift */,
+				8021570525544520000E89E5 /* ToMany.swift */,
+			);
+			path = Relations;
 			sourceTree = "<group>";
 		};
 		803F5E8D2551F89000317F66 /* tables */ = {
 			isa = PBXGroup;
 			children = (
 				802156BC2553A70F000E89E5 /* columns */,
-				803F5E8E2551F89C00317F66 /* Pivot.swift */,
-				802156D925543D60000E89E5 /* Pivot+Ref.swift */,
 				8082EE41254E336500ACBADA /* Schema.swift */,
 				803F5E9C2552023500317F66 /* Ref<Schema>.swift */,
-				80FAA557254FB4B2001F3528 /* Schema+Relations.swift */,
 				80FAA561254FBDB1001F3528 /* SQL+Prepare.swift */,
+				805DD3F8255361CB0089FE32 /* TableConstraints.swift */,
 				80FAA567254FBE3F001F3528 /* SQLDatabase+Extensions.swift */,
 				8082EE5C254E8A8900ACBADA /* SQLManager.swift */,
-				805DD3F8255361CB0089FE32 /* TableConstraints.swift */,
 				802156C3255434BF000E89E5 /* Schema+Mirror.swift */,
 				802156D325543CEA000E89E5 /* SQL+Access.swift */,
 				802156DF25543DE6000E89E5 /* SQL+Meta.swift */,
+				8021570B2554453C000E89E5 /* Later.swift */,
+				8021571C25544615000E89E5 /* AddConstraints.swift */,
 			);
 			path = tables;
 			sourceTree = "<group>";
@@ -349,6 +369,7 @@
 				OBJ_24 /* mishmash.swift in Sources */,
 				80F3CD9C254D23BF00EFA52F /* Request.swift in Sources */,
 				80B31F2A2551522C00CFA510 /* BaseColumn.swift in Sources */,
+				8021571D25544615000E89E5 /* AddConstraints.swift in Sources */,
 				80F3CDB7254D3C3D00EFA52F /* Codable+Extensions.swift in Sources */,
 				80F3CDB1254D3BC400EFA52F /* JSON.swift in Sources */,
 				802156E025543DE6000E89E5 /* SQL+Meta.swift in Sources */,
@@ -356,6 +377,7 @@
 				803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */,
 				8082EE7F254E902500ACBADA /* Globals.swift in Sources */,
 				80FAA562254FBDB2001F3528 /* SQL+Prepare.swift in Sources */,
+				8021570625544520000E89E5 /* ToMany.swift in Sources */,
 				8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */,
 				802156FC255441EB000E89E5 /* Unique.swift in Sources */,
 				80F3CD95254D0FC100EFA52F /* KeyPathListable.swift in Sources */,
@@ -363,8 +385,10 @@
 				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* SQLDatabase+Extensions.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
+				8021571225544554000E89E5 /* ForeignKey.swift in Sources */,
 				802156D425543CEA000E89E5 /* SQL+Access.swift in Sources */,
-				80FAA558254FB4B2001F3528 /* Schema+Relations.swift in Sources */,
+				8021570C2554453C000E89E5 /* Later.swift in Sources */,
+				80FAA558254FB4B2001F3528 /* Relations.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
