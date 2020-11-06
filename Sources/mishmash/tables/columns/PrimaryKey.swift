@@ -54,3 +54,38 @@ class PrimaryKeyBase: BaseColumn {
         super.init(key, kind.sqltype, Later([kind.constraint]))
     }
 }
+
+// MARK: Helpers
+
+extension Schema {
+    /// whether the schema contains a primary key
+    /// one can name their primary key as they'd like, this is
+    /// a generic name that will extract
+    ///
+    /// currently composite primary keys will need to be worked around
+    var primaryKey: PrimaryKeyBase? {
+        let all = columns.compactMap { $0 as? PrimaryKeyBase }
+        assert(0...1 ~= all.count,
+               "multiple primary keys not currently supported as property")
+        return all.first
+    }
+
+    /// whether a schema is primary keyed
+    /// all relations require a schema to be primary keyed
+    var isPrimaryKeyed: Bool {
+        primaryKey != nil
+    }
+
+    /// this is a forced key that will assert that will fail if a schema has not declared
+    /// a primary key
+    /// currently only one primary key is supported
+    var _primaryKey: PrimaryKeyBase {
+        let pk = primaryKey
+        assert(pk != nil, "no primary key found: \(Schema.self)")
+        return pk!
+    }
+
+    var primaryKeyGroup: Any? {
+        fatalError()
+    }
+}

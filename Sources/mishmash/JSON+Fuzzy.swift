@@ -5,7 +5,7 @@ extension JSON {
         if let data = fuzzy as? Data {
             self = try JSON(jsonData: data)
         } else if let e = fuzzy as? Encodable {
-            self = e.json
+            self = try e.toJson()
         } else if let nsobj = fuzzy as? NSObject {
             self = try JSON(nsobj: nsobj)
         } else {
@@ -27,7 +27,7 @@ extension JSON {
                 withJSONObject: nsobj,
                 options: [.fragmentsAllowed])
 
-            self = serialized.json
+            self = try serialized.toJson()
         }
     }
 }

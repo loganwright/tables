@@ -1,9 +1,7 @@
 import XCTest
 @testable import mishmash
 
-final class HTTPTests: XCTestCase {
+final class HTTPTests: SieqlTersts {
     func testRequestBuilder() {
-        
     }
 }
-

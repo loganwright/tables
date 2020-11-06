@@ -90,11 +90,12 @@ extension SQLCreateTableBuilder {
     /// There's a lot of subtle differences in how foreign constraints are grouped
     /// for now, it's best to assume foreign keys
     func add(foreignColumnConstraint fc: ForeignColumnKeyConstraint) -> SQLCreateTableBuilder {
-        foreignKey([fc.pointingFrom.name],
-                   references: fc.pointingToRemoteTable,
-                   [fc.pointingTo.name],
-                   onDelete: fc.onDelete,
-                   onUpdate: fc.onUpdate,
-                   named: nil)
+        Log.warn("should this just use the foreignkey type and skip protocol?")
+        return foreignKey([fc.pointingFrom.name],
+                          references: fc.pointingToRemoteTable,
+                          [fc.pointingTo.name],
+                          onDelete: fc.onDelete,
+                          onUpdate: fc.onUpdate,
+                          named: nil)
     }
 }

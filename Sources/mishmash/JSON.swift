@@ -175,10 +175,34 @@ extension Decodable {
 }
 
 extension Encodable {
-    var json: JSON {
-        try! JSON(jsonData: self.encoded())
+    var json: JSON? {
+        do {
+            return try toJson()
+        } catch {
+            Log.error(error)
+            return nil
+        }
+    }
+    func toJson() throws -> JSON {
+        try self.encoded().toJson()
     }
 }
+
+extension Data {
+    var json: JSON? {
+        do {
+            return try toJson()
+        } catch {
+            Log.error(error)
+            return nil
+        }
+    }
+
+    func toJson() throws -> JSON {
+        try JSON(jsonData: self)
+    }
+}
+
 
 @propertyWrapper
 struct FuzzyBool: Codable {
@@ -211,7 +235,8 @@ extension Encodable where Self: Decodable {
         do {
 
             print("!!!!! NEED TO ADD BACK LOGS")
-            return try C.init(json: self.json)
+            let json = try self.toJson()
+            return try C.init(json: json)
         } catch {
             print("!!!!! NEED TO ADD BACK LOGS: \(error)")
 //            Log.error(error)
@@ -249,6 +274,7 @@ extension JSON {
         case .int(let val): return val.description
         case .double(let val): return val.description
         case .str(let val): return val
+        case .bool(let val): return val.description
         default: return nil
         }
     }

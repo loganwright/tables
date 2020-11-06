@@ -129,15 +129,18 @@ final class Ref<S: Schema> {
     subscript<One: Schema>(dynamicMember key: KeyPath<S, ToOne<One>>) -> Ref<One>? {
         // we are parent, seeking detached children
         let relation = S.template[keyPath: key]
+        // our field that is being pointed to
         let pointingTo = relation.pointingTo
+        // the foreign column in the foreign table that is tracking
+        // our key
         let pointingFrom = relation.pointingFrom
 
-
+        //
         guard let id = self.backing[pointingTo.name] else {
             /// we don't have the value that's being pointed to, can't have a child pointing back
             return nil
         }
-//        let id = self.backing[pointingTo.name]
+
         return db.getOne(where: pointingFrom.name, matches: id)
     }
 }
