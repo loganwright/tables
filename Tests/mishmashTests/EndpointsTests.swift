@@ -21,6 +21,7 @@ class EndpointsTests: XCTestCase {
             testPost,
             statusCode,
             testBasicAuth,
+            testSerialize
 //            getUser,
 //            getCheckIns,
 //            refresh
@@ -94,6 +95,41 @@ class EndpointsTests: XCTestCase {
             .send()
     }
 
+    func testSerialize(_ group: XCTestExpectation) {
+        let sql = SQLManager.shared
+        let db = sql.testable_db
+        sql.open {
+            try sql.unsafe_fatal_dropAllTables()
+        } .commitSynchronously()
+        try! db.prepare {
+            BasicUser.self
+        }
+        Log.warn("don't in practice use password in a url")
+        Host.httpbin
+            .post("post")
+            .contentType("application/json")
+            .accept("application/json")
+            .body(id: "asfdlkjdsf", name: "flia", age: 234)
+            .on.success { resp in
+                /// json is nested key in http bin :/
+                let json = resp.json?["json"]?.obj ?? [:]
+                let user = Ref<BasicUser>(json, db)
+                try! user.save()
+                XCTAssertEqual(user.id, "asfdlkjdsf")
+                XCTAssertEqual(user.name, "flia")
+                XCTAssertEqual(user.age, 234)
+                group.fulfill()
+            }
+            .on.error(fail)
+            .send()
+
+//            { ref in
+//
+//            }
+//            .on(db).make(BasicUser.self)
+//            .send()
+    }
+
     func fail(_ error: Error) {
         XCTFail("error: \(error)")
     }
@@ -102,3 +138,50 @@ class EndpointsTests: XCTestCase {
         Log.info("testing: \(desc)")
     }
 }
+
+struct BasicUser: Schema {
+    let id = PrimaryKey<String>()
+    let name = Column<String>()
+    let age = Column<Int>()
+}
+
+////import SQKit
+//
+
+class TypedOn<S: Schema> {
+    let on: OnBuilder
+    init(_ on: OnBuilder) {
+        self.on = on
+    }
+    func success(_ success: @escaping (Ref<S>) -> Void) -> mishmash.Host {
+        return on.success { resp in
+//            let nodb = Ref<S>(resp.json!.obj!, nil)
+            fatalError()
+//            success(nodb)
+        }
+    }
+ }
+
+extension OnBuilder {
+    func typed<S: Schema>(_ schema: S.Type) -> TypedOn<S> {
+        fatalError()
+    }
+
+//    func callAsFunction(_ db: Any) {
+//        fatalError()
+////        return SQLModelBuilder(host)
+//    }
+}
+//
+////@dynamicCallable
+//class SQLModelBuilder {
+//    private let host: mishmash.Host
+//
+//    fileprivate init(_ host: mishmash.Host) {
+//        self.host = host
+//    }
+//
+//    func make(_ schema: Schema) -> mishmash.Host {
+//        fatalError()
+//    }
+//}

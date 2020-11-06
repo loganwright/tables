@@ -215,11 +215,9 @@ extension Alien {
 
 //let global_json_encoder = JSONEncoder
 extension Encodable {
-    func encoded() -> Data {
+    func encoded() throws -> Data {
         let encoder = JSONEncoder()
-        do {
-            return try encoder.encode(self)
-        } catch { fatalError() }
+        return try encoder.encode(self)
     }
 }
 
@@ -229,7 +227,7 @@ struct Key<A> {
     init<B: Encodable>(_ key: String, _ path: KeyPath<A, B>) {
         self.key = key
         self.getter = { obj in
-            obj[keyPath: path].encoded()
+            try! obj[keyPath: path].encoded()
         }
     }
 }

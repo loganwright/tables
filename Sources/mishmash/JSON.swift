@@ -169,7 +169,7 @@ extension JSON {
 
 extension Decodable {
     init(json: JSON) throws {
-        let raw = json.encoded()
+        let raw = try json.encoded()
         try self.init(jsonData: raw)
     }
 }

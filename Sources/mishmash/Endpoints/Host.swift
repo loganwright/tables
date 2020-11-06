@@ -334,8 +334,8 @@ extension String {
 
 // MARK: Handler Builder
 
-final class OnBuilder {
-    private let host: Host
+open class OnBuilder {
+    let host: Host
 
     fileprivate init(_ host: Host) {
         self.host = host

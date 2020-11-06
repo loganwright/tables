@@ -4,7 +4,7 @@ extension Ref {
     func add<R>(to pivot: KeyPath<S, Pivot<S, R>>, _ new: [Ref<R>]) throws {
         /// not efficient, and not handling cascades and stuff
         try new.forEach { incoming in
-            let pivot = PivotSchema<S, R>.on(db)
+            let pivot = PivotSchema<S, R>.on(db!)
             pivot.left = self
             pivot.right = incoming
             try pivot.save()
@@ -17,7 +17,7 @@ extension Ref {
 
         let pivotIdKey = R.template._pivotIdKey
         let ids = remove.map(\._id)
-        try self.db.delete(from: schema.table)
+        try self.db!.delete(from: schema.table)
             .where(pivotIdKey._sqlid, .in, ids)
             .run()
             .wait()
@@ -34,7 +34,7 @@ extension Ref {
             let id = backing[myPrimary.name]
 
             /// not very optimized fetching one at a time
-            let pivots: [Ref<PivotSchema<S, R>>] = db.getAll(where: pivotColumn, matches: id)
+            let pivots: [Ref<PivotSchema<S, R>>] = db!.getAll(where: pivotColumn, matches: id)
             return pivots.map(\.right).compactMap { r in
                 guard let r = r else {
                     Log.warn("unexpected nil on pivot, set cascade?")
@@ -46,7 +46,7 @@ extension Ref {
         set {
             /// not efficient, and not handling cascades and stuff
             newValue.forEach { incoming in
-                let pivot = PivotSchema<S, R>.on(db)
+                let pivot = PivotSchema<S, R>.on(db!)
                 pivot.left = self
                 pivot.right = incoming
                 try! pivot.save()

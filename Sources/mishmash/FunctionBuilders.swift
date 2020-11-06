@@ -35,7 +35,7 @@ func go() {
     let b = \Foo.name
     let value = a[keyPath: b]
     print(value)
-    [1,2,3].map(\.words)
+//    [1,2,3].map(\.words)
 //    let c = Combiner {
 //        "a"
 //    }

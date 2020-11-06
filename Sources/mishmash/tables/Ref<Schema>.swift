@@ -20,7 +20,7 @@ final class Ref<S: Schema> {
     fileprivate(set) var exists: Bool = false
 
     /// the database that contains the table for a given schema
-    let db: SQLDatabase
+    let db: SQLDatabase?
 
     /// init with the raw backing materials, and a database connection
     init(_ raw: [String: JSON], _ database: SQLDatabase) {
@@ -86,7 +86,7 @@ final class Ref<S: Schema> {
         get {
             let referencingKey = S.template[keyPath: key]
             guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
-            return db.load(id: referencingValue)
+            return db!.load(id: referencingValue)
         }
         set {
             let relation = S.template[keyPath: key]
@@ -121,7 +121,8 @@ final class Ref<S: Schema> {
         let pointingTo = relation.pointingTo
         let pointingFrom = relation.pointingFrom
         let id = self.backing[pointingTo.name]
-        return db.getAll(where: pointingFrom.name, matches: id)
+        assert(db != nil)
+        return db!.getAll(where: pointingFrom.name, matches: id)
     }
 
     /// a one to one relationship where a single object from another table
@@ -141,7 +142,7 @@ final class Ref<S: Schema> {
             return nil
         }
 
-        return db.getOne(where: pointingFrom.name, matches: id)
+        return db!.getOne(where: pointingFrom.name, matches: id)
     }
 }
 
@@ -184,7 +185,7 @@ extension Ref {
         }
 
         guard !self.backing.isEmpty else { return }
-        try db.insert(into: S.table)
+        try db!.insert(into: S.table)
             .model(self.backing)
             .run()
             .wait()
@@ -200,7 +201,7 @@ extension Ref {
 
     func update() throws {
         let primary = S.template._primaryKey
-        try self.db.update(S.table)
+        try self.db!.update(S.table)
             .where(primary.name.sqlid, .equal, backing[primary.name])
             .set(model: backing)
             .run()
@@ -210,7 +211,7 @@ extension Ref {
     private func unsafe_lastInsertedRowId() -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try! self.db.execute(sql: raw) { (row) in
+        try! self.db!.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first
