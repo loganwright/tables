@@ -105,10 +105,11 @@ class EndpointsTests: XCTestCase {
             BasicUser.self
         }
         Log.warn("don't in practice use password in a url")
-        Host.httpbin
-            .post("post")
+        Host("https://httpbin.org")
+            .post(path: "post")
             .contentType("application/json")
             .accept("application/json")
+            .header("Custom", "more")
             .body(id: "asfdlkjdsf", name: "flia", age: 234)
             .on.success { resp in
                 /// json is nested key in http bin :/
@@ -122,13 +123,8 @@ class EndpointsTests: XCTestCase {
             }
             .on.error(fail)
             .send()
-
-//            { ref in
-//
-//            }
-//            .on(db).make(BasicUser.self)
-//            .send()
     }
+
 
     func fail(_ error: Error) {
         XCTFail("error: \(error)")
@@ -137,6 +133,10 @@ class EndpointsTests: XCTestCase {
     func log(_ desc: String = #function) {
         Log.info("testing: \(desc)")
     }
+}
+
+extension EP {
+    var testPost: EP { "post" }
 }
 
 struct BasicUser: Schema {

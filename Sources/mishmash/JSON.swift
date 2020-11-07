@@ -253,6 +253,7 @@ extension JSON {
         case .int(let i): return i
         case .double(let d): return Int(d)
         case .str(let s): return Int(s)
+        case .bool(let b): return b ? 1 : 0
         default: return nil
         }
     }
