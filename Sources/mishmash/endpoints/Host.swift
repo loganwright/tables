@@ -33,6 +33,13 @@ class Host {
         return builder
     }
 
+    /// get, post, put, patch, delete
+    subscript(dynamicMember key: KeyPath<PathBuilder, HTTPMethod>) -> Self {
+        let builder = PathBuilder(self)
+        self._method = builder[keyPath: key]
+        return self
+    }
+
     fileprivate func set(path: String) -> Self {
         self._path = path
         return self
