@@ -14,14 +14,6 @@ private var sql_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
-extension FileManager {
-    var documentsDir: URL {
-        return FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)
-            .first!
-    }
-}
-
 typealias Block = () -> Void
 typealias ThrowingBlock = () throws -> Void
 

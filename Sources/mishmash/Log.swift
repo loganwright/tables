@@ -25,5 +25,14 @@ struct Log {
         _testable_logs.append(str)
         Swift.print(str)
     }
+    #else
+    private static func print(_: String) {}
     #endif
+}
+
+func warnNil<T>(file: String = #file, line: Int = #line, _ thing: T?, _ msg: String) {
+    if let _ = thing { return }
+    else {
+        Log.warn(file: file, line: line, "unexpectedly found nil: \(msg)")
+    }
 }
