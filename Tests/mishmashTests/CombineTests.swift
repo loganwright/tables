@@ -1,19 +1,8 @@
 import XCTest
+@testable import mishmash
 
 final class AlwaysTests: XCTestCase {
     func testItEmitsASingleValue() {
-//        var output: [Int] = []
-//        //    _ = Always(1).sink { print($0); output.append($0) }
-//        let two = Always(2)
-//        //    DispatchQueue.global().async {
-//        //        two.sink { print("a: \($0)");
-//        //            output.append($0) }
-//        //    }
-//        //    Always(1).
-//        Always(1).combineLatest(two).sink { print("b: \($0)");
-//            output.append($0.0); output.append($0.1) }
-//        print(output)
-//        XCTAssertEqual(output, [1])
     }
 
     var cancellables = [AnyCancellable]()

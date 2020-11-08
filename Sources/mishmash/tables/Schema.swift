@@ -36,5 +36,4 @@ protocol OptionalProtocol {
 }
 extension Optional: OptionalProtocol {}
 
-
 func replacedDynamically() -> Never { fatalError() }

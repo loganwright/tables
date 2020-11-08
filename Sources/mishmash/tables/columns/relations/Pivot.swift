@@ -30,19 +30,6 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
     var right: ForeignKey<Right>
 
     init() {
-        let reminder = """
-        I set up nesting, but when I implemented on pivot, it broke down kinda quick
-        I thinkmight be better to try again w property wrappers or sth else
-
-        or, inverse the pointers
-
-            struct InnerGroupDefine {
-                let one = \\Outer.outer
-            }
-
-            let outer = PrimaryKey()
-        """
-        Log.warn(reminder)
         let lpk = \Left._primaryKey
         let rpk = \Right._primaryKey
         let ln = Left.template._pivotIdKey

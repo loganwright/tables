@@ -6,10 +6,6 @@ extension mishmash.Host {
     static var httpbin: mishmash.Host { Host("https://httpbin.org") }
 }
 
-extension Endpoint {
-
-}
-
 class EndpointsTests: XCTestCase {
     func testNotes() {
         Log.warn("should change name? ambiguous w Foundation.Host")
@@ -22,9 +18,6 @@ class EndpointsTests: XCTestCase {
             statusCode,
             testBasicAuth,
             testSerialize
-//            getUser,
-//            getCheckIns,
-//            refresh
         ]
 
         orderedTestCases.forEach(execute)
@@ -145,43 +138,3 @@ struct BasicUser: Schema {
     let age = Column<Int>()
 }
 
-////import SQKit
-//
-
-class TypedOn<S: Schema> {
-    let on: OnBuilder
-    init(_ on: OnBuilder) {
-        self.on = on
-    }
-    func success(_ success: @escaping (Ref<S>) -> Void) -> mishmash.Host {
-        return on.success { resp in
-//            let nodb = Ref<S>(resp.json!.obj!, nil)
-            fatalError()
-//            success(nodb)
-        }
-    }
- }
-
-extension OnBuilder {
-    func typed<S: Schema>(_ schema: S.Type) -> TypedOn<S> {
-        fatalError()
-    }
-
-//    func callAsFunction(_ db: Any) {
-//        fatalError()
-////        return SQLModelBuilder(host)
-//    }
-}
-//
-////@dynamicCallable
-//class SQLModelBuilder {
-//    private let host: mishmash.Host
-//
-//    fileprivate init(_ host: mishmash.Host) {
-//        self.host = host
-//    }
-//
-//    func make(_ schema: Schema) -> mishmash.Host {
-//        fatalError()
-//    }
-//}
