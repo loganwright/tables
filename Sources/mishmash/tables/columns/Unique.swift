@@ -6,13 +6,13 @@ class Unique<Value>: Column<Value> {
     override init(_ name: String = "",
                   _ type: SQLDataType,
                   _ constraints: Later<[SQLColumnConstraintAlgorithm]> = Later([])) {
-        super.init(name, type, constraints)
+        super.init(name, type, Later { constraints.wrappedValue + [.unique] })
     }
 }
 
 extension Unique where Value: DatabaseValue {
     convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        self.init(key, Value.sqltype, Later(constraints + [.notNull, .unique]))
+        self.init(key, Value.sqltype, Later(constraints + [.notNull]))
     }
 }
 

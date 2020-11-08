@@ -45,7 +45,6 @@
 		807AD7A2255524A80068F172 /* Endpoints+Extras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79A255524A80068F172 /* Endpoints+Extras.swift */; };
 		807AD7A3255524A80068F172 /* NetworkResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79B255524A80068F172 /* NetworkResponse.swift */; };
 		807AD7A4255524A80068F172 /* Middleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79C255524A80068F172 /* Middleware.swift */; };
-		807AD7A5255524A80068F172 /* Network+Extras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79D255524A80068F172 /* Network+Extras.swift */; };
 		807AD7A6255524A80068F172 /* RefreshMiddleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79E255524A80068F172 /* RefreshMiddleware.swift */; };
 		807AD7A7255524A80068F172 /* Host.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD79F255524A80068F172 /* Host.swift */; };
 		807AD7AD255524C00068F172 /* EndpointsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 807AD7AC255524C00068F172 /* EndpointsTests.swift */; };
@@ -111,7 +110,6 @@
 		807AD79A255524A80068F172 /* Endpoints+Extras.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Endpoints+Extras.swift"; sourceTree = "<group>"; };
 		807AD79B255524A80068F172 /* NetworkResponse.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NetworkResponse.swift; sourceTree = "<group>"; };
 		807AD79C255524A80068F172 /* Middleware.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Middleware.swift; sourceTree = "<group>"; };
-		807AD79D255524A80068F172 /* Network+Extras.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Network+Extras.swift"; sourceTree = "<group>"; };
 		807AD79E255524A80068F172 /* RefreshMiddleware.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RefreshMiddleware.swift; sourceTree = "<group>"; };
 		807AD79F255524A80068F172 /* Host.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Host.swift; sourceTree = "<group>"; };
 		807AD7AC255524C00068F172 /* EndpointsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointsTests.swift; sourceTree = "<group>"; };
@@ -206,7 +204,6 @@
 				807AD79A255524A80068F172 /* Endpoints+Extras.swift */,
 				807AD79B255524A80068F172 /* NetworkResponse.swift */,
 				807AD79C255524A80068F172 /* Middleware.swift */,
-				807AD79D255524A80068F172 /* Network+Extras.swift */,
 				807AD79E255524A80068F172 /* RefreshMiddleware.swift */,
 				807AD79F255524A80068F172 /* Host.swift */,
 				809DD77B255759D700B468C5 /* Host+Publisher.swift */,
@@ -433,7 +430,6 @@
 				807AD7A1255524A80068F172 /* Endpoints.swift in Sources */,
 				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* SQLDatabase+Extensions.swift in Sources */,
-				807AD7A5255524A80068F172 /* Network+Extras.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
 				8021571225544554000E89E5 /* ForeignKey.swift in Sources */,
 				802156D425543CEA000E89E5 /* SQL+Access.swift in Sources */,
