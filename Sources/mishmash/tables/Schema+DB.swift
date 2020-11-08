@@ -177,38 +177,15 @@ private struct SQLTableSchema: SQLExpression {
 
 protocol Database {
     func save(to table: String, _ body: [String: JSON])
-
     func save<S>(_ ref: Ref<S>) throws
     func load<S>(id: String) -> Ref<S>?
     func load<S>(ids: [String]) -> [Ref<S>]
-
-//    func prepare(_ table: Table) throws
-//    func prepare(_ tables: [Table]) throws
-
     func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
     func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>]
-//    func getAll<S: Schema, T: Encodable>(where key: String, containedIn: [T]) -> [Ref<S>]
-
-//    func delete<T>(where key: String, contains: T)
 }
 
 extension Database {
     func save<S>(_ refs: [Ref<S>]) throws {
         try refs.forEach(save)
     }
-
-//    func prepare(_ tables: [Table]) {
-//        do {
-//            try tables.forEach(prepare)
-//        } catch {
-//            Log.error("table prepare failed: \(error)")
-//        }
-//    }
-//}
-//
-//extension Database {
-//    func prepare(@TableBuilder _ builder: () -> [Table]) throws {
-//        let tables = builder()
-//        try self.prepare(tables)
-//    }
 }

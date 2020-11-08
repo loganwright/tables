@@ -196,30 +196,3 @@ extension Schema {
         }
     }
 }
-
-
-///
-///
-///
-///      for now I'm just going to put this away, it's too specialized
-///      the cases that are important are the ability to declare a primary key
-///      as multiple fields, for example in pivot,
-///      the ability to create unique gruops, as in baseball players
-///
-///      right now, we will enforce two things..
-///      only ONE primary key is allowed.. right now, there's no good way
-///      for an object with multiple primary keys to declare that it has them,
-///      but that's maybe ok because it allows us to fill in in the future
-///
-///
-///      this means, foreign keys can stay as they are, linking by a single
-///      primary key, but because of type constraints, for cases where multiple
-///      keys must match, it's less difficult to add
-///
-///
-///
-///      I think the long term win is to create a Composite column type that can compose
-///      together the fields of the group in question
-///      just not sure the best way to link that from a code perpective yet and it's slowing me down
-///      too much for a special case
-///

@@ -3,7 +3,7 @@ import Foundation
 extension JSON {
     init(fuzzy: Any) throws {
         if let data = fuzzy as? Data {
-            self = try JSON(jsonData: data)
+            self = try JSON.decode(data)
         } else if let e = fuzzy as? Encodable {
             self = try e.toJson()
         } else if let nsobj = fuzzy as? NSObject {

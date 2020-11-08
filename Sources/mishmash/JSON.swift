@@ -1,24 +1,10 @@
 import Foundation
-//extension Decodable {
-//    static func from(template: String) -> Self {
-//        let filePath  = Bundle.main.path(
-//            forResource: template,
-//            ofType: "json"
-//        )!
-//        let data = NSData(contentsOfFile: filePath)!
-//        return try! .decode(.init(data))
-//    }
-//}
 
 extension String {
     var data: Data { Data(utf8) }
 }
 extension Data {
     var string: String? { String(data: self, encoding: .utf8) }
-}
-
-extension NSData {
-    var ns: Data { Data(self) }
 }
 
 extension JSON {
@@ -76,10 +62,6 @@ enum JSON: Codable, Equatable {
     }
 }
 
-enum JSONAccessor {
-    case total
-}
-
 extension JSON {
     subscript(dynamicMember key: String) -> JSON? {
         get {
@@ -93,11 +75,9 @@ extension JSON {
     subscript<C: Codable>(dynamicMember key: String) -> C? {
         get {
             do {
-                print("!!!!! NEED TO ADD BACK LOGS")
                 return try self[key].flatMap(C.init)
             } catch {
-                print("!!!!! NEED TO ADD BACK LOGS: \(error)")
-//                Log.error(error)
+                Log.error(error)
                 return nil
             }
         }
@@ -121,6 +101,7 @@ extension JSON {
             self = .obj(obj)
         }
     }
+
     subscript(idx: Int) -> JSON? {
         return array?[idx] ?? obj?["\(idx)"]
     }
@@ -144,33 +125,13 @@ extension JSON {
     }
 }
 
-//@dynamicMemberLookup
-//struct KeyedAccessor<KeyMap: Schema> {
-//    var backing: JSON
-//    init(_ backing: JSON) {
-//        self.backing = backing
-//    }
-//
-//    subscript<T: Codable>(dynamicMember key: WritableKeyPath<KeyMap, Column<T>>) -> T {
-//        get {
-//            let column = KeyMap.template[keyPath: key]
-//            let body = backing[column.name] ?? .null
-//            return try! T(json: body)
-//        }
-//        set {
-//            let column = KeyMap.template[keyPath: key]
-//            backing[column.name] = newValue.json
-//        }
-//    }
-//}
-
 
 // MARK: Codable Interops
 
 extension Decodable {
     init(json: JSON) throws {
         let raw = try json.encoded()
-        try self.init(jsonData: raw)
+        self = try .decode(raw)
     }
 }
 
@@ -199,49 +160,7 @@ extension Data {
     }
 
     func toJson() throws -> JSON {
-        try JSON(jsonData: self)
-    }
-}
-
-
-@propertyWrapper
-struct FuzzyBool: Codable {
-    var wrappedValue: Bool
-
-    init(wrappedValue value: Bool) {
-        self.wrappedValue = value
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let bool = try? container.decode(Bool.self) {
-            self.init(wrappedValue: bool)
-        } else if let int = try? container.decode(Int.self), [0,1].contains(int) {
-            self.init(wrappedValue: int == 1)
-        } else if let str = try? container.decode(String.self), let bool = Bool(str) {
-            self.init(wrappedValue: bool)
-        } else {
-            throw "unable to make bool: \(container)"
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try wrappedValue.encode(to: encoder)
-    }
-}
-
-extension Encodable where Self: Decodable {
-    func map<C: Codable>(to type: C.Type = C.self) -> C {
-        do {
-
-            print("!!!!! NEED TO ADD BACK LOGS")
-            let json = try self.toJson()
-            return try C.init(json: json)
-        } catch {
-            print("!!!!! NEED TO ADD BACK LOGS: \(error)")
-//            Log.error(error)
-            fatalError()
-        }
+        try JSON.decode(self)
     }
 }
 
@@ -267,6 +186,7 @@ extension JSON {
         case .double(let d): return d
         case .int(let i): return Double(i)
         case .str(let s): return Double(s)
+        case .bool(let b): return b ? 1 : 0
         default: return nil
         }
     }
@@ -296,14 +216,17 @@ extension JSON {
             return nil
         }
     }
+
     var null: Bool {
         guard case .null = self else { return false }
         return true
     }
+
     var obj: [String: JSON]? {
         guard case .obj(let v) = self else { return nil }
         return v
     }
+    
     var array: [JSON]? {
         guard case .array(let v) = self else { return nil }
         return v
