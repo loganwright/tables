@@ -26,6 +26,13 @@ class Host {
         return builder
     }
 
+    /// for better building
+    subscript(dynamicMember key: KeyPath<EP, EP>) -> Self {
+        let ep = EP("")[keyPath: key]
+        _path = ep.stringValue
+        return self
+    }
+
     /// get, post, put, patch, delete
     subscript(dynamicMember key: KeyPath<PathBuilder, HTTPMethod>) -> PathBuilder {
         let builder = PathBuilder(self)
