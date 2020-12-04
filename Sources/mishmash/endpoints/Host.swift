@@ -397,6 +397,9 @@ struct TypedOnBuilder<D: Decodable> {
         self.host = host
     }
 
+    // todo: make `OnBuilder` a function builder w
+    // enums for state and use properties so these can pass through
+
     func success(_ success: @escaping (D) -> Void) -> TypedHost<D> {
         host.middleware(BasicHandler(onSuccess: success)).typed()
     }
@@ -415,6 +418,10 @@ struct TypedOnBuilder<D: Decodable> {
 
     func either(_ run: @escaping () -> Void) -> TypedHost<D> {
         host.middleware(BasicHandler(basic: { _ in run() })).typed()
+    }
+
+    func result(_ result: @escaping (Result<NetworkResponse, Error>) -> Void) -> TypedHost<D> {
+        host.on.result(result).typed()
     }
 }
 
