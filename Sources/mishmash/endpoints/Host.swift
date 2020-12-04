@@ -183,6 +183,7 @@ class Host {
             url += _path
         }
         guard _method == .get, let query = _body else { return url }
+        if url.hasSuffix("/") { url.removeLast() }
         return url + "?" + makeQueryString(parameters: query)
     }
 
