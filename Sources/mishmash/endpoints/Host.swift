@@ -188,11 +188,40 @@ class Host {
     }
 
 
+    enum QueryArrayEncodingStrategy {
+        case commaSeparated, multiKeyed
+    }
+    let queryArrayEncodingStrategy: QueryArrayEncodingStrategy = .commaSeparated
+
     func makeQueryString(parameters: JSON) -> String {
         guard let object = parameters.obj else {
             assert(false, "object required for query params")
         }
+        switch queryArrayEncodingStrategy {
+        case .multiKeyed:
+            return makeMultiKeyedQuery(object: object)
+        case .commaSeparated:
+            return makeCommaSeparatedQuery(object: object)
+        }
+    }
 
+    private func makeCommaSeparatedQuery(object: [String: JSON]) -> String {
+        let query = object
+            .map { key, val in
+                let entry = val.array?.compactMap(\.string).joined(separator: ",") ?? val.string ?? ""
+                return key + "=\(entry)"
+            }
+            .sorted(by: <)
+            .joined(separator: "&")
+
+        // todo: fallback to percent fail onto original query
+        // verify ideal behavior
+        return query.addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        ) ?? query
+    }
+
+    private func makeMultiKeyedQuery(object: [String: JSON]) -> String {
         var params: [(key: String, val: String)] = []
         object.forEach { k, v in
             if let array = v.array {
