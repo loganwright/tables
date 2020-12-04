@@ -21,7 +21,7 @@ class Host {
     /// add keys to EP in an extension to support
     subscript(dynamicMember key: KeyPath<EP, EP>) -> PathBuilder {
         let ep = EP("")[keyPath: key]
-        _path = ep.stringValue
+        _path += ep.stringValue
         let builder = PathBuilder(self, startingPath: _path)
         return builder
     }
@@ -29,13 +29,13 @@ class Host {
     /// for better building
     subscript(dynamicMember key: KeyPath<EP, EP>) -> Self {
         let ep = EP("")[keyPath: key]
-        _path = ep.stringValue
+        _path += ep.stringValue
         return self
     }
 
     /// get, post, put, patch, delete
     subscript(dynamicMember key: KeyPath<PathBuilder, HTTPMethod>) -> PathBuilder {
-        let builder = PathBuilder(self)
+        let builder = PathBuilder(self, startingPath: _path)
         self._method = builder[keyPath: key]
         return builder
     }
@@ -309,15 +309,17 @@ class PathBuilder {
     }
 
     func dynamicallyCall(withKeywordArguments args: KeyValuePairs<String, Any>) -> Host {
-        var updated: String
+        var updated: String = ""
         if let starting = startingPath {
             updated = starting
-        } else {
+        }
+
+        if let arg = args.first, arg.key.isEmpty || arg.key == "path" {
             assert(args.count >= 1)
             let arg = args[0]
             assert(arg.key.isEmpty || arg.key == "path",
                    "first arg should be path string with no label, or (path: ")
-            updated = arg.value as! String
+            updated += arg.value as! String
         }
 
         args.forEach { entry, replacement in
