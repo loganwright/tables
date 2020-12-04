@@ -369,6 +369,10 @@ open class OnBuilder {
         host.middleware(BasicHandler(onSuccess: success))
     }
 
+    func error(_ error: @escaping () -> Void) -> Host {
+        host.middleware(BasicHandler(onError: { _ in error() }))
+    }
+
     func error(_ error: @escaping (Error) -> Void) -> Host {
         host.middleware(BasicHandler(onError: error))
     }
@@ -376,12 +380,21 @@ open class OnBuilder {
     func result(_ result: @escaping (Result<NetworkResponse, Error>) -> Void) -> Host {
         host.middleware(BasicHandler(basic: result))
     }
+
+    func either(_ run: @escaping (Result<NetworkResponse, Error>) -> Void) -> Host {
+        result(run)
+    }
+
+    func either(_ run: @escaping () -> Void) -> Host {
+        host.middleware(BasicHandler(basic: { _ in run() }))
+    }
+
 }
 
 // MARK: Headers Builder
 
 final class HeadersBuilderExistingKey {
-    private let key: String
+    let key: String
     private let host: Host
 
     fileprivate init(_ host: Host, key: String) {
