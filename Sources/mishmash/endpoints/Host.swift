@@ -388,7 +388,55 @@ open class OnBuilder {
     func either(_ run: @escaping () -> Void) -> Host {
         host.middleware(BasicHandler(basic: { _ in run() }))
     }
+}
 
+struct TypedOnBuilder<D: Decodable> {
+    let host: Host
+
+    init(_ host: Host) {
+        self.host = host
+    }
+
+    func success(_ success: @escaping (D) -> Void) -> TypedHost<D> {
+        host.middleware(BasicHandler(onSuccess: success)).typed()
+    }
+
+    func error(_ error: @escaping () -> Void) -> TypedHost<D> {
+        host.middleware(BasicHandler(onError: { _ in error() })).typed()
+    }
+
+    func error(_ error: @escaping (Error) -> Void) -> TypedHost<D> {
+        host.middleware(BasicHandler(onError: error)).typed()
+    }
+
+    func either(_ runner: @escaping (Result<D, Error>) -> Void) -> TypedHost<D> {
+        host.on.result { $0.map(to: runner) }.typed()
+    }
+
+    func either(_ run: @escaping () -> Void) -> TypedHost<D> {
+        host.middleware(BasicHandler(basic: { _ in run() })).typed()
+    }
+}
+
+struct TypedHost<D: Decodable> {
+    let host: Host
+
+    init(_ host: Host) {
+        self.host = host
+    }
+
+    var on: TypedOnBuilder<D> { .init(host) }
+
+    func send() { host.send() }
+
+    // is this needed?
+    var detyped: Host { host }
+}
+
+extension Host {
+    func typed<D: Decodable>(as: D.Type = D.self) -> TypedHost<D> {
+        .init(self)
+    }
 }
 
 // MARK: Headers Builder
