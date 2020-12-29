@@ -21,7 +21,7 @@ let package = Package(
             dependencies: []),
         .target(
             name: "UICommons",
-            dependencies: ["Commons"]),
+            dependencies: ["Commons", "AnimationKit"]),
         .target(
             name: "Endpoints",
             dependencies: ["Commons"]),
@@ -30,6 +30,6 @@ let package = Package(
             dependencies: ["Commons"]),
         .testTarget(
             name: "mishmashTests",
-            dependencies: ["Commons", "Endpoints"])
+            dependencies: ["Commons", "Endpoints", "UICommons", "AnimationKit"])
     ]
 )

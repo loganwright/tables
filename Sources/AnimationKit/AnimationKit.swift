@@ -15,23 +15,23 @@ import Commons
  
  */
 /// a la swiftui syntax
-func animation(_ duration: TimeInterval? = nil) -> Builder<Animation> {
+public func animation(_ duration: TimeInterval? = nil) -> Builder<Animation> {
     return Builder(Animation.init).duration(ifExists: duration)
 }
 
 
-func animation(_ duration: TimeInterval, animations: @escaping () -> Void) -> Builder<Animation> {
+public func animation(_ duration: TimeInterval, animations: @escaping () -> Void) -> Builder<Animation> {
     Builder(Animation.init).duration(duration).animations(animations)
 }
 
-typealias AnimationBuilder = Builder<Animation>
+public typealias AnimationBuilder = Builder<Animation>
 
 extension AnimationBuilder {
-    func commit() {
+    public func commit() {
         make().commit()
     }
 
-    func completion(_ detyped: @escaping () -> Void) -> Builder<Model> {
+    public func completion(_ detyped: @escaping () -> Void) -> Builder<Model> {
         self.completion { _ in
             detyped()
         }
@@ -39,17 +39,19 @@ extension AnimationBuilder {
 }
 
 extension Array where Element == AnimationBuilder {
-    enum AnimationStyle {
+    public enum AnimationStyle {
         /// all run at the same time
         case parallel
         /// sequential on completion, regardless of cancel
         case sequential
     }
-    func commit(style: AnimationStyle = .parallel, completion: (() -> Void)? = nil) {
+
+    public func commit(style: AnimationStyle = .parallel, completion: (() -> Void)? = nil) {
         commit(style: style, completion: { _ in completion?() })
     }
 
-    func commit(style: AnimationStyle = .parallel, completion: ((Bool) -> Void)?) {
+
+    public func commit(style: AnimationStyle = .parallel, completion: ((Bool) -> Void)?) {
         switch style {
         case .parallel:
             let group = DispatchGroup()
@@ -81,9 +83,9 @@ extension Array where Element == AnimationBuilder {
 
 /// concats blocks together so they aggregate and run sequentially
 @propertyWrapper
-final class ResponderChain {
+public final class ResponderChain {
     private var chain: [() -> Void] = []
-    var wrappedValue: () -> Void {
+    public var wrappedValue: () -> Void {
         get {
             return chain.reduce({}) { previous, next in
                 return {
@@ -97,15 +99,15 @@ final class ResponderChain {
         }
     }
 
-    init(wrappedValue: @escaping () -> Void) {
+    public init(wrappedValue: @escaping () -> Void) {
         self.wrappedValue = wrappedValue
     }
 }
 
 /// same as ResponderChain but w arguments
 @propertyWrapper
-final class TypedResponderChain<T> {
-    var wrappedValue: (T) -> Void {
+public final class TypedResponderChain<T> {
+    public var wrappedValue: (T) -> Void {
         didSet {
             let newValue = wrappedValue
             wrappedValue = {
@@ -115,7 +117,7 @@ final class TypedResponderChain<T> {
         }
     }
 
-    init(wrappedValue: @escaping (T) -> Void) {
+    public init(wrappedValue: @escaping (T) -> Void) {
         self.wrappedValue = wrappedValue
     }
 }
@@ -128,22 +130,22 @@ extension TypedResponderChain where T == Int {
     }
 }
 
-class Animation {
+public class Animation {
     @ResponderChain
-    var beforeRun: () -> Void = { }
+    public var beforeRun: () -> Void = { }
     @ResponderChain
-    var animations: () -> Void = { }
+    public var animations: () -> Void = { }
     @TypedResponderChain
-    var completion: (Bool) -> Void = { _ in }
+    public var completion: (Bool) -> Void = { _ in }
 
-    var duration: TimeInterval = 1.2
-    var delay: TimeInterval = 0
-    var options: UIView.AnimationOptions = .tt_default
+    public var duration: TimeInterval = 0.5
+    public var delay: TimeInterval = 0
+    public var options: UIView.AnimationOptions = [.allowAnimatedContent, .curveEaseOut]
 
-    var springDamping: CGFloat = 1
-    var initialSpringVelocity: CGFloat = 0
+    public var springDamping: CGFloat = 1
+    public var initialSpringVelocity: CGFloat = 0
 
-    init() {}
+    public init() {}
 }
 
 // MARK: UIView.Animation
@@ -166,7 +168,7 @@ extension Animation {
 
 // MARK: Breakout
 extension DispatchGroup {
-    func onComplete(_ block: @escaping Block) {
+    public func onComplete(_ block: @escaping () -> Void) {
         DispatchQueue.global().async {
             self.wait()
             DispatchQueue.main.async(execute: block)

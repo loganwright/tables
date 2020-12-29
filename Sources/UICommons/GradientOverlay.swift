@@ -30,7 +30,7 @@ public class GradientTextLabel: UIView {
     /// this view gets mad w the masking to let label do the sizing
     /// if you want default behavior, use a secondary hidden label with layout constraints
     /// and bind the gradient label to that label
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         gradient.frame = bounds
         label.frame = bounds
@@ -42,11 +42,11 @@ public class GradientTextLabel: UIView {
     }
 }
 
-final class GradientOverlay: UIView {
-    enum Direction {
+public final class GradientOverlay: UIView {
+    public enum Direction {
         case left, right, up, down, custom(start: CGPoint, end: CGPoint)
 
-        var gradientPoints: (start: CGPoint, end: CGPoint) {
+        public var gradientPoints: (start: CGPoint, end: CGPoint) {
             var start = CGPoint(x: 0.5, y: 0.5)
             var end = CGPoint(x: 0.5, y: 0.5)
             switch self {
@@ -72,16 +72,16 @@ final class GradientOverlay: UIView {
 
     /// how the gradient should be fixed in cases where
     /// the gradient is larger than the view
-    enum Anchor {
+    public enum Anchor {
         case center, leading, trailing
     }
 
-    let colors: [UIColor]
+    public let colors: [UIColor]
     /// note: check
     /// this overlay thing is weird, and I think vestigial
     /// don't want to remove now, making note
-    let overlay: UIView
-    lazy var gradient: CAGradientLayer = Builder(CAGradientLayer.init)
+    public let overlay: UIView
+    public lazy var gradient: CAGradientLayer = Builder(CAGradientLayer.init)
         .colors(colors.map(\.cgColor))
         .type(.axial)
         .startPoint(direction.gradientPoints.start)
@@ -91,7 +91,7 @@ final class GradientOverlay: UIView {
     private(set) var completed: CGFloat = 0.0
 
     private var sizeMultiplierConstraint: NSLayoutConstraint?
-    var widthMultiplier: CGFloat {
+    public var widthMultiplier: CGFloat {
         didSet {
             updateSizeMultiplierConstraint()
         }
@@ -104,7 +104,7 @@ final class GradientOverlay: UIView {
         }
     }
 
-    var direction: Direction = .right {
+    public var direction: Direction = .right {
         didSet {
             let (start, end) = direction.gradientPoints
             gradient.startPoint = start
@@ -112,7 +112,7 @@ final class GradientOverlay: UIView {
         }
     }
 
-    init(colors: [UIColor], anchor: Anchor = .center, widthMultiplier: CGFloat = 1) {
+    public init(colors: [UIColor], anchor: Anchor = .center, widthMultiplier: CGFloat = 1) {
         self.colors = colors
         self.overlay = UIView()
         self.widthMultiplier = widthMultiplier
@@ -122,7 +122,7 @@ final class GradientOverlay: UIView {
         setup()
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -163,12 +163,12 @@ final class GradientOverlay: UIView {
         }
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         updateGradient()
     }
 
-    func update(completed: CGFloat) {
+    public func update(completed: CGFloat) {
         assert(0...1.0 ~= completed)
         self.completed = completed
         updateGradient()
@@ -200,7 +200,7 @@ final class GradientOverlay: UIView {
 }
 
 extension GradientOverlay {
-    func animateFillInGradient(duration: TimeInterval = 0.62) {
+    public func animateFillInGradient(duration: TimeInterval = 0.62) {
         layerAnimation(duration)
             .keyPath("locations")
             .fromValue([0, 0.01])
@@ -209,7 +209,7 @@ extension GradientOverlay {
     }
 }
 extension GradientOverlay {
-    func animateLoading(duration: TimeInterval = 2.35, offsetDuration: TimeInterval? = nil) -> Cancel {
+    public func animateLoading(duration: TimeInterval = 2.35, offsetDuration: TimeInterval? = nil) -> Cancel {
         let cancel = Cancel()
         repeateAnimateStartPoint(duration, cancel)
         let b = offsetDuration ?? duration
@@ -261,7 +261,7 @@ extension GradientOverlay {
             .autoreverses(false)
     }
 
-    func isAnimatingLoading() -> Bool {
+    public func isAnimatingLoading() -> Bool {
         gradient.animationKeys()?.set.union(["startPoint", "endPoint"]).count == 2
     }
 }

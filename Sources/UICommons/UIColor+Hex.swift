@@ -3,10 +3,10 @@ import UIKit
 import Commons
 
 extension String {
-    var uicolor: UIColor {
+    public var uicolor: UIColor {
         return .init(hex: self)
     }
-    var localUIImage: UIImage! {
+    public var localUIImage: UIImage! {
         let img = UIImage(named: self)
         if img == nil, self != "empty" {
             Log.warn("missing expected local image named: \(self)")
@@ -16,7 +16,7 @@ extension String {
 }
 
 extension UIColor {
-    convenience init(hex: String) {
+    public convenience init(hex: String) {
         guard hex.hasPrefix("#"), hex.count == 7 else {
             fatalError("unexpected hex color format")
         }
@@ -37,6 +37,12 @@ extension UIColor {
             blue: CGFloat(b) / 255.0,
             alpha: CGFloat(1)
         )
+    }
+}
+
+extension CGColor {
+    public static func convert(_ ui: UIColor) -> CGColor {
+        ui.cgColor
     }
 }
 #endif

@@ -9,7 +9,7 @@ public class ErrorPopup: MessagePopup {
     private init(_ error: Error) {
         self.error = error
         super.init(error.display)
-        backgroundColor = .tt_pink
+        backgroundColor = .systemGray
     }
 
     required init?(coder: NSCoder) {
@@ -95,13 +95,13 @@ public class MessagePopup: Popup {
 }
 
 open class Popup: UIView {
-    open init() {
+    public init() {
         super.init(frame: .sizing)
         setup()
         // todo: add swipe down, tap to keep alive, etc.
     }
 
-    open required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -159,18 +159,6 @@ open class Popup: UIView {
                 welf.setNeedsLayout()
             } .commit()
         }
-    }
-}
-
-func testPopup() {
-    let closer = LoadingPopup.launch()
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-        closer()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            testPopup()
-        }
-
     }
 }
 

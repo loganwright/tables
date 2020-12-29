@@ -6,9 +6,7 @@ public final class KeyboardNotifications: NSObject {
     }
     /// forcing the fail if boot forgets because otherwise we don't know about the current keyboard
     /// status on first check (if it's already showing)
-    public private(set) static var shared: KeyboardNotifications = {
-        fatalError("must call '\(Self.self).boot()` on app launch")
-    }()
+    public private(set) static var shared: KeyboardNotifications! = nil
 
     public private(set) var last: KeyboardUpdate = .init(
         begin: .zero, end: .zero, duration: 0, options: []
@@ -26,7 +24,7 @@ public final class KeyboardNotifications: NSObject {
         listeners.append((Weak(ob), listener))
     }
 
-    func listen<A: AnyObject>(
+    public func listen<A: AnyObject>(
         with ob: A,
         _ listener: @escaping (A, KeyboardUpdate
     ) -> Void) {
@@ -36,7 +34,7 @@ public final class KeyboardNotifications: NSObject {
         }
     }
 
-    func remove(listenersFor ob: AnyObject) {
+    public func remove(listenersFor ob: AnyObject) {
         listeners.flush(where: \.ob.value, matches: ob)
     }
 
