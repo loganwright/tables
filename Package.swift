@@ -4,32 +4,36 @@
 import PackageDescription
 
 let package = Package(
-    name: "mishmash",
+    name: "Tables",
     platforms: [
         .macOS(.v10_15),
-        .iOS(.v9)
+        .iOS(.v13)
     ],
     products: [
-        .library(name: "Commons", targets: ["Commons"]),
-        .library(name: "Endpoints", targets: ["Endpoints"]),
-        .library(name: "UICommons", targets: ["UICommons"]),
-        .library(name: "AnimationKit", targets: ["AnimationKit"])
+        .library(name: "Tables", targets: ["Tables"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/loganwright/sqlite-kit.git",
+                 .branch("master")),
+        .package(name: "Commons",
+                 url: "~/Desktop/mishmash",
+                 .branch("main"))
     ],
     targets: [
-        .target(
-            name: "Commons",
-            dependencies: []),
-        .target(
-            name: "UICommons",
-            dependencies: ["Commons", "AnimationKit"]),
-        .target(
-            name: "Endpoints",
-            dependencies: ["Commons"]),
-        .target(
-            name: "AnimationKit",
-            dependencies: ["Commons"]),
+        .target(name: "Tables",
+                dependencies: [
+                    "Commons",
+//                    "SQLiteKit"
+                    .product(name: "SQLiteKit",
+                             package: "sqlite-kit"),
+//                    .product(
+//                        name: "Commons",
+//                        package: "Commons")
+//                    .product(name: "C", package: <#T##String#>)
+                ]),
         .testTarget(
-            name: "mishmashTests",
-            dependencies: ["Commons", "Endpoints", "UICommons", "AnimationKit"])
+            name: "TablesTests",
+            dependencies: ["Tables"])
     ]
 )
+
