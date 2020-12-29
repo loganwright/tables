@@ -5,24 +5,31 @@ import PackageDescription
 
 let package = Package(
     name: "mishmash",
-    products: [
-        // Products define the executables and libraries a package produces, and make them visible to other packages.
-        .library(
-            name: "mishmash",
-            targets: ["mishmash"]),
+    platforms: [
+        .macOS(.v10_15),
+        .iOS(.v9)
     ],
-    dependencies: [
-        // Dependencies declare other packages that this package depends on.
-        // .package(url: /* package url */, from: "1.0.0"),
+    products: [
+        .library(name: "Commons", targets: ["Commons"]),
+        .library(name: "Endpoints", targets: ["Endpoints"]),
+        .library(name: "UICommons", targets: ["UICommons"]),
+        .library(name: "AnimationKit", targets: ["AnimationKit"])
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
-            name: "mishmash",
+            name: "Commons",
             dependencies: []),
+        .target(
+            name: "UICommons",
+            dependencies: ["Commons"]),
+        .target(
+            name: "Endpoints",
+            dependencies: ["Commons"]),
+        .target(
+            name: "AnimationKit",
+            dependencies: ["Commons"]),
         .testTarget(
             name: "mishmashTests",
-            dependencies: ["mishmash"]),
+            dependencies: ["Commons", "Endpoints"])
     ]
 )

@@ -1,6 +1,11 @@
 import XCTest
-@testable import mishmash
+#if canImport(Combine)
 
+import Combine
+@testable import Commons
+@testable import Endpoints
+
+@available(iOS 13.0, *)
 final class AlwaysTests: XCTestCase {
     func testItEmitsASingleValue() {
     }
@@ -14,8 +19,8 @@ final class AlwaysTests: XCTestCase {
         }
     }
 
-    func testHostPublisher() {
-        Host("https://httpbin.org")
+    func testBasePublisher() {
+        Base("https://httpbin.org")
             .post(path: "post")
             .contentType("application/json")
             .accept("application/json")
@@ -29,4 +34,5 @@ final class AlwaysTests: XCTestCase {
             .store(in: &cancellables)
     }
 }
-import Combine
+
+#endif

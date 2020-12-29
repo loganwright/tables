@@ -36,6 +36,10 @@
 		803F5E882551D61E00317F66 /* SQLiteKit in Frameworks */ = {isa = PBXBuildFile; productRef = 803F5E872551D61E00317F66 /* SQLiteKit */; };
 		803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E8E2551F89C00317F66 /* Pivot.swift */; };
 		803F5E9D2552023500317F66 /* Ref<Schema>.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803F5E9C2552023500317F66 /* Ref<Schema>.swift */; };
+		80420ACA257D961700CD493E /* UIControl+Blocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80420AC9257D961700CD493E /* UIControl+Blocks.swift */; };
+		80420AE4257D9B0500CD493E /* Block.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80420AE2257D9B0500CD493E /* Block.swift */; };
+		80420AE5257D9B0500CD493E /* Block.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80420AE3257D9B0500CD493E /* Block.swift */; };
+		80420AEB257D9B5100CD493E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80420AEA257D9B5100CD493E /* AppState.swift */; };
 		805DD3F9255361CB0089FE32 /* TableConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805DD3F8255361CB0089FE32 /* TableConstraints.swift */; };
 		805DD402255377B70089FE32 /* CompositeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F1273425526FED00A11019 /* CompositeTests.swift */; };
 		805DD40B255377BF0089FE32 /* db-tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE56254E89FD00ACBADA /* db-tests.swift */; };
@@ -59,6 +63,7 @@
 		8082EE7F254E902500ACBADA /* Globals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8082EE7E254E902500ACBADA /* Globals.swift */; };
 		809DD77C255759D700B468C5 /* Host+Publisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809DD77B255759D700B468C5 /* Host+Publisher.swift */; };
 		80B31F2A2551522C00CFA510 /* BaseColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B31F292551522C00CFA510 /* BaseColumn.swift */; };
+		80DEB64E257D5DE2006D753A /* GradientOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80DEB64D257D5DE2006D753A /* GradientOverlay.swift */; };
 		80E9AB782557A50C0057AB35 /* UIView+Xib.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E9AB5E2557A50A0057AB35 /* UIView+Xib.swift */; };
 		80E9AB7A2557A50C0057AB35 /* InsetTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E9AB602557A50A0057AB35 /* InsetTextField.swift */; };
 		80E9AB7C2557A50C0057AB35 /* NumberFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E9AB622557A50A0057AB35 /* NumberFormatting.swift */; };
@@ -121,6 +126,10 @@
 		8021572A255448F0000E89E5 /* Schema+DB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Schema+DB.swift"; sourceTree = "<group>"; };
 		803F5E8E2551F89C00317F66 /* Pivot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pivot.swift; sourceTree = "<group>"; };
 		803F5E9C2552023500317F66 /* Ref<Schema>.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Ref<Schema>.swift"; sourceTree = "<group>"; };
+		80420AC9257D961700CD493E /* UIControl+Blocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIControl+Blocks.swift"; sourceTree = "<group>"; };
+		80420AE2257D9B0500CD493E /* Block.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Block.swift; sourceTree = "<group>"; };
+		80420AE3257D9B0500CD493E /* Block.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Block.swift; sourceTree = "<group>"; };
+		80420AEA257D9B5100CD493E /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		805DD3F8255361CB0089FE32 /* TableConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableConstraints.swift; sourceTree = "<group>"; };
 		805DD410255387080089FE32 /* JSON+Fuzzy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JSON+Fuzzy.swift"; sourceTree = "<group>"; };
 		807AD798255524A80068F172 /* HeaderKey.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HeaderKey.swift; sourceTree = "<group>"; };
@@ -144,6 +153,7 @@
 		809DD77B255759D700B468C5 /* Host+Publisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Host+Publisher.swift"; sourceTree = "<group>"; };
 		809DD7812557603200B468C5 /* CombineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombineTests.swift; sourceTree = "<group>"; };
 		80B31F292551522C00CFA510 /* BaseColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseColumn.swift; sourceTree = "<group>"; };
+		80DEB64D257D5DE2006D753A /* GradientOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradientOverlay.swift; sourceTree = "<group>"; };
 		80E9AB5E2557A50A0057AB35 /* UIView+Xib.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+Xib.swift"; sourceTree = "<group>"; };
 		80E9AB602557A50A0057AB35 /* InsetTextField.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InsetTextField.swift; sourceTree = "<group>"; };
 		80E9AB622557A50A0057AB35 /* NumberFormatting.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NumberFormatting.swift; sourceTree = "<group>"; };
@@ -231,6 +241,14 @@
 			path = tables;
 			sourceTree = "<group>";
 		};
+		80420AE1257D9B0500CD493E /* Foundation */ = {
+			isa = PBXGroup;
+			children = (
+				80420AE2257D9B0500CD493E /* Block.swift */,
+			);
+			path = Foundation;
+			sourceTree = "<group>";
+		};
 		807AD797255524A80068F172 /* endpoints */ = {
 			isa = PBXGroup;
 			children = (
@@ -284,6 +302,9 @@
 				80E9AB5E2557A50A0057AB35 /* UIView+Xib.swift */,
 				80E9AB6C2557A50B0057AB35 /* UIColor+Hex.swift */,
 				80E9AB742557A50B0057AB35 /* Geometry.swift */,
+				80DEB64D257D5DE2006D753A /* GradientOverlay.swift */,
+				80420AC9257D961700CD493E /* UIControl+Blocks.swift */,
+				80420AEA257D9B5100CD493E /* AppState.swift */,
 			);
 			path = UIKit;
 			sourceTree = "<group>";
@@ -350,6 +371,8 @@
 		OBJ_8 /* mishmash */ = {
 			isa = PBXGroup;
 			children = (
+				80420AE3257D9B0500CD493E /* Block.swift */,
+				80420AE1257D9B0500CD493E /* Foundation */,
 				80E9AB9E2557A5EE0057AB35 /* UIKit */,
 				80E9AB712557A50B0057AB35 /* Array+Extensions.swift */,
 				80E9AB632557A50A0057AB35 /* Box.swift */,
@@ -480,6 +503,7 @@
 				803F5E8F2551F89C00317F66 /* Pivot.swift in Sources */,
 				805DD3F9255361CB0089FE32 /* TableConstraints.swift in Sources */,
 				802156F225544189000E89E5 /* PrimaryKey.swift in Sources */,
+				80420AEB257D9B5100CD493E /* AppState.swift in Sources */,
 				80E9AB7D2557A50C0057AB35 /* Box.swift in Sources */,
 				80E9AB8C2557A50C0057AB35 /* LGStretchyTextView.swift in Sources */,
 				802156DA25543D60000E89E5 /* Pivot+Ref.swift in Sources */,
@@ -503,14 +527,17 @@
 				807AD7A4255524A80068F172 /* Middleware.swift in Sources */,
 				80E9AB892557A50C0057AB35 /* FileManager+Extensions.swift in Sources */,
 				80E9AB8A2557A50C0057AB35 /* Version.swift in Sources */,
+				80420AE5257D9B0500CD493E /* Block.swift in Sources */,
 				809DD77C255759D700B468C5 /* Host+Publisher.swift in Sources */,
 				80E9AB782557A50C0057AB35 /* UIView+Xib.swift in Sources */,
+				80420ACA257D961700CD493E /* UIControl+Blocks.swift in Sources */,
 				80E9AB8E2557A50C0057AB35 /* Geometry.swift in Sources */,
 				8082EE5D254E8A8900ACBADA /* SQLManager.swift in Sources */,
 				802156FC255441EB000E89E5 /* Unique.swift in Sources */,
 				807AD7A1255524A80068F172 /* Endpoints.swift in Sources */,
 				80E9AB7F2557A50C0057AB35 /* KeyChain.swift in Sources */,
 				8082EE69254E8B5200ACBADA /* ThreadSafe.swift in Sources */,
+				80DEB64E257D5DE2006D753A /* GradientOverlay.swift in Sources */,
 				80FAA568254FBE3F001F3528 /* SQLDatabase+Extensions.swift in Sources */,
 				8082EE6F254E8B8200ACBADA /* Result+Extensions.swift in Sources */,
 				8021571225544554000E89E5 /* ForeignKey.swift in Sources */,
@@ -522,6 +549,7 @@
 				807AD7A7255524A80068F172 /* Host.swift in Sources */,
 				80E9AB7A2557A50C0057AB35 /* InsetTextField.swift in Sources */,
 				80FAA558254FB4B2001F3528 /* Relations.swift in Sources */,
+				80420AE4257D9B0500CD493E /* Block.swift in Sources */,
 				80E9AB8F2557A50C0057AB35 /* Animations.swift in Sources */,
 				807AD7A3255524A80068F172 /* NetworkResponse.swift in Sources */,
 			);
