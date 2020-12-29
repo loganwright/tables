@@ -1,5 +1,5 @@
 import XCTest
-import Tables
+@testable import Tables
 import Commons
 import Endpoints
 

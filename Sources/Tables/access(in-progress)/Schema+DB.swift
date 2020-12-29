@@ -61,20 +61,20 @@ struct _SQLiteSQLDatabase: SQLDatabase {
 
 ///
 extension Schema {
-    static func on(_ db: SQLDatabase) -> Ref<Self> {
+    public static func on(_ db: SQLDatabase) -> Ref<Self> {
         Log.warn("unsafe constructor")
         return Ref(db)
     }
 
     @discardableResult
-    static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
+    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
         let new = Ref<Self>(db)
         try creator(new)
         try new.save()
         return new
     }
 
-    static func make<C: BaseColumn>(on db: SQLDatabase,
+    public static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
                                    rows: [[Any]]) throws -> [Ref<Self>] {
         let counts = rows.map(\.count)

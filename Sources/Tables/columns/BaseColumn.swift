@@ -1,4 +1,5 @@
 import SQLKit
+@_exported import Commons
 
 /// should this be BaseColumn?
 class BaseColumn {

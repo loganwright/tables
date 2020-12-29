@@ -1,7 +1,7 @@
 import XCTest
 import SQLKit
 @testable import Tables
-
+@testable import Commons
 
 class SieqlTersts: XCTestCase {
     var db: SQLDatabase { sql.testable_db }
@@ -271,7 +271,7 @@ final class DBTests: SieqlTersts {
 
     func testExtractProperties() {
         let properties = _unsafe_force_Load_properties_on(Item.template)
-        let columns = properties.compactMap { $0.val as? mishmash.BaseColumn }
+        let columns = properties.compactMap { $0.val as? BaseColumn }
         XCTAssertEqual(properties.count, 3)
         XCTAssertEqual(properties.count, columns.count)
         XCTAssert(columns.map(\.name).contains("id"))

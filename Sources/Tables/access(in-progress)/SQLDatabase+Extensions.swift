@@ -80,7 +80,7 @@ extension SQLDatabase {
     }
 
     func load<S>(ids: [String]) -> [Ref<S>] where S : Schema {
-        alert/
+        fatalError("not done yet")
     }
 }
 

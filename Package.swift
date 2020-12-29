@@ -33,7 +33,7 @@ let package = Package(
                 ]),
         .testTarget(
             name: "TablesTests",
-            dependencies: ["Tables"])
+            dependencies: ["Tables", .product(name: "Endpoints", package: "Commons")])
     ]
 )
 
