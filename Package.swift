@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/loganwright/sqlite-kit.git",
                  .branch("master")),
         .package(name: "Commons",
-                 url: "~/Desktop/mishmash",
+                 url: "https://github.com/loganwright/commons.git",
                  .branch("main"))
     ],
     targets: [

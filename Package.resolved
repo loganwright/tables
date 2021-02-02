@@ -12,10 +12,10 @@
       },
       {
         "package": "Commons",
-        "repositoryURL": "/Users/loganwright/Desktop/mishmash",
+        "repositoryURL": "https://github.com/loganwright/commons.git",
         "state": {
           "branch": "main",
-          "revision": "1920df390509f0c166aefa35a224178e79e6bf50",
+          "revision": "3efa31b24f5baef9a6da9f06f6f21717afa02c21",
           "version": null
         }
       },

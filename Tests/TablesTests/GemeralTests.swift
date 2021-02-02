@@ -368,6 +368,8 @@ final class DBTests: SieqlTersts {
     }
 
     func testIncompatiblePropertyWarn() {
+        Log.unsafe_collectDebugLogs = true
+
         struct Foo: Schema {
             var id = PrimaryKey<Int>()
             var ohnooo = "that's not right"
@@ -376,8 +378,8 @@ final class DBTests: SieqlTersts {
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
         let _ = Foo.template.columns
-        XCTAssert(Log._testable_logs.contains(where: { $0.contains("incompatible schema property") }))
-        XCTAssert(Log._testable_logs.contains(where: { $0.contains("\(Foo.self)") }))
+        XCTAssert(Log.fetchLogs().contains(where: { $0.contains("incompatible schema property") }))
+        XCTAssert(Log.fetchLogs().contains(where: { $0.contains("\(Foo.self)") }))
     }
 
 
