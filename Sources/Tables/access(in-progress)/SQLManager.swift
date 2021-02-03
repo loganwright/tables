@@ -159,7 +159,7 @@ final class SQLManager {
     var testable_db: SQLDatabase {
         self.connection.sql()
     }
-    private var db: SQLDatabase {
+    var db: SQLDatabase {
         assert(isOpen, "sql manager must be opened before accessing")
         return self.connection.sql()
     }
