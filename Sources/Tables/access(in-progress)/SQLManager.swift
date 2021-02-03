@@ -166,7 +166,7 @@ final class SQLManager {
 
     private let eventLoopGroup: EventLoopGroup
     private let threadPool: NIOThreadPool
-    private let connection: SQLiteConnection
+    let connection: SQLiteConnection
 
     init(storage: SQLiteConfiguration.Storage) {
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
