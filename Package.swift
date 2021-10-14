@@ -13,8 +13,8 @@ let package = Package(
         .library(name: "Tables", targets: ["Tables"])
     ],
     dependencies: [
-        .package(url: "https://github.com/loganwright/sqlite-kit.git",
-                 .branch("master")),
+        .package(url: "https://github.com/vapor/sqlite-kit.git",
+                 .branch("main")),
         .package(name: "Commons",
                  url: "https://github.com/loganwright/commons.git",
                  .branch("main"))
