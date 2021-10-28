@@ -142,12 +142,12 @@ final class SeeQuel {
     }
 
     func _getAll(from table: String,
-                 limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
-        try self.db.select()
+                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+        try await self.db.select()
             .columns(columns)
             .from(table)
             .all(decoding: JSON.self)
-            .wait()
+            .commit()
     }
 }
 
@@ -176,16 +176,18 @@ private struct SQLTableSchema: SQLExpression {
 }
 
 protocol Database {
-    func save(to table: String, _ body: [String: JSON])
-    func save<S>(_ ref: Ref<S>) throws
-    func load<S>(id: String) -> Ref<S>?
-    func load<S>(ids: [String]) -> [Ref<S>]
-    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>?
-    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>]
+    func save(to table: String, _ body: [String: JSON]) async throws
+    func save<S>(_ ref: Ref<S>) async throws
+    func load<S>(id: String) async throws -> Ref<S>?
+    func load<S>(ids: [String]) async throws -> [Ref<S>]
+    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>?
+    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>]
 }
 
 extension Database {
-    func save<S>(_ refs: [Ref<S>]) throws {
-        try refs.forEach(save)
+    func save<S>(_ refs: [Ref<S>]) async throws {
+        for ref in refs {
+            try await save(ref)
+        }
     }
 }

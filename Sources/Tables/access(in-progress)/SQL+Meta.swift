@@ -19,22 +19,22 @@ private struct Table: Decodable {
 }
 
 extension SQLDatabase {
-    func unsafe_getAllTables() throws -> [String] {
-        let results = try select().column("name")
+    func unsafe_getAllTables() async throws -> [String] {
+        let results = try await select().column("name")
             .from("sqlite_master")
             .where("type", .equal, "table")
             .all(decoding: Table.self)
-            .wait()
+            .commit()
         return results.map(\.name)
     }
 
-    func unsafe_table_meta(_ table: String) throws -> [TableColumnMeta] {
+    func unsafe_table_meta(_ table: String) async throws -> [TableColumnMeta] {
         var meta = [TableColumnMeta]()
         let tableInfo = SQLRawExecute("pragma table_info(\(table));\n")
-        try execute(sql: tableInfo) { (row) in
+        try await execute(sql: tableInfo) { (row) in
             let next = try! row.decode(model: TableColumnMeta.self)
             meta.append(next)
-        } .wait()
+        } .commit()
         return meta
     }
 }

@@ -49,22 +49,22 @@ final class SQLManager {
     func _get(from table: String,
               matchingId id: String,
               limitingColumnsTo columns: [String] = ["*"]) async throws -> JSON? {
-        try self.db.select()
+        try await self.db.select()
             .columns(columns)
             .where("id", .equal, id)
             .from(table)
             .first(decoding: JSON.self)
-            .wait()
+            .commit()
     }
 
     /// get all objects in table
     func _getAll(from table: String,
                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
-        try self.db.select()
+        try await self.db.select()
             .columns(columns)
             .from(table)
             .all(decoding: JSON.self)
-            .wait()
+            .commit()
     }
 
     /// get all objects matching a list of ids
@@ -179,9 +179,9 @@ final class SQLManager {
     func unsafe_dropTable(_ table: String) async throws {
         let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
-        try self.db.execute(sql: disable) { row in
+        try await self.db.execute(sql: disable) { row in
             Log.warn("disabling foreign key checks: \(row)")
-        }.wait()
+        }.commit()
         try await self.db.drop(table: table).run().commit()
         try await self.db.execute(sql: enable) { row in
             Log.info("ENABLED foreign key checks: \(row)")

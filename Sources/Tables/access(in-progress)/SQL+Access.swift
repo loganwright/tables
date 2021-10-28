@@ -1,27 +1,27 @@
 import SQLKit
 
 extension SQLDatabase {
-    func delete<S: Schema>(_ ref: Ref<S>) throws {
+    func delete<S: Schema>(_ ref: Ref<S>) async throws {
         let idColumn = S.template._primaryKey
         let idValue = ref._id
-        try self.delete(from: S.table)
+        try await self.delete(from: S.table)
             .where(idColumn._sqlIdentifier, .equal, idValue)
             .run()
-            .wait()
+            .commit()
     }
 
-    func fetch<S: Schema>(where column: KeyPath<S, BaseColumn>, equals value: String) throws -> [Ref<S>] {
+    func fetch<S: Schema>(where column: KeyPath<S, BaseColumn>, equals value: String) async throws -> [Ref<S>] {
         let column = S.template[keyPath: column]
-        let results = try self.select()
+        let results = try await self.select()
             .columns(["*"])
             .where(column._sqlIdentifier, .equal, value)
             .from(S.table)
             .all(decoding: [String: JSON].self)
-            .wait()
+            .commit()
         return results.map { Ref($0, self) }
     }
 
-    func fetch<S: Schema>(_ type: S.Type = S.self, where columns: [KeyPath<S, BaseColumn>], equal matches: [Any]) throws -> [Ref<S>] {
+    func fetch<S: Schema>(_ type: S.Type = S.self, where columns: [KeyPath<S, BaseColumn>], equal matches: [Any]) async throws -> [Ref<S>] {
         /// star here is columns to return
         var query = self.select().columns(["*"]).from(S.table)
 
@@ -33,7 +33,7 @@ extension SQLDatabase {
             query.where(pair.0, .equal, pair.1)
         }
 
-        let results = try query.all(decoding: [String: JSON].self).wait()
+        let results = try await query.all(decoding: [String: JSON].self).commit()
         return results.map { Ref($0, self) }
     }
 }

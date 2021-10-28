@@ -23,13 +23,32 @@ class CompositeKeyTests: SieqlTersts {
             UniqueGroup(\.team, \.jerseyNumber)
         }
     }
+    
+    private func execute(_ op: @escaping () async throws -> Void) {
+        let expectation = XCTestExpectation(description: "user operation")
+        Task.detached {
+            do {
+                try await op()
+                // all good
+            } catch {
+                XCTFail("err: \(error)")
+            }
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 20.0)
+    }
+    
+//    func testGroup() {
+//        [_testUniqueGroup, _testMultipleForeignAndPrimaryKeys].forEach(execute(_:))
+//    }
 
-    func testUniqueGroup() async {
+    func testUniqueGroup() async throws {
+        print("0")
         try! await db.prepare {
             Team.self
             Player.self
         }
-
+        print("1")
         let teams = try! Team.make(
             on: db,
             columns: \.name.root, \.id.root,
@@ -40,26 +59,32 @@ class CompositeKeyTests: SieqlTersts {
                 ["snardies", 3829384]
             ]
         )
+        print("2")
         XCTAssertEqual(teams.count, 4)
 
         let joe = try! Player.on(db) { joe in
-            joe.team = teams[0]
+//            joe.team = teams[0]
+            joe.set(\.team, to: teams[0])
             joe.jerseyNumber = 13
         }
 
         let jan = try! Player.on(db) { jan in
-            jan.team = teams[0]
+            jan.set(\.team, to: teams[0])
+//            jan.team = teams[0]
             jan.jerseyNumber = 84
         }
 
         let ohno = try? Player.on(db) { ohno in
-            ohno.team = teams[0]
+//            ohno.team = teams[0]
+            ohno.set(\.team, to: teams[0])
             ohno.jerseyNumber = 84
         }
         XCTAssertNil(ohno)
 
-        XCTAssert(joe.team?.name == jan.team?.name)
-        XCTAssertNotNil(joe.team)
+        let pass = try await joe.team?.name == jan.team?.name
+        XCTAssert(pass)
+        let team = try await joe.team
+        XCTAssertNotNil(team)
     }
 
 
@@ -100,7 +125,7 @@ class CompositeKeyTests: SieqlTersts {
     ///   AND MAP THE GROUPED KEYS UNDER THE HOOD AS WITH CORE API
     ///
     ///
-    func testMultipleForeignAndPrimaryKeys() async {
+    func _testMultipleForeignAndPrimaryKeys() async {
         try! await db.prepare {
             Guest.self
             Reservation.self
@@ -130,7 +155,7 @@ class CompositeKeyTests: SieqlTersts {
 
 
         let guest = guests[2]
-        let check = try! db.fetch(Reservation.self,
+        let check = try! await db.fetch(Reservation.self,
                                   where: [
                                     \.guestEmail.root,
                                     \.guestFirstName.root,

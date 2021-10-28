@@ -27,7 +27,7 @@ import SQLKit
 
 typealias QueryBuildStep = (SQLCreateTableBuilder) -> (SQLCreateTableBuilder)
 
-@_functionBuilder
+@resultBuilder
 struct ListBuilder<T> {
     static func buildBlock(_ items: T...) -> [T] {
         items

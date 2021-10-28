@@ -6,27 +6,6 @@ class Preparer {
     static func buildBlock(_ schema: Schema.Type...) -> [Schema.Type] { schema }
 }
 
-struct DoubleGenerator: AsyncSequence {
-    typealias Element = Int
-
-    struct AsyncIterator: AsyncIteratorProtocol {
-        var current = 1
-
-        mutating func next() async -> Int? {
-            defer { current &*= 2 }
-
-            if current < 0 {
-                return nil
-            } else {
-                return current
-            }
-        }
-    }
-
-    func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator()
-    }
-}
 extension SQLDatabase {
     func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
         let schemas = try build()

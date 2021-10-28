@@ -3,74 +3,75 @@
 // MARK: Cleanup And move Out
 
 extension SQLDatabase {
-    func getAll<S: Schema>() throws -> [Ref<S>] {
-        let all = try self.select()
+    func getAll<S: Schema>() async throws -> [Ref<S>] {
+        let all = try await self.select()
             .columns(["*"])
             .from(S.table)
             .all(decoding: [String: JSON].self)
-            .wait()
+            .commit()
         return all.map { Ref($0, self) }
     }
 
-    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) -> [Ref<S>] {
-        let all = try! self.select()
+    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>] {
+        let all = try await self.select()
             .columns(["*"])
             .where(SQLIdentifier(key), .equal, matches)
             .from(S.table)
             .all(decoding: [String: JSON].self)
-            .wait()
+            .commit()
         return all.map { Ref($0, self) }
     }
 
-    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) -> Ref<S>? {
-        let backing = try! self.select()
+    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>? {
+        let backing = try await self.select()
             .columns(["*"])
             .where(SQLIdentifier(key), .equal, matches)
             .from(S.table)
             .first(decoding: [String: JSON].self)
-            .wait()
+            .commit()
+        
         guard let unwrap = backing else { return nil }
         return Ref<S>(unwrap, self)
     }
 
-    func save(to table: String, _ body: [String : JSON]) {
-        try! self.insert(into: table)
+    func save(to table: String, _ body: [String : JSON]) async throws {
+        try await self.insert(into: table)
             .model(body)
             .run()
-            .wait()
+            .commit()
     }
 
-    func update<S>(_ ref: Ref<S>) where S: Schema {
+    func update<S: Schema>(_ ref: Ref<S>) async throws {
         let primary = S.template._primaryKey
-        try! self.update(S.table)
+        try await self.update(S.table)
             .where(primary.name._sqlid, .equal, ref.backing[primary.name])
             .set(model: ref.backing)
             .run()
-            .wait()
+            .commit()
     }
 
-    private func unsafe_lastInsertedRowId() throws -> Int {
+    private func unsafe_lastInsertedRowId() async throws -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try self.execute(sql: raw) { (row) in
+        try await self.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first
             assert(_id != nil, "sql failed to make rowid")
             id = _id!
-        } .wait()
+        } .commit()
         guard id != -1 else { throw "unset" }
         return id
     }
 
-    func load<S>(id: String) -> Ref<S>? where S : Schema {
+    func load<S>(id: String) async throws -> Ref<S>? where S : Schema {
         let pk = S.template._primaryKey.name
-        let backing = try! self.select()
+        let backing = try await self.select()
             .columns(["*"])
             .where(SQLIdentifier(pk), .equal, id)
             .from(S.table)
             .first(decoding: [String: JSON].self)
-            .wait()
+            .commit()
         guard let unwrap = backing else { return nil }
         // move to higher layer
         let ref = Ref<S>(unwrap, self)
