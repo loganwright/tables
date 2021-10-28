@@ -21,7 +21,7 @@ final class Ref<S: Schema> {
     fileprivate(set) var exists: Bool = false
 
     /// the database that contains the table for a given schema
-    let db: SQLDatabase?
+    let db: SQLDatabase
 
     /// init with the raw backing materials, and a database connection
     init(_ raw: [String: JSON], _ database: SQLDatabase, exists: Bool) {
@@ -89,34 +89,8 @@ final class Ref<S: Schema> {
         get async throws {
             let referencingKey = S.template[keyPath: key]
             guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
-            return try await self.db?.load(id: referencingValue)
-//            var result: Ref<ForeignTable>? = nil
-//            unsafeWaitFor {
-//                result = try await self.db?.load(id: referencingValue)
-//            }
-//            return result
+            return try await ForeignTable.load(id: referencingValue, in: db)
         }
-//        set {
-//
-//            let relation = S.template[keyPath: key]
-//            let pointingTo = relation.pointingTo
-//
-//            guard let foreigner = newValue else {
-//                self.backing[relation.name] = nil
-//                return
-//            }
-//
-//            guard let foreignIdValue = foreigner.backing[pointingTo.name] else {
-//                /// would be great if we could attach to the 'Ref' object and somehow trigger an update later after saving
-//                /// maybe queue things into the database
-//                fatalError("object: \(foreigner) not ready to be linked.. missing: \(pointingTo.name)")
-//            }
-//
-//            // the caller is the referencing body
-//            // the foreignColumn may or may not be also
-//            // referencing back in some way
-//            self.backing[relation.name] = foreignIdValue
-//        }
     }
     
     // TODO: This solution is no good
@@ -153,8 +127,7 @@ final class Ref<S: Schema> {
             let pointingTo = relation.pointingTo
             let pointingFrom = relation.pointingFrom
             let id = self.backing[pointingTo.name]
-            assert(db != nil)
-            return try await self.db!.loadAll(where: pointingFrom.name, matches: id)
+            return try await Many.loadAll(where: pointingFrom.name, matches: id, in: db)
         }
     }
 
@@ -175,8 +148,7 @@ final class Ref<S: Schema> {
                 /// we don't have the value that's being pointed to, can't have a child pointing back
                 return nil
             }
-            
-            return try await self.db!.loadFirst(where: pointingFrom.name, matches: id)
+            return try await One.loadFirst(where: pointingFrom.name, matches: id, in: db)
         }
     }
 }
@@ -232,7 +204,7 @@ extension Ref: Saveable {
         }
 
         guard !self.backing.isEmpty else { return }
-        try await db!.insert(into: S.table)
+        try await db.insert(into: S.table)
             .model(self.backing)
             .run()
             .commit()
@@ -248,7 +220,7 @@ extension Ref: Saveable {
 
     private func _update() async throws {
         let primary = S.template._primaryKey
-        try await self.db!.update(S.table)
+        try await self.db.update(S.table)
             .where(primary.name.sqlid, .equal, backing[primary.name])
             .set(model: backing)
             .run()
@@ -258,7 +230,7 @@ extension Ref: Saveable {
     private func unsafe_lastInsertedRowId() async throws -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try await self.db!.execute(sql: raw) { (row) in
+        try await self.db.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first

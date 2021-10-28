@@ -1,15 +1,6 @@
 import SQLKit
 
 extension SQLDatabase {
-    func delete<S: Schema>(_ ref: Ref<S>) async throws {
-        let idColumn = S.template._primaryKey
-        let idValue = ref._id
-        try await self.delete(from: S.table)
-            .where(idColumn._sqlIdentifier, .equal, idValue)
-            .run()
-            .commit()
-    }
-
     func fetch<S: Schema>(where column: KeyPath<S, BaseColumn>, equals value: String) async throws -> [Ref<S>] {
         let column = S.template[keyPath: column]
         let results = try await self.select()

@@ -47,7 +47,15 @@ extension Schema {
     static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                       matches compare: T,
                                       in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: Self.template[keyPath: column].name,
+        try await Self.loadAll(where: Self.template[keyPath: column].name,
+                               matches: compare,
+                               in: db)
+    }
+    
+    static func loadAll<T: Encodable>(where key: String,
+                                      matches compare: T,
+                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: key,
                              matches: compare)
     }
     
@@ -58,8 +66,15 @@ extension Schema {
     static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                         matches value: T,
                                         in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        let column = Self.template[keyPath: column]
-        return try await db.loadFirst(where: column.name, matches: value)
+        try await loadFirst(where: Self.template[keyPath: column].name,
+                            matches: value,
+                            in: db)
+    }
+    
+    static func loadFirst<T: Encodable>(where key: String,
+                                        matches value: T,
+                                        in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
+        return try await db.loadFirst(where: key, matches: value)
     }
 }
 
@@ -72,7 +87,7 @@ protocol Deletable {
 
 extension Ref: Deletable {
     func delete() async throws {
-        try await db?.delete(self)
+        try await db.delete(self)
     }
 }
 

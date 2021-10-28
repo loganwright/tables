@@ -1,18 +1,12 @@
-///
-///
-// MARK: Cleanup And move Out
-
 extension SQLDatabase {
     func load<S>(id: String) async throws -> Ref<S>? where S : Schema {
-        let pk = S.template._primaryKey.name
-        let backing = try await self.select()
+        try await self.select()
             .columns(["*"])
-            .where(SQLIdentifier(pk), .equal, id)
+            .where(SQLIdentifier(S.template._primaryKey.name), .equal, id)
             .from(S.table)
             .first(decoding: [String: JSON].self)
             .commit()
-        guard let unwrap = backing else { return nil }
-        return Ref<S>(unwrap, self, exists: true)
+            .flatMap { Ref($0, self, exists: true) }
     }
 
     func load<S: Schema>(ids: [String]) async throws -> [Ref<S>] {
@@ -20,34 +14,32 @@ extension SQLDatabase {
     }
     
     func loadAll<S: Schema>() async throws -> [Ref<S>] {
-        let all = try await self.select()
+        try await self.select()
             .columns(["*"])
             .from(S.table)
             .all(decoding: [String: JSON].self)
             .commit()
-        return all.map { Ref($0, self, exists: true) }
+            .map { Ref($0, self, exists: true) }
     }
 
     func loadFirst<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>? {
-        let backing = try await self.select()
+        try await self.select()
             .columns(["*"])
             .where(SQLIdentifier(key), .equal, matches)
             .from(S.table)
             .first(decoding: [String: JSON].self)
             .commit()
-        
-        guard let unwrap = backing else { return nil }
-        return Ref<S>(unwrap, self, exists: true)
+            .flatMap { Ref($0, self, exists: true) }
     }
     
     func loadAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>] {
-        let all = try await self.select()
+        try await self.select()
             .columns(["*"])
             .where(SQLIdentifier(key), .equal, matches)
             .from(S.table)
             .all(decoding: [String: JSON].self)
             .commit()
-        return all.map { Ref($0, self, exists: true) }
+            .map { Ref($0, self, exists: true) }
     }
 
     func save(to table: String, _ body: [String : JSON]) async throws {
@@ -62,6 +54,15 @@ extension SQLDatabase {
         try await self.update(S.table)
             .where(primary.name._sqlid, .equal, ref.backing[primary.name])
             .set(model: ref.backing)
+            .run()
+            .commit()
+    }
+    
+    func delete<S: Schema>(_ ref: Ref<S>) async throws {
+        let idColumn = S.template._primaryKey
+        let idValue = ref._id
+        try await self.delete(from: S.table)
+            .where(idColumn._sqlIdentifier, .equal, idValue)
             .run()
             .commit()
     }

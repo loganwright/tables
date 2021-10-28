@@ -227,6 +227,8 @@ final class RelationTests : SieqlTersts {
                 new.name = name
             }
         }
+        
+        XCTAssertNotNil(students.first?.id)
 
         let student_group_a = Array(students[0...1])
         let student_group_b = Array(students[2...3])
