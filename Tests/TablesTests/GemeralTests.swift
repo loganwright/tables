@@ -37,12 +37,12 @@ final class RelationTests : SieqlTersts {
             User.self
         }
 
-        let car = try await Car.on(db) { car in
+        let car = try await Car.new(referencing: db) { car in
             car.color = "#aaa832"
         }
         XCTAssertNotNil(car.id, "testing an option to initialize this way.. not done")
 
-        let user = User.on(db)
+        let user = User.new(referencing: db)
         user.set(\.car, to: car)
 //        user.car = car
         try await user.save()
@@ -68,29 +68,20 @@ final class RelationTests : SieqlTersts {
             Book.self
         }
 
-        let author = Author.on(db)
+        let author = Author.new(referencing: db)
         author.name = "hughes"
         try await author.save()
 
         let booktitless = ["a", "b", "c", "d"]
-        var books = [Ref<Book>]()
-        for title in booktitless {
-//        let books: [Ref<Book>] = try booktitless.map { title in
-            let book = Book.on(db)
-            book.title = title
-            book.set(\.author, to: author)
-//            book.author = author
-            try await book.save()
-//            return book
-            books.append(book)
+        let books = try await booktitless.asyncMap { title in
+            try await Book.new(referencing: db) { new in
+                new.title = title
+                new.set(\.author, to: author)
+            }
         }
+        
         XCTAssert(books.count == booktitless.count)
-        var ids = [Int]()
-        for book in books {
-            guard let id = try await book.author?.id else { continue }
-            ids.append(id)
-        }
-//        let ids = await books.asyncMap(\.author).compactMap(\.id)
+        let ids = try await books.asyncFlatMap { try await $0.author?.id }
         XCTAssert(Set(ids).count == 1)
         XCTAssert(ids.count == booktitless.count)
         let pass = try await author.books.count == booktitless.count
@@ -112,10 +103,10 @@ final class RelationTests : SieqlTersts {
             Phone.self
         }
 
-        let person = Person.on(db)
+        let person = Person.new(referencing: db)
         try await person.save()
 
-        let phone = Phone.on(db)
+        let phone = Phone.new(referencing: db)
         phone.set(\.owner, to: person)
 //        phone.owner = person
         try await phone.save()
@@ -151,12 +142,12 @@ final class RelationTests : SieqlTersts {
             Star.self
         }
 
-        let moon = Moon.on(db)
+        let moon = Moon.new(referencing: db)
         try await moon.save()
         let nosun = try await moon.sunFriend
         XCTAssertNil(nosun)
 
-        let sun = Sun.on(db)
+        let sun = Sun.new(referencing: db)
         try await sun.save()
 
         moon.set(\.sunFriend, to: sun)
@@ -183,7 +174,7 @@ final class RelationTests : SieqlTersts {
         let fifty = 50
         for int in (1...fifty) {
 //        try (1...fifty).forEach { int in
-            let star = Star.on(db)
+            let star = Star.new(referencing: db)
             star.id = int
             star.set(\.sunFriend, to: sun)
 //            star.sunFriend = sun
@@ -214,23 +205,25 @@ final class RelationTests : SieqlTersts {
     }
 
     func testManyToMany() async throws {
-        try await db.prepare {
-            Course.self
-            Student.self
-            PivotSchema<Course, Student>.self
-        }
+        try await SQLManager.shared.destroyDatabase()
+        
+        try await [
+            Course.self,
+            Student.self,
+            PivotSchema<Course, Student>.self,
+        ] .prepare()
 
-        let science = try await Course.on(db) { new in
+        let science = try await Course.new { new in
             new.name = "science"
         }
-        let gym = try await Course.on(db) { new in
+        let gym = try await Course.new { new in
             new.name = "gym"
         }
 
 
         let student_names = ["jorb", "smalshe", "morp", "blarm"]
         let students = try await student_names.asyncMap { name in
-            try await Student.on(db) { new in
+            try await Student.new { new in
                 new.name = name
             }
         }
@@ -238,17 +231,12 @@ final class RelationTests : SieqlTersts {
         let student_group_a = Array(students[0...1])
         let student_group_b = Array(students[2...3])
         try await science.set(\.students, to: student_group_a + student_group_b)
-////        science.students = student_group_a + student_group_b
         try await gym.set(\.students, to: student_group_b)
-////        gym.students = student_group_b
-//
-
         
         let science_only = try await student_group_a.asyncFlatMap { try await $0.classes }
         let allscienc = science_only.flatMap { $0 } .allSatisfy { $0.name == "science" }
         XCTAssert(allscienc == true)
 
-//        let both = student_group_b.flatMap(\.classes).map(\.name)
         try await student_group_b.asyncMap { try await $0.classes } .forEach { classes in
             let names = classes.map(\.name)
             XCTAssert(names.contains("gym"))
@@ -315,9 +303,10 @@ final class DBTests: SieqlTersts {
 
             let boring = Column<Int>()
         }
+        
+        try await Test.prepare(in: db)
 
-        try await db.prepare { Test.self }
-        try await Test.on(db) { new in
+        try await Test.new(referencing: db) { new in
             new.favoriteColor = "yellow"
             new.favoriteNumber = 8
             new.favoriteWord = "arbledarble"
@@ -325,7 +314,7 @@ final class DBTests: SieqlTersts {
         }
 
         let e = await expectError {
-            try await Test.on(db) { no in
+            try await Test.new(referencing: db) { no in
                 no.favoriteColor = "yellow"
                 no.favoriteNumber = 4
                 no.favoriteWord = "copycats"
@@ -336,7 +325,7 @@ final class DBTests: SieqlTersts {
         XCTAssert("\(e ?? "")".contains("favoriteColor"))
 
         let n = await expectError {
-            try await Test.on(db) { new in
+            try await Test.new(referencing: db) { new in
                 new.favoriteColor = "orignal-orange"
                 new.favoriteNumber = 8
                 new.favoriteWord = "yarmal"
@@ -348,7 +337,7 @@ final class DBTests: SieqlTersts {
 
 
         let w = await expectError {
-            try await Test.on(db) { new in
+            try await Test.new(referencing: db) { new in
                 new.favoriteColor = "bluelicious"
                 new.favoriteNumber = 43
                 new.favoriteWord = "arbledarble"
@@ -359,18 +348,19 @@ final class DBTests: SieqlTersts {
         XCTAssert("\(w!)".contains("favoriteWord"))
 
 
-        try await Test.on(db) { orig in
+        try await Test.new(referencing: db) { orig in
             orig.favoriteColor = "sknvwob"
             orig.favoriteNumber = 99877
             orig.favoriteWord = "01111110"
             orig.boring = 111
         }
 
-        let all = try await db.getAll() as [Ref<Test>]
+        let all = try await Test.loadAll(in: db)
         XCTAssertEqual(all.count, 2)
     }
 
     func ignore_too_long_testBlob() async throws {
+        try await SQLManager.shared.destroyDatabase()
         let _url = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/440px-Image_created_with_a_mobile_phone.png"
         let url = URL(string: _url)!
         let data = try Data(contentsOf: url)
@@ -380,15 +370,13 @@ final class DBTests: SieqlTersts {
             let img = Column<Data>()
         }
 
-        try await db.prepare {
-            Blobby.self
-        }
-        let blobster = try await Blobby.on(db) { new in
+        try await Blobby.prepare()
+        let blobster = try await Blobby.new { new in
             new.img = data
         }
         XCTAssert(blobster.img == data)
 
-        let fetched: Ref<Blobby>? = try await db.getOne(where: "id", matches: blobster.id)
+        let fetched = try await Blobby.load(id: blobster._id)
         XCTAssertNotNil(fetched)
         XCTAssert(fetched?.img == data)
         XCTAssertFalse(fetched?.img.isEmpty ?? false)
@@ -411,7 +399,7 @@ final class DBTests: SieqlTersts {
 
 
     func testPrepareAuto() async throws {
-        try await sql.unsafe_fatal_dropAllTables()
+        try await db.unsafe_fatal_dropAllTables()
 
         try await db.prepare {
             Item.self
@@ -438,15 +426,15 @@ final class DBTests: SieqlTersts {
     }
 
     func testParentChild() async throws {
-        try await sql.unsafe_fatal_dropAllTables()
+        try await SQLManager.shared.destroyDatabase()
+        
+        try await [
+            Item.self,
+            Food.self,
+            Hero.self,
+        ] .prepare()
 
-        try await db.prepare {
-            Item.self
-            Food.self
-            Hero.self
-        }
-
-        let banana = Ref<Food>(db)
+        let banana = Food.new()
         XCTAssertFalse(banana.exists)
         banana.health = 50
         banana.id = "banana"
@@ -454,7 +442,7 @@ final class DBTests: SieqlTersts {
         try await banana.save()
         XCTAssertTrue(banana.exists)
 
-        let lorbo = Ref<Hero>(db)
+        let lorbo = Hero.new()
         lorbo.name = "lorbo"
         lorbo.age = 234
         let lunch = try await lorbo.lunch
@@ -465,25 +453,30 @@ final class DBTests: SieqlTersts {
         try await banana.save()
         let _banan = try await lorbo.lunch
         XCTAssertNotNil(_banan)
+        
+        let one = try await Hero.loadFirst(where: \.name, matches: "lorbo")
+        let two = try await Hero.loadFirst(where: \.age, matches: 234)
+        XCTAssertNotNil(two)
+        XCTAssertNotNil(one)
     }
 
     func testSave() async throws {
-        try await sql.unsafe_fatal_dropAllTables()
+        try await SQLManager.shared.destroyDatabase()
 
-        try await db.prepare {
-            Item.self
-            Food.self
+        try await [
+            Item.self,
+            Food.self,
             Hero.self
-        }
+        ] .prepare()
 
-        let sword = Item.on(db)
+        let sword = Item.new()
         sword.power = 83
         XCTAssertNil(sword.id)
         try await sword.save()
         XCTAssertFalse(sword.isDirty)
         XCTAssertNotNil(sword.id)
 
-        let hero = Hero.on(db)
+        let hero = Hero.new()
         hero.name = "hiro"
         hero.nickname = "the good one"
         hero.age = 120
@@ -500,64 +493,58 @@ final class DBTests: SieqlTersts {
 
         XCTAssertFalse(hero.isDirty)
         XCTAssertNotNil(hero.id)
-
-        let _hero: Ref<Hero>? = try await db.load(id: hero.id!)
-        XCTAssertNotNil(_hero)
+        
+        let _hero = try await Hero.load(id: hero.id!)
         XCTAssertEqual(_hero?.id, hero.id)
         let id = try await _hero?.equipped?.id
         XCTAssertEqual(id, sword.id)
     }
 
     func testOneToMany() async throws {
-        let seq = SeeQuel.shared
-        let db = seq.db
-        try await db.prepare {
-            ManyOb.self
+        try await SQLManager.shared.destroyDatabase()
+        try await [
+            ManyOb.self,
             One.self
-        }
+        ] .prepare()
 
         let many: [Ref<ManyOb>] = ["a", "b", "c", "d", "e"].map {
-            let ref = Ref<ManyOb>(db)
+            let ref = ManyOb.new()
             ref.name = $0
             return ref
         }
 
-//        try many.forEach { try $0.save() }
-        for m in many {
-            try await m.save()
-        }
+        try await many.save()
 
-        let one = Ref<One>(db)
+        let one = One.new()
         one.name = "blarb"
         try await one.save()
 
         let oe = try await one.many.isEmpty
         XCTAssert(oe)
         
-//        try! many.forEach { indi in
-        for indi in many {
+        try await many.asyncForEach { indi in
 //            indi.oneyy = one
             indi.set(\.oneyy, to: one)
             try await indi.save()
         }
+        
         let oe2 = try await !one.many.isEmpty
         XCTAssert(oe2)
 
-        let two: Ref<One> = try await db.load(id: "1")!
+        let two = try await One.load(id: "1")!
         let tc = try await two.many.count
         let oc = try await one.many.count
         XCTAssert(tc == oc)
     }
 
     func testMatch() async throws {
-        try await sql.unsafe_fatal_dropAllTables()
-
-        try await db.prepare {
-            Team.self
+        try await SQLManager.shared.destroyDatabase()
+        try await [
+            Team.self,
             SportsFan.self
-        }
+        ] .prepare()
 
-        let cats = Ref<Team>(db)
+        let cats = Team.new()
         cats.name = "the Catz"
         cats.mascot = "cats"
         cats.rating = 5

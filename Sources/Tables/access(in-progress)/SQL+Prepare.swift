@@ -1,5 +1,17 @@
 import SQLKit
 
+extension Schema {
+    static func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
+        try await db.prepare(Self.self)
+    }
+}
+
+extension Array where Element == Schema.Type {
+    func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
+        try await self.asyncForEach { try await $0.prepare(in: db) }
+    }
+}
+
 /// overkill prolly, lol
 @resultBuilder
 class Preparer {

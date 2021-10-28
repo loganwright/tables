@@ -3,6 +3,7 @@
 protocol Schema {
     init()
     static var table: String { get }
+//    static var db: 
     var tableConstraints: TableConstraints { get }
 }
 

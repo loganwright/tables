@@ -18,7 +18,7 @@ extension SQLDatabase {
             .from(S.table)
             .all(decoding: [String: JSON].self)
             .commit()
-        return results.map { Ref($0, self) }
+        return results.map { Ref($0, self, exists: true) }
     }
 
     func fetch<S: Schema>(_ type: S.Type = S.self, where columns: [KeyPath<S, BaseColumn>], equal matches: [Any]) async throws -> [Ref<S>] {
@@ -34,6 +34,6 @@ extension SQLDatabase {
         }
 
         let results = try await query.all(decoding: [String: JSON].self).commit()
-        return results.map { Ref($0, self) }
+        return results.map { Ref($0, self, exists: true) }
     }
 }

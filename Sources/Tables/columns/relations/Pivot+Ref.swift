@@ -3,9 +3,9 @@ import SQLKit
 extension Ref {
     func add<R>(to pivot: KeyPath<S, Pivot<S, R>>, _ new: [Ref<R>]) async throws {
         /// not efficient, and not handling cascades and stuff
-//        try new.forEach { incoming in
-        for incoming in new {
-            let pivot = PivotSchema<S, R>.on(db!)
+        try await new.asyncForEach { incoming in
+//        for incoming in new {
+            let pivot = PivotSchema<S, R>.new(referencing: db!)
             pivot.set(\.left, to: self)
             pivot.set(\.right, to: incoming)
 //            pivot.left = self
@@ -67,7 +67,7 @@ extension Ref {
 //                return r
 //            }
 //            return pivots
-            let pivots: [Ref<PivotSchema<S, R>>] = try await db!.getAll(where: pivotColumn, matches: id)
+            let pivots: [Ref<PivotSchema<S, R>>] = try await db!.loadAll(where: pivotColumn, matches: id)
 //            var result = [Ref<R>]()
 //            for pivot in pivots {
 //                guard let r = try await pivot.right else {
@@ -99,7 +99,7 @@ extension Ref {
     // TODO: Temporary workaround
     func set<R>(_ key: KeyPath<S, Pivot<S, R>>, to newValue: [Ref<R>]) async throws {
         try await newValue.asyncForEach { incoming in
-            let pivot = PivotSchema<S, R>.on(db!)
+            let pivot = PivotSchema<S, R>.new(referencing: db!)
 //            pivot.left = self
             pivot.set(\.left, to: self)
 //            pivot.right = incoming

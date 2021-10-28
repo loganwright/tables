@@ -13,67 +13,78 @@ private var seequel_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
-//// TEMPORARY ShOEHORN
-extension SQLiteDatabase {
-    func _sql() -> _SQLiteSQLDatabase {
-        _SQLiteSQLDatabase(database: self)
+extension Schema {
+    static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
+        Ref(db)
     }
-}
-
-struct _SQLiteSQLDatabase: SQLDatabase {
-    let database: SQLiteDatabase
-
-    var eventLoop: EventLoop {
-        return self.database.eventLoop
+    
+    // TODO: is `insert(into:` better?
+    @discardableResult
+    static func new(referencing db: SQLDatabase = SQLManager.shared.db, apply: (Ref<Self>) async throws -> Void) async throws -> Ref<Self> {
+        let n = Self.new(referencing: db)
+        try await apply(n)
+        try await n.save()
+        return n
     }
-
-    var logger: Logger {
-        return self.database.logger
+    
+    // MARK: Load
+    
+    static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
+        try await db.load(id: id)
     }
-
-    var dialect: SQLDialect {
-        SQLiteDialect()
+    
+    static func load(ids: [String], in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.load(ids: ids)
     }
-
-    func execute(
-        sql query: SQLExpression,
-        _ onRow: @escaping (SQLRow) -> ()
-    ) -> EventLoopFuture<Void> {
-        var serializer = SQLSerializer(database: self)
-        query.serialize(to: &serializer)
-        let binds: [SQLiteData]
-        do {
-            binds = try serializer.binds.map { encodable in
-                return try SQLiteDataEncoder().encode(encodable)
-            }
-        } catch {
-            return self.eventLoop.makeFailedFuture(error)
-        }
-        return self.database.query(
-            serializer.sql,
-            binds,
-            logger: self.logger
-        ) { row in
-            onRow(row)
-        }
+    
+    static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+                                      matches compare: T,
+                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: Self.template[keyPath: column].name,
+                             matches: compare)
     }
+    
+    static func loadAll(in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll()
+    }
+    
+    static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+                                        matches value: T,
+                                        in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
+        let column = Self.template[keyPath: column]
+        return try await db.select()
+            .columns(["*"])
+            .where(column._sqlIdentifier, .equal, value)
+            .from(Self.table)
+            .first(decoding: [String: JSON].self)
+            .commit()
+            .flatMap { Ref($0, db, exists: true) }
+    }
+    
+    // MARK:
 }
 
 ///
 extension Schema {
-    public static func on(_ db: SQLDatabase) -> Ref<Self> {
-        Log.warn("unsafe constructor")
-        return Ref(db)
-    }
+//    public static func on(_ db: SQLDatabase) -> Ref<Self> {
+//        return Ref(db)
+//    }
+    
+//    public static func load(id: String, on db: SQLDatabase) async throws -> Ref<Self>? {
+//        try await db.load(id: id)
+//    }
+//
+//    public static func loadAll(on db: SQLDatabase) async throws -> [Ref<Self>] {
+//        try await db.loadAll()
+//    }
 
-    @discardableResult
-    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) async throws -> Ref<Self> {
-        let new = Ref<Self>(db)
-        try creator(new)
-        // TODO: offer option to background?
-        try await new.save()
-        return new
-    }
+//    @discardableResult
+//    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) async throws -> Ref<Self> {
+//        let new = Self.on(db)
+//        try creator(new)
+//        try await new.save()
+//        return new
+//    }
 
     public static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
@@ -81,7 +92,7 @@ extension Schema {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
         return try await rows.asyncMap { row in
-            try await Self.on(db) { new in
+            try await Self.new(referencing: db) { new in
                 try zip(columns, row).forEach { k, v in
                     let column = template[keyPath: k]
                     let js = try JSON(fuzzy: v)
@@ -98,56 +109,13 @@ extension Schema {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
         return try await rows.asyncMap { row in
-            try await Self.on(db) { new in
+            try await Self.new(referencing: db) { new in
                 zip(columns, row).forEach { k, v in
                     let column = template[keyPath: k]
                     new._unsafe_setBacking(column: column, value: v)
                 }
             }
         }
-    }
-}
-
-final class SeeQuel {
-    static let shared: SeeQuel = SeeQuel(storage: .memory) // SeeQuel(storage: .file(path: seequel_directory.path))
-
-//    private var db: SQLDatabase = TestDatabase()
-    var db: SQLDatabase {
-        let db = self.connection._sql()
-        return SQLLoggingDatabase(db)
-    }
-
-    private let eventLoopGroup: EventLoopGroup
-    private let threadPool: NIOThreadPool
-    private let connection: SQLiteConnection
-
-    init(storage: SQLiteConfiguration.Storage) {
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
-        self.threadPool = NIOThreadPool(numberOfThreads: 2)
-        self.threadPool.start()
-
-        self.connection = try! SQLiteConnectionSource(
-            configuration: .init(storage: storage, enableForeignKeys: true),
-            threadPool: self.threadPool
-        ).makeConnection(
-            logger: .init(label: "sql-manager"),
-            on: self.eventLoopGroup.next()
-        ).wait()
-    }
-
-    deinit {
-        let connect = self.connection
-        guard !connect.isClosed else { return }
-        let _ = connect.close()
-    }
-
-    func _getAll(from table: String,
-                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
-        try await self.db.select()
-            .columns(columns)
-            .from(table)
-            .all(decoding: JSON.self)
-            .commit()
     }
 }
 
@@ -162,34 +130,31 @@ struct SQLRawExecute: SQLExpression {
     }
 }
 
+//private struct SQLTableSchema: SQLExpression {
+//    let table: String
+//
+//    public init(_ table: String) {
+//        self.table = table
+//    }
+//
+//    public func serialize(to serializer: inout SQLSerializer) {
+//        serializer.write("pragma table_info(\(table));")
+//    }
+//}
 
-private struct SQLTableSchema: SQLExpression {
-    let table: String
+// MARK: Database
 
-    public init(_ table: String) {
-        self.table = table
-    }
+//protocol Databasej {
+//    func save(to table: String, _ body: [String: JSON]) async throws
+//    func save<S>(_ ref: Ref<S>) async throws
+//    func load<S>(id: String) async throws -> Ref<S>?
+//    func load<S>(ids: [String]) async throws -> [Ref<S>]
+//    func loadAll<S: Schema>() async throws -> [Ref<S>]
+//    func loadFirst<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>?
+//    func loadAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>]
+//}
 
-    public func serialize(to serializer: inout SQLSerializer) {
-        serializer.write("pragma table_info(\(table));")
-    }
-}
-
-protocol Database {
-    func save(to table: String, _ body: [String: JSON]) async throws
-    func save<S>(_ ref: Ref<S>) async throws
-    func load<S>(id: String) async throws -> Ref<S>?
-    func load<S>(ids: [String]) async throws -> [Ref<S>]
-    func getOne<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>?
-    func getAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>]
-}
-
-extension Database {
-    func save<S>(_ refs: [Ref<S>]) async throws {
-        try await refs.asyncForEach(save)
-    }
-}
-
+// MARK: Async Extensions
 
 extension Sequence {
     func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {

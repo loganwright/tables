@@ -23,21 +23,22 @@ final class Ref<S: Schema> {
     let db: SQLDatabase?
 
     /// init with the raw backing materials, and a database connection
-    init(_ raw: [String: JSON], _ database: SQLDatabase) {
+    init(_ raw: [String: JSON], _ database: SQLDatabase, exists: Bool) {
         self.backing = raw
         self.db = database
+        self.exists = exists
     }
 
     /// this is a new object, restrict this creation
     convenience init(_ database: SQLDatabase) {
-        self.init([:], database)
+        self.init([:], database, exists: false)
     }
 
-    /// this is a new object, restrict this creation
-    convenience init(_ database: SeeQuel) {
-        self.init([:], database.db)
+    deinit {
+        guard !exists else { return }
+        Log.warn("reference deallocated without having been saved")
     }
-
+    
     // MARK: SubscriptOverloads
 
     subscript<Value: Codable>(dynamicMember key: KeyPath<S, Column<Value>>) -> Value {
@@ -138,14 +139,6 @@ final class Ref<S: Schema> {
         // referencing back in some way
         self.backing[relation.name] = foreignIdValue
     }
-    
-    private func foreignIdValue(_ name: String) -> JSON? {
-        backing[name]
-    }
-    
-//    func _backing() -> [String: JSON] {
-//        return backing
-//    }
 
     /// a one to many situation, read only
     /// if multiple tables declare a foreign key for our current caller
@@ -160,12 +153,7 @@ final class Ref<S: Schema> {
             let pointingFrom = relation.pointingFrom
             let id = self.backing[pointingTo.name]
             assert(db != nil)
-//            var result: [Ref<Many>] = []
-//            unsafeWaitFor {
-//                result = try await self.db!.getAll(where: pointingFrom.name, matches: id)
-//            }
-//            return result
-            return try await self.db!.getAll(where: pointingFrom.name, matches: id)
+            return try await self.db!.loadAll(where: pointingFrom.name, matches: id)
         }
     }
 
@@ -186,13 +174,8 @@ final class Ref<S: Schema> {
                 /// we don't have the value that's being pointed to, can't have a child pointing back
                 return nil
             }
-
-//            var result: Ref<One>? = nil
-//            unsafeWaitFor {
-//                result = try await self.db!.getOne(where: pointingFrom.name, matches: id)
-//            }
-//            return result
-            return try await self.db!.getOne(where: pointingFrom.name, matches: id)
+            
+            return try await self.db!.loadFirst(where: pointingFrom.name, matches: id)
         }
     }
 }
@@ -206,8 +189,21 @@ extension Ref {
 import SQLiteKit
 import Foundation
 
+protocol Saveable {
+    @discardableResult
+    func save() async throws -> Self
+}
+
+extension Array where Element: Saveable {
+    @discardableResult
+    func save() async throws -> Self {
+        try await asyncForEach { try await $0.save() }
+        return self
+    }
+}
+
 /// should this be here?
-extension Ref {
+extension Ref: Saveable {
     @discardableResult
     func save() async throws -> Self {
         if self.exists { try await update() }
@@ -276,52 +272,3 @@ extension Ref {
 extension String {
     fileprivate var sqlid: SQLIdentifier { .init(self) }
 }
-final class Waiter<T>: ObservableObject {
-
-//    @Published private var wrappedValue: T! = nil
-//
-//    let returns: () async throws -> T
-//
-//    init(_ returns: @escaping () async throws -> T) {
-//        self.returns = returns
-//        let future = EventLoopFuture<T>()
-//        Task {
-//            do {
-//                wrappedValue = try await returns()
-//            } catch {
-//                print("error: \(error)")
-//            }
-//        }
-//
-//
-//    }
-    
-}
-
-func unsafeWaitFor(_ f: @escaping () async throws -> ()) {
-    let sema = DispatchSemaphore(value: 0)
-    async {
-        try await f()
-        sema.signal()
-    }
-    sema.wait()
-}
-//func unsafeWaitFor<T>(_ f: @escaping () async throws -> (T)) -> Result<T, Error> {
-//    let sema = DispatchSemaphore(value: 0)
-//    var resp: Result<T, Error> = .failure("failed to set")
-//    async {
-//        do {
-//            try await withThrowingTaskGroup(of: T.self, body: { group in
-//                group.async {
-//
-//                }
-//            })
-//            let val = try await f()
-//            resp = .success(val)
-//        } catch {
-//            resp = .failure(error)
-//        }
-//        sema.signal()
-//    }
-//    sema.wait()
-//}

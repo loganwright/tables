@@ -23,24 +23,6 @@ class CompositeKeyTests: SieqlTersts {
             UniqueGroup(\.team, \.jerseyNumber)
         }
     }
-    
-    private func execute(_ op: @escaping () async throws -> Void) {
-        let expectation = XCTestExpectation(description: "user operation")
-        Task.detached {
-            do {
-                try await op()
-                // all good
-            } catch {
-                XCTFail("err: \(error)")
-            }
-            expectation.fulfill()
-        }
-        wait(for: [expectation], timeout: 20.0)
-    }
-    
-//    func testGroup() {
-//        [_testUniqueGroup, _testMultipleForeignAndPrimaryKeys].forEach(execute(_:))
-//    }
 
     func testUniqueGroup() async throws {
         print("0")
@@ -62,19 +44,19 @@ class CompositeKeyTests: SieqlTersts {
         print("2")
         XCTAssertEqual(teams.count, 4)
 
-        let joe = try! await Player.on(db) { joe in
+        let joe = try! await Player.new(referencing: db) { joe in
 //            joe.team = teams[0]
             joe.set(\.team, to: teams[0])
             joe.jerseyNumber = 13
         }
 
-        let jan = try! await Player.on(db) { jan in
+        let jan = try! await Player.new(referencing: db) { jan in
             jan.set(\.team, to: teams[0])
 //            jan.team = teams[0]
             jan.jerseyNumber = 84
         }
 
-        let ohno = try? await Player.on(db) { ohno in
+        let ohno = try? await Player.new(referencing: db) { ohno in
 //            ohno.team = teams[0]
             ohno.set(\.team, to: teams[0])
             ohno.jerseyNumber = 84
@@ -125,7 +107,7 @@ class CompositeKeyTests: SieqlTersts {
     ///   AND MAP THE GROUPED KEYS UNDER THE HOOD AS WITH CORE API
     ///
     ///
-    func _testMultipleForeignAndPrimaryKeys() async {
+    func testMultipleForeignAndPrimaryKeys() async {
         try! await db.prepare {
             Guest.self
             Reservation.self
