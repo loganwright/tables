@@ -1,19 +1,44 @@
 import SQLKit
 
 /// overkill prolly, lol
-@_functionBuilder
+@resultBuilder
 class Preparer {
     static func buildBlock(_ schema: Schema.Type...) -> [Schema.Type] { schema }
 }
 
+struct DoubleGenerator: AsyncSequence {
+    typealias Element = Int
+
+    struct AsyncIterator: AsyncIteratorProtocol {
+        var current = 1
+
+        mutating func next() async -> Int? {
+            defer { current &*= 2 }
+
+            if current < 0 {
+                return nil
+            } else {
+                return current
+            }
+        }
+    }
+
+    func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator()
+    }
+}
 extension SQLDatabase {
-    func prepare(@Preparer _ build: () throws -> [Schema.Type]) throws {
-        let schema = try build()
-        try schema.forEach(prepare)
+    func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
+        let schemas = try build()
+        for schema in schemas {
+            try await prepare(schema)
+        }
+        
+//        try schemas.forEach(prepare)
         Log.info("done preparing.s")
     }
 
-    func prepare(_ schema: Schema.Type) throws {
+    func prepare(_ schema: Schema.Type) async throws {
         Log.info("preparing: \(schema.table)")
 
         // INTROSPECT
@@ -50,7 +75,7 @@ extension SQLDatabase {
 
         // EXECUTE
 
-        try prepare.run().wait()
+        try await prepare.run().commit()
     }
 }
 

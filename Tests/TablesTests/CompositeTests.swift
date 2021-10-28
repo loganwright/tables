@@ -24,8 +24,8 @@ class CompositeKeyTests: SieqlTersts {
         }
     }
 
-    func testUniqueGroup() {
-        try! db.prepare {
+    func testUniqueGroup() async {
+        try! await db.prepare {
             Team.self
             Player.self
         }
@@ -100,8 +100,8 @@ class CompositeKeyTests: SieqlTersts {
     ///   AND MAP THE GROUPED KEYS UNDER THE HOOD AS WITH CORE API
     ///
     ///
-    func testMultipleForeignAndPrimaryKeys() {
-        try! db.prepare {
+    func testMultipleForeignAndPrimaryKeys() async {
+        try! await db.prepare {
             Guest.self
             Reservation.self
         }

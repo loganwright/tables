@@ -14,154 +14,15 @@ private var sql_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
-typealias Block = () -> Void
-typealias ThrowingBlock = () throws -> Void
-
-extension SQLManager {
-    final class Operation<T> {
-        private var hasCommited: Bool = false
-
-        fileprivate(set) var _operation: () throws -> T = { fatalError() }
-        fileprivate(set) var _onError: (Error) -> Void = { error in Log.error(error) }
-        fileprivate(set) var _onComplete: ((T) -> Void)? = nil
-
-        unowned private let sql: SQLManager
-
-        fileprivate init(on sql: SQLManager, op: @escaping () throws -> T) {
-            self.sql = sql
-            self._operation = { [unowned self] in
-                /// could lock this further so that this is only place that can set it
-                self.sql.isOpen = true
-                defer { self.sql.isOpen = false }
-                return try op()
-            }
-        }
-
-        deinit {
-            if !hasCommited { Log.warn("operation deallocated before commiting") }
-        }
-
-        @discardableResult
-        func onError(_ error: @escaping (Error) -> Void) -> Self {
-            _onError = DispatchQueue.main.wrap(error)
-            return self
-        }
-
-        @discardableResult
-        func onComplete(_ complete: @escaping (T) -> Void) -> Self {
-            _onComplete = DispatchQueue.main.wrap(complete)
-            return self
-        }
-
-        func commit() {
-            hasCommited = true
-            sql.queue.run {
-                do {
-                    let result = try self._operation()
-                    self._onComplete?(result)
-                } catch {
-                    self._onError(error)
-                }
-            }
-        }
-
-        /// would be nice if compiler could rethrow based on operation initialized with
-        /// could maybe do w/ subclassing? like ThrowingOperation maybe
-        func commitSynchronously() -> T {
-            try! commitSynchronouslyThrowing()
-        }
-
-        func commitSynchronouslyThrowing() throws -> T {
-            hasCommited = true
-            assert(_onComplete == nil, "synchronous commits will not run completion block")
-            guard !sql.isOpen else { throw "sql is already open, nested synchronous operations will fail" }
-
-            let syncError = "sync-failed"
-            var result = Result<T, Error>.failure(syncError)
-            let group = DispatchGroup()
-            group.enter()
-            sql.queue.run {
-                print("running queue")
-                do {
-                    let val = try self._operation()
-                    result = .success(val)
-                } catch {
-                    result = .failure(error)
-                }
-
-                group.leave()
-            }
-            group.wait()
-
-            let err = result.error ?? "ok"
-            guard "\(err)" != syncError else { fatalError("sychronizing failed") }
-
-            switch result {
-            case .success(let val):
-                return val
-            case .failure(let err):
-                throw err
-            }
-        }
-    }
-
-    fileprivate final class Queue {
-        private let operations = OperationQueue()
-
-        init() {
-            operations.maxConcurrentOperationCount = 1
-        }
-
-        func run(_ op: @escaping Block) {
-            let op = BlockOperation(block: op)
-            operations.addOperation(op)
-        }
-    }
-
-    func open(_ runner: @escaping () throws -> Void) -> Operation<Void> {
-        return Operation<Void>(on: self, op: runner)
-    }
-
-    func open<T>(_ runner: @escaping () throws -> T) -> Operation<T> {
-        return Operation<T>(on: self, op: runner)
-    }
-}
-
-extension DispatchQueue {
-    fileprivate func wrap<T>(_ value: @escaping (T) -> Void) -> (T) -> Void {
-        return { input in
-            self.async { value(input) }
-        }
-    }
-}
-
 /// interact w sql database
 final class SQLManager {
-    fileprivate let queue = Queue()
+    static var shared: SQLManager = .default
+    
+    static let inMemory = SQLManager(storage: .memory)
+    static let `default` = SQLManager(storage: .file(path: sql_directory.path))
 
-    @ThreadSafe
-    fileprivate var isOpen: Bool = false
-    func _unsafe_testable_setIsOpen(_ isOpen: Bool) -> Self {
-        self.isOpen = isOpen
-        return self
-    }
-
-    private(set) static var shared: SQLManager = .default
-
-    static func unsafe_overrideSharedManager(_ manager: SQLManager) {
-        Log.warn("changing sqlmanager current")
-        shared = manager
-    }
-
-    static let unsafe_testable = SQLManager(storage: .memory)
-    private static let `default` = SQLManager(storage: .file(path: sql_directory.path))
-
-    var testable_db: SQLDatabase {
-        self.connection.sql()
-    }
     var db: SQLDatabase {
-        assert(isOpen, "sql manager must be opened before accessing")
-        return self.connection.sql()
+        self.connection.sql()
     }
 
     private let eventLoopGroup: EventLoopGroup
@@ -169,8 +30,8 @@ final class SQLManager {
     let connection: SQLiteConnection
 
     init(storage: SQLiteConfiguration.Storage) {
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
-        self.threadPool = NIOThreadPool(numberOfThreads: 2)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.threadPool.start()
 
         self.connection = try! SQLiteConnectionSource(
@@ -187,7 +48,7 @@ final class SQLManager {
     /// get object by id
     func _get(from table: String,
               matchingId id: String,
-              limitingColumnsTo columns: [String] = ["*"]) throws -> JSON? {
+              limitingColumnsTo columns: [String] = ["*"]) async throws -> JSON? {
         try self.db.select()
             .columns(columns)
             .where("id", .equal, id)
@@ -198,7 +59,7 @@ final class SQLManager {
 
     /// get all objects in table
     func _getAll(from table: String,
-                 limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
+                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
         try self.db.select()
             .columns(columns)
             .from(table)
@@ -209,129 +70,143 @@ final class SQLManager {
     /// get all objects matching a list of ids
     func _getAll(from table: String,
                  matchingIds ids: [String],
-                 limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
-        try self.db.select()
+                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+        try await self.db.select()
             .columns(columns)
             .where("id", .in, ids)
             .from(table)
             .all(decoding: JSON.self)
-            .wait()
+            .commit()
     }
 
     /// get all objects where value stored at 'key' contains value
     func _getAll(from table: String,
                  whereKey key: String,
                  contains value: String,
-                 limitingColumnsTo columns: [String] = ["*"]) throws -> [JSON] {
-        return try self.db.select()
+                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+        try await self.db.select()
             .columns(columns)
             .where(SQLIdentifier(key), .like, "%\(value)%")
             .from(table)
             .all(decoding: JSON.self)
-            .wait()
+            .commit()
     }
 
     /// create in database, will throw if already exists
-    func _create(in table: String, _ contents: JSON) throws {
-        try self.db.insert(into: table)
+    func _create(in table: String, _ contents: JSON) async throws {
+        try await self.db.insert(into: table)
             .model(contents)
             .run()
-            .wait()
+            .commit()
     }
 
     /// create in database, throws on existing
-    func _create(in table: String, _ obs: [JSON]) throws {
+    func _create(in table: String, _ obs: [JSON]) async throws {
         /// lazy for now, more optimized ways buggy, no time
-        try obs.forEach { try _create(in: table, $0) }
+        for ob in obs {
+            try await _create(in: table, ob)
+        }
+//        try obs.forEach { try await _create(in: table, $0) }
     }
 
     /// update in database, if exists, otherwise no writes
-    func _update(in table: String, _ json: JSON) throws {
-        try self.db
+    func _update(in table: String, _ json: JSON) async throws {
+        try await self.db
             .update(table)
             .where("id", .equal, json._id)
             .set(model: json)
             .run()
-            .wait()
+            .commit()
     }
 
     /// update in database, if exists, otherwise no writes
-    func _update(in table: String, _ obs: [JSON]) throws {
+    func _update(in table: String, _ obs: [JSON]) async throws {
         /// lazy for now, more optimized ways buggy, no time
-        try obs.forEach { try _update(in: table, $0) }
+        for ob in obs {
+            try await _update(in: table, ob)
+        }
+//        obs.forEach { try await _update(in: table, $0) }
     }
 
     /// remove individual object
-    func _delete(from table: String, matchingId id: String) throws {
-        try self.db.delete(from: table)
+    func _delete(from table: String, matchingId id: String) async throws {
+        try await self.db.delete(from: table)
             .where("id", .equal, id)
             .run()
-            .wait()
+            .commit()
     }
 
     /// remove all objects in a table, maintain schema
-    func _deleteAll(from table: String) throws {
-        try self.db.delete(from: table)
+    func _deleteAll(from table: String) async throws {
+        try await self.db.delete(from: table)
             .run()
-            .wait()
+            .commit()
     }
 
     /// delete all objects that match the given ids
-    func _deleteAll(from table: String, matchingIds ids: [String]) throws {
-        try self.db.delete(from: table)
+    func _deleteAll(from table: String, matchingIds ids: [String]) async throws {
+        try await self.db.delete(from: table)
             .where("id", .in, ids)
             .run()
-            .wait()
+            .commit()
     }
 
     // MARK: SQL Interactors
 
-    func unsafe_getAllTables() throws -> [String] {
+    func unsafe_getAllTables() async throws -> [String] {
         struct Table: Decodable {
             let name: String
         }
-        let results = try db.select().column("name")
+        let results = try await db.select().column("name")
             .from("sqlite_master")
             .where("type", .equal, "table")
             .all(decoding: Table.self)
-            .wait()
+            .commit()
         return results.map(\.name)
     }
 
-    func unsafe_tableExists(_ table: String) throws -> Bool {
+    func unsafe_tableExists(_ table: String) async throws -> Bool {
         // "SELECT * FROM sqlite_master WHERE name ='myTable' and type='table';"
-        let results = try db.select().column("name")
+        let results = try await db.select().column("name")
             .from("sqlite_master")
             .where("name", .equal, table)
             .where("type", .equal, "table")
             .all()
-            .wait()
+            .commit()
         return results.count == 1
     }
 
-    func unsafe_dropTable(_ table: String) throws {
+    func unsafe_dropTable(_ table: String) async throws {
         let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
         try self.db.execute(sql: disable) { row in
             Log.warn("disabling foreign key checks: \(row)")
         }.wait()
-        try self.db.drop(table: table).run().wait()
-        try self.db.execute(sql: enable) { row in
+        try await self.db.drop(table: table).run().commit()
+        try await self.db.execute(sql: enable) { row in
             Log.info("ENABLED foreign key checks: \(row)")
-        } .wait()
+        } .commit()
     }
 
     // MARK: FATAL
 
-    func unsafe_fatal_deleteAllEntries() throws {
+    func unsafe_fatal_deleteAllEntries() async throws {
         Log.warn("fatal process deleting all entries")
-        try unsafe_getAllTables().forEach(_deleteAll)
+//        try unsafe_getAllTables().forEach(_deleteAll)
+        let tables = try await unsafe_getAllTables()
+        for table in tables {
+            try await _deleteAll(from: table)
+        }
     }
 
-    func unsafe_fatal_dropAllTables() throws {
+    func unsafe_fatal_dropAllTables() async throws {
         Log.warn("fatal process deleting tables")
         /// idk how to just delete all at once
-        try unsafe_getAllTables().forEach(unsafe_dropTable)
+//        try await unsafe_getAllTables().forEach(unsafe_dropTable)
+        let tables = try await unsafe_getAllTables()
+        for table in tables {
+            try await unsafe_dropTable(table)
+        }
     }
 }
 
@@ -352,6 +227,14 @@ extension JSON {
             return .text
         case .null:
             fatalError("unable to infer type from null json")
+        }
+    }
+}
+
+extension EventLoopFuture {
+    func commit() async throws -> Value {
+        try await withCheckedThrowingContinuation { continuation in
+            self.whenComplete(continuation.resume)
         }
     }
 }

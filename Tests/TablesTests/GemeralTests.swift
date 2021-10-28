@@ -4,8 +4,8 @@ import SQLKit
 @testable import Commons
 
 class SieqlTersts: XCTestCase {
-    var db: SQLDatabase { sql.testable_db }
-    var sql: SQLManager! = SQLManager.unsafe_testable._unsafe_testable_setIsOpen(true)
+    var db: SQLDatabase { sql.db }
+    var sql: SQLManager! = SQLManager.inMemory
 
     override func tearDown() {
         super.tearDown()
@@ -31,8 +31,8 @@ final class RelationTests : SieqlTersts {
         let car = ForeignKey<Car>(pointingTo: \.id)
     }
 
-    func testForeignKey() throws {
-        try db.prepare {
+    func testForeignKey() async throws {
+        try await db.prepare {
             Car.self
             User.self
         }
@@ -61,8 +61,8 @@ final class RelationTests : SieqlTersts {
         let author = ForeignKey<Author>(pointingTo: \.id)
     }
 
-    func testOneToManyKey() throws {
-        try db.prepare {
+    func testOneToManyKey() async throws {
+        try await db.prepare {
             Author.self
             Book.self
         }
@@ -95,8 +95,8 @@ final class RelationTests : SieqlTersts {
         let owner = ForeignKey<Person>(pointingTo: \.id)
     }
 
-    func testToOne() throws {
-        try db.prepare {
+    func testToOne() async throws {
+        try await db.prepare {
             Person.self
             Phone.self
         }
@@ -131,8 +131,8 @@ final class RelationTests : SieqlTersts {
         let sunFriend = ForeignKey<Sun>(pointingTo: \.id)
     }
 
-    func testOneToOne() throws {
-        try db.prepare {
+    func testOneToOne() async throws {
+        try await db.prepare {
             Moon.self
             Sun.self
             Star.self
@@ -190,8 +190,8 @@ final class RelationTests : SieqlTersts {
         let classes = Pivot<Student, Course>()
     }
 
-    func testManyToMany() throws {
-        try db.prepare {
+    func testManyToMany() async throws {
+        try await db.prepare {
             Course.self
             Student.self
             PivotSchema<Course, Student>.self
@@ -278,7 +278,7 @@ final class DBTests: SieqlTersts {
         XCTAssert(columns.map(\.name).contains("power"))
     }
 
-    func testUnique() throws {
+    func testUnique() async throws {
         struct Test: Schema {
             let id = PrimaryKey<Int>()
 
@@ -289,7 +289,7 @@ final class DBTests: SieqlTersts {
             let boring = Column<Int>()
         }
 
-        try db.prepare { Test.self }
+        try await db.prepare { Test.self }
         try Test.on(db) { new in
             new.favoriteColor = "yellow"
             new.favoriteNumber = 8
@@ -343,7 +343,7 @@ final class DBTests: SieqlTersts {
         XCTAssertEqual(all.count, 2)
     }
 
-    func ignore_too_long_testBlob() throws {
+    func ignore_too_long_testBlob() async throws {
         let _url = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/440px-Image_created_with_a_mobile_phone.png"
         let url = URL(string: _url)!
         let data = try Data(contentsOf: url)
@@ -353,7 +353,7 @@ final class DBTests: SieqlTersts {
             let img = Column<Data>()
         }
 
-        try! db.prepare {
+        try await db.prepare {
             Blobby.self
         }
         let blobster = try Blobby.on(db) { new in
@@ -383,10 +383,10 @@ final class DBTests: SieqlTersts {
     }
 
 
-    func testPrepareAuto() throws {
-        try sql.unsafe_fatal_dropAllTables()
+    func testPrepareAuto() async throws {
+        try await sql.unsafe_fatal_dropAllTables()
 
-        try db.prepare {
+        try await db.prepare {
             Item.self
             Food.self
             Hero.self
@@ -410,10 +410,10 @@ final class DBTests: SieqlTersts {
         XCTAssertEqual(storedNames, expected)
     }
 
-    func testParentChild() throws {
-        try sql.unsafe_fatal_dropAllTables()
+    func testParentChild() async throws {
+        try await sql.unsafe_fatal_dropAllTables()
 
-        try db.prepare {
+        try await db.prepare {
             Item.self
             Food.self
             Hero.self
@@ -439,10 +439,10 @@ final class DBTests: SieqlTersts {
         XCTAssertNotNil(_banan)
     }
 
-    func testSave() throws {
-        try sql.unsafe_fatal_dropAllTables()
+    func testSave() async throws {
+        try await sql.unsafe_fatal_dropAllTables()
 
-        try db.prepare {
+        try await db.prepare {
             Item.self
             Food.self
             Hero.self
@@ -477,10 +477,10 @@ final class DBTests: SieqlTersts {
         XCTAssertEqual(_hero?.equipped?.id, sword.id)
     }
 
-    func testOneToMany() throws {
+    func testOneToMany() async throws {
         let seq = SeeQuel.shared
         let db = seq.db
-        try db.prepare {
+        try await db.prepare {
             ManyOb.self
             One.self
         }
@@ -508,10 +508,10 @@ final class DBTests: SieqlTersts {
         XCTAssert(two.many.count == one.many.count)
     }
 
-    func testMatch() throws {
-        try sql.unsafe_fatal_dropAllTables()
+    func testMatch() async throws {
+        try await sql.unsafe_fatal_dropAllTables()
 
-        try db.prepare {
+        try await db.prepare {
             Team.self
             SportsFan.self
         }
