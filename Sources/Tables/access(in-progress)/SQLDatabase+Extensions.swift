@@ -1,12 +1,10 @@
 extension SQLDatabase {
     func load<S>(id: String) async throws -> Ref<S>? where S : Schema {
-        try await self.select()
-            .columns(["*"])
-            .where(SQLIdentifier(S.template._primaryKey.name), .equal, id)
-            .from(S.table)
-            .first(decoding: [String: JSON].self)
-            .commit()
-            .flatMap { Ref($0, self, exists: true) }
+        try await _loadFirst(
+            from: S.table,
+            where: S.template._primaryKey.name,
+            equals: id
+        ) .flatMap { Ref($0, self, exists: true) }
     }
 
     func load<S: Schema>(ids: [String]) async throws -> [Ref<S>] {
@@ -14,35 +12,52 @@ extension SQLDatabase {
     }
     
     func loadAll<S: Schema>() async throws -> [Ref<S>] {
-        try await self.select()
-            .columns(["*"])
-            .from(S.table)
-            .all(decoding: [String: JSON].self)
-            .commit()
-            .map { Ref($0, self, exists: true) }
+        try await _loadAll(from: S.table).map {
+            Ref($0, self, exists: true)
+        }
+        
+//        try await self.select()
+//            .columns(["*"])
+//            .from(S.table)
+//            .all(decoding: [String: JSON].self)
+//            .commit()
+//            .map { Ref($0, self, exists: true) }
     }
 
-    func loadFirst<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>? {
-        try await self.select()
-            .columns(["*"])
-            .where(SQLIdentifier(key), .equal, matches)
-            .from(S.table)
-            .first(decoding: [String: JSON].self)
-            .commit()
-            .flatMap { Ref($0, self, exists: true) }
+    func loadFirst<S: Schema, T: Encodable>(where key: String, matches compare: T) async throws -> Ref<S>? {
+        try await _loadFirst(
+            from: S.table,
+            where: key,
+            equals: compare
+        ) .flatMap { Ref($0, self, exists: true) }
+        
+//        try await self.select()
+//            .columns(["*"])
+//            .where(SQLIdentifier(key), .equal, compare)
+//            .from(S.table)
+//            .first(decoding: [String: JSON].self)
+//            .commit()
+//            .flatMap { Ref($0, self, exists: true) }
     }
     
-    func loadAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>] {
-        try await self.select()
-            .columns(["*"])
-            .where(SQLIdentifier(key), .equal, matches)
-            .from(S.table)
-            .all(decoding: [String: JSON].self)
-            .commit()
-            .map { Ref($0, self, exists: true) }
+    func loadAll<S: Schema, T: Encodable>(where key: String, matches compare: T) async throws -> [Ref<S>] {
+        try await _loadAll(
+            from: S.table,
+            where: key,
+            equals: compare
+        ) .map { Ref($0, self, exists: true) }
+        
+//        try await self.select()
+//            .columns(["*"])
+//            .where(SQLIdentifier(key), .equal, matches)
+//            .from(S.table)
+//            .all(decoding: [String: JSON].self)
+//            .commit()
+//            .map { Ref($0, self, exists: true) }
     }
 
     func save(to table: String, _ body: [String : JSON]) async throws {
+        // TODO: Make the Ref<Foo>.save the only one
         try await self.insert(into: table)
             .model(body)
             .run()

@@ -48,51 +48,69 @@ final class SQLManager {
 
 // MARK: CRUD
 
+extension String {
+    fileprivate var sqlid: SQLIdentifier { .init(self) }
+}
+
 extension SQLDatabase {
-    /// get object by id
-    func _load(from table: String,
-               matchingId id: String,
-               limitingColumnsTo columns: [String] = ["*"]) async throws -> JSON? {
+    func _loadFirst<E: Encodable>(from table: String,
+                                  where key: String,
+                                  equals compare: E,
+                                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [String: JSON]? {
         try await self.select()
             .columns(columns)
-            .where("id", .equal, id)
+            .where(key.sqlid, .equal, compare)
             .from(table)
-            .first(decoding: JSON.self)
+            .first(decoding: [String: JSON].self)
             .commit()
     }
     
     /// get all objects in table
     func _loadAll(from table: String,
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
             .from(table)
-            .all(decoding: JSON.self)
+            .all(decoding: [String: JSON].self)
+            .commit()
+    }
+    
+    
+    func _loadAll<E: Encodable>(from table: String,
+                                where key: String,
+                                equals compare: E,
+                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
+        try await self.select()
+            .columns(columns)
+            .where(key.sqlid, .equal, compare)
+            .from(table)
+            .all(decoding: [String: JSON].self)
             .commit()
     }
     
     /// get all objects matching a list of ids
     func _loadAll(from table: String,
-                  matchingIds ids: [String],
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+                  where key: String,
+                  `in` pass: [String],
+                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
-            .where("id", .in, ids)
+            .where(key.sqlid, .in, pass)
             .from(table)
-            .all(decoding: JSON.self)
+            .all(decoding: [String: JSON].self)
             .commit()
     }
     
     /// get all objects where value stored at 'key' contains value
     func _loadAll(from table: String,
-                  whereKey key: String,
+                  where key: String,
                   contains value: String,
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [JSON] {
+                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
-            .where(SQLIdentifier(key), .like, "%\(value)%")
+            .where(key.sqlid, .like, "%\(value)%")
             .from(table)
-            .all(decoding: JSON.self)
+            .all(decoding: [String: JSON].self)
             .commit()
     }
     
