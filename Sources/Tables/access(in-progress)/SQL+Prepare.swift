@@ -19,8 +19,15 @@ public class Preparer {
 }
 
 public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: () -> [Schema.Type]) async throws {
-    try await build().prepare()
+    try await build().prepare(in: db)
 }
+
+public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: @escaping () -> [Schema.Type]) {
+    Task {
+        try await build().prepare()
+    }
+}
+
 
 extension SQLManager {
     func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
