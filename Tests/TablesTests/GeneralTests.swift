@@ -1,15 +1,19 @@
 import XCTest
 import SQLKit
-@testable import Tables
+import Tables
 @testable import Commons
 
 class SieqlTersts: XCTestCase {
-    var db: SQLDatabase { sql.db }
-    var sql: SQLManager! = SQLManager.inMemory
-
-    override func tearDown() {
-        super.tearDown()
-        sql = nil
+    var db: SQLDatabase { SQLManager.shared.db }
+    
+    override func setUp() {
+        super.setUp()
+        SQLManager.shared = .inMemory
+    }
+    
+    override func tearDown() async throws {
+        try await super.tearDown()
+        try await SQLManager.shared.destroyDatabase()
     }
 
 }
@@ -32,17 +36,17 @@ final class RelationTests : SieqlTersts {
     }
 
     func testForeignKey() async throws {
-        try await db.prepare {
+        try await Prepare {
             Car.self
             User.self
         }
 
-        let car = try await Car.new(referencing: db) { car in
+        let car = try await Car.new { car in
             car.color = "#aaa832"
         }
         XCTAssertNotNil(car.id, "testing an option to initialize this way.. not done")
 
-        let user = User.new(referencing: db)
+        let user = User.new()
         user.set(\.car, to: car)
 //        user.car = car
         try await user.save()
@@ -63,18 +67,18 @@ final class RelationTests : SieqlTersts {
     }
 
     func testOneToManyKey() async throws {
-        try await db.prepare {
+        try await Prepare {
             Author.self
             Book.self
         }
 
-        let author = Author.new(referencing: db)
+        let author = Author.new()
         author.name = "hughes"
         try await author.save()
 
         let booktitless = ["a", "b", "c", "d"]
         let books = try await booktitless.asyncMap { title in
-            try await Book.new(referencing: db) { new in
+            try await Book.new() { new in
                 new.title = title
                 new.set(\.author, to: author)
             }
@@ -98,7 +102,7 @@ final class RelationTests : SieqlTersts {
     }
 
     func testToOne() async throws {
-        try await db.prepare {
+        try await Prepare {
             Person.self
             Phone.self
         }
@@ -136,7 +140,7 @@ final class RelationTests : SieqlTersts {
     }
 
     func testOneToOne() async throws {
-        try await db.prepare {
+        try await Prepare {
             Moon.self
             Sun.self
             Star.self
@@ -234,7 +238,7 @@ final class RelationTests : SieqlTersts {
         let student_group_b = Array(students[2...3])
         try await science.set(\.students, to: student_group_a + student_group_b)
         try await gym.set(\.students, to: student_group_b)
-        
+
         let science_only = try await student_group_a.asyncFlatMap { try await $0.classes }
         let allscienc = science_only.flatMap { $0 } .allSatisfy { $0.name == "science" }
         XCTAssert(allscienc == true)
@@ -265,6 +269,7 @@ final class RelationTests : SieqlTersts {
         try? await jorb.add(to: \.classes, [gym, science])
         let c = try await jorb.classes
         XCTAssertEqual(c.count, 2, "shouldn't duplicate")
+//        XCTFail("ignoring test")
     }
 
 
@@ -378,7 +383,7 @@ final class DBTests: SieqlTersts {
         }
         XCTAssert(blobster.img == data)
 
-        let fetched = try await Blobby.load(id: blobster._id)
+        let fetched = try await Blobby.load(id: blobster.id!.description)
         XCTAssertNotNil(fetched)
         XCTAssert(fetched?.img == data)
         XCTAssertFalse(fetched?.img.isEmpty ?? false)
@@ -403,7 +408,7 @@ final class DBTests: SieqlTersts {
     func testPrepareAuto() async throws {
         try await db.unsafe_fatal_dropAllTables()
 
-        try await db.prepare {
+        try await Prepare {
             Item.self
             Food.self
             Hero.self

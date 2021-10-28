@@ -15,19 +15,19 @@ private var sql_directory: URL {
 }
 
 /// interact w sql database
-final class SQLManager {
-    static var shared: SQLManager = .default
+public final class SQLManager {
+    public static var shared: SQLManager = .default
     
-    static let inMemory = SQLManager(storage: .memory)
-    static let `default` = SQLManager(storage: .file(path: sql_directory.path))
+    public static let inMemory = SQLManager(storage: .memory)
+    public static let `default` = SQLManager(storage: .file(path: sql_directory.path))
     
-    var db: SQLDatabase { self.connection.sql() }
+    public var db: SQLDatabase { self.connection.sql() }
     
     private let eventLoopGroup: EventLoopGroup
     private let threadPool: NIOThreadPool
     let connection: SQLiteConnection
     
-    init(storage: SQLiteConfiguration.Storage) {
+    public init(storage: SQLiteConfiguration.Storage) {
         self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.threadPool = NIOThreadPool(numberOfThreads: 1)
         self.threadPool.start()
@@ -41,16 +41,12 @@ final class SQLManager {
         ).wait()
     }
     
-    func destroyDatabase() async throws {
+    public func destroyDatabase() async throws {
         try await db.unsafe_fatal_dropAllTables()
     }
 }
 
 // MARK: CRUD
-
-extension String {
-    fileprivate var sqlid: SQLIdentifier { .init(self) }
-}
 
 extension SQLDatabase {
     func _loadFirst<E: Encodable>(from table: String,
@@ -59,7 +55,7 @@ extension SQLDatabase {
                                   limitingColumnsTo columns: [String] = ["*"]) async throws -> [String: JSON]? {
         try await self.select()
             .columns(columns)
-            .where(key.sqlid, .equal, compare)
+            .where(key._sqlid, .equal, compare)
             .from(table)
             .first(decoding: [String: JSON].self)
             .commit()
@@ -82,20 +78,20 @@ extension SQLDatabase {
                                 limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
-            .where(key.sqlid, .equal, compare)
+            .where(key._sqlid, .equal, compare)
             .from(table)
             .all(decoding: [String: JSON].self)
             .commit()
     }
     
     /// get all objects matching a list of ids
-    func _loadAll(from table: String,
-                  where key: String,
-                  `in` pass: [String],
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
+    func _loadAll<E: Encodable>(from table: String,
+                                where key: String,
+                                `in` compare: [E],
+                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
-            .where(key.sqlid, .in, pass)
+            .where(key._sqlid, .in, compare)
             .from(table)
             .all(decoding: [String: JSON].self)
             .commit()
@@ -103,19 +99,19 @@ extension SQLDatabase {
     
     /// get all objects where value stored at 'key' contains value
     func _loadAll(from table: String,
-                  where key: String,
-                  contains value: String,
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
+                                where key: String,
+                                contains value: String,
+                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
         try await self.select()
             .columns(columns)
-            .where(key.sqlid, .like, "%\(value)%")
+            .where(key._sqlid, .like, "%\(value)%")
             .from(table)
             .all(decoding: [String: JSON].self)
             .commit()
     }
     
     /// create in database, will throw if already exists
-    func _create(in table: String, _ contents: JSON) async throws {
+    func _create(in table: String, _ contents: [String: JSON]) async throws {
         try await self.insert(into: table)
             .model(contents)
             .run()
@@ -123,30 +119,44 @@ extension SQLDatabase {
     }
     
     /// create in database, throws on existing
-    func _create(in table: String, _ obs: [JSON]) async throws {
+    func _create(in table: String, _ obs: [[String: JSON]]) async throws {
         /// lazy for now, more optimized ways buggy, no time
         try await obs.asyncForEach { try await _create(in: table, $0) }
     }
     
     /// update in database, if exists, otherwise no writes
-    func _update(in table: String, _ json: JSON) async throws {
+    func _update<E: Encodable>(in table: String,
+                               where key: String,
+                               matches compare: E,
+                               _ json: [String: JSON]) async throws {
         try await self.update(table)
-            .where("id", .equal, json._id)
+            .where(key._sqlid, .equal, compare)
             .set(model: json)
             .run()
             .commit()
     }
     
     /// update in database, if exists, otherwise no writes
-    func _update(in table: String, _ obs: [JSON]) async throws {
+    func _update(in table: String,
+                 where key: String,
+                 matches kp: KeyPath<Dictionary<String, JSON>, JSON?>,
+                 _ obs: [[String: JSON]]) async throws {
         /// lazy for now, more optimized ways buggy, no time
-        try await obs.asyncForEach { try await _update(in: table, $0) }
+        try await obs.asyncForEach {
+            try await _update(
+                in: table,
+                where: key,
+                matches: $0[keyPath: kp],
+                $0
+            )
+            
+        }
     }
     
     /// remove individual object
-    func _delete(from table: String, matchingId id: String) async throws {
+    func _deleteAll<E: Encodable>(from table: String, where key: String, matches compare: E) async throws {
         try await self.delete(from: table)
-            .where("id", .equal, id)
+            .where(key._sqlid, .equal, compare)
             .run()
             .commit()
     }
@@ -159,16 +169,16 @@ extension SQLDatabase {
     }
     
     /// delete all objects that match the given ids
-    func _deleteAll(from table: String, matchingIds ids: [String]) async throws {
+    func _deleteAll(from table: String, where key: String, `in` group: [String]) async throws {
         try await self.delete(from: table)
-            .where("id", .in, ids)
+            .where(key._sqlid, .in, group)
             .run()
             .commit()
     }
     
     // MARK: SQL Interactors
     
-    func unsafe_getAllTables() async throws -> [String] {
+    public func unsafe_getAllTables() async throws -> [String] {
         try await self.select()
             .column("name")
             .from("sqlite_master")
@@ -178,7 +188,7 @@ extension SQLDatabase {
             .map(\.name)
     }
     
-    func unsafe_tableExists(_ table: String) async throws -> Bool {
+    public func unsafe_tableExists(_ table: String) async throws -> Bool {
         // "SELECT * FROM sqlite_master WHERE name ='myTable' and type='table';"
         try await self.select().column("name")
             .from("sqlite_master")
@@ -189,7 +199,7 @@ extension SQLDatabase {
             .count == 1
     }
     
-    func unsafe_dropTable(_ table: String) async throws {
+    public func unsafe_dropTable(_ table: String) async throws {
         let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
         
@@ -207,12 +217,12 @@ extension SQLDatabase {
     
     // MARK: FATAL
     
-    func unsafe_fatal_deleteAllEntries() async throws {
+    public func unsafe_fatal_deleteAllEntries() async throws {
         Log.warn("fatal process deleting all entries")
         try await unsafe_getAllTables().asyncForEach(_deleteAll)
     }
     
-    func unsafe_fatal_dropAllTables() async throws {
+    public func unsafe_fatal_dropAllTables() async throws {
         Log.warn("fatal process deleting tables")
         /// idk how to just delete all at once, maybe delete file?
         let tables = try await unsafe_getAllTables()
@@ -224,14 +234,14 @@ extension String {
     var _sqlid: SQLIdentifier { .init(self) }
 }
 
-struct TableColumnMeta: Codable {
+public struct TableColumnMeta: Codable {
     // column_id
-    let cid: Int
-    let name: String
-    let type: String
-    let notnull: Bool
-    let dflt_value: JSON?
-    let pk: Bool
+    public let cid: Int
+    public let name: String
+    public let type: String
+    public let notnull: Bool
+    public let dflt_value: JSON?
+    public let pk: Bool
 }
 
 private struct Table: Decodable {
@@ -239,7 +249,7 @@ private struct Table: Decodable {
 }
 
 extension SQLDatabase {
-    func unsafe_table_meta(_ table: String) async throws -> [TableColumnMeta] {
+    public func unsafe_table_meta(_ table: String) async throws -> [TableColumnMeta] {
         var meta = [TableColumnMeta]()
         let tableInfo = SQLRawExecute("pragma table_info(\(table));\n")
         try await execute(sql: tableInfo) { (row) in

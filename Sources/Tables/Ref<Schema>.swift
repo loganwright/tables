@@ -8,20 +8,20 @@ import SQLiteKit
 /// is typesafe, and allows more flexibility in terms of database behavior
 ///
 @dynamicMemberLookup
-final class Ref<S: Schema> {
+public final class Ref<S: Schema> {
     /// a simple backing for now, could maybe be a protocol or sth faster than json
-    fileprivate(set) var backing: [String: JSON] {
+    public fileprivate(set) var backing: [String: JSON] {
         didSet { isDirty = true }
     }
 
     /// whether or not the reference has changed since it came from the database
-    fileprivate(set) var isDirty: Bool = false
+    public fileprivate(set) var isDirty: Bool = false
     /// whether or not the reference has been stored at some point in the database
     /// ~ not fully tested or clean/secure ~
-    fileprivate(set) var exists: Bool = false
+    public fileprivate(set) var exists: Bool = false
 
     /// the database that contains the table for a given schema
-    let db: SQLDatabase
+    public let db: SQLDatabase
 
     /// init with the raw backing materials, and a database connection
     init(_ raw: [String: JSON], _ database: SQLDatabase, exists: Bool) {
@@ -42,7 +42,7 @@ final class Ref<S: Schema> {
     
     // MARK: SubscriptOverloads
 
-    subscript<Value: Codable>(dynamicMember key: KeyPath<S, Column<Value>>) -> Value {
+    public subscript<Value: Codable>(dynamicMember key: KeyPath<S, Column<Value>>) -> Value {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.name] ?? .null
@@ -54,7 +54,7 @@ final class Ref<S: Schema> {
         }
     }
 
-    subscript<Value: Codable>(dynamicMember key: KeyPath<S, Unique<Value>>) -> Value {
+    public subscript<Value: Codable>(dynamicMember key: KeyPath<S, Unique<Value>>) -> Value {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.name] ?? .null
@@ -66,7 +66,7 @@ final class Ref<S: Schema> {
         }
     }
 
-    subscript<PK: Codable>(dynamicMember key: KeyPath<S, PrimaryKey<PK>>) -> PK? {
+    public subscript<PK: Codable>(dynamicMember key: KeyPath<S, PrimaryKey<PK>>) -> PK? {
         get {
             let pk = S.template[keyPath: key]
             guard let value = backing[pk.name] else { return nil }
@@ -85,7 +85,7 @@ final class Ref<S: Schema> {
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
     ///
-    subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
+    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
         get async throws {
             let referencingKey = S.template[keyPath: key]
             guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
@@ -94,7 +94,7 @@ final class Ref<S: Schema> {
     }
     
     // TODO: This solution is no good
-    func set<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) {
+    public func set<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) {
         let relation = S.template[keyPath: key]
         let pointingTo = relation.pointingTo
         
@@ -121,7 +121,7 @@ final class Ref<S: Schema> {
     ///
     /// the relations tests help with the confusion
     ///
-    subscript<Many: Schema>(dynamicMember key: KeyPath<S, ToMany<Many>>) -> [Ref<Many>] {
+    public subscript<Many: Schema>(dynamicMember key: KeyPath<S, ToMany<Many>>) -> [Ref<Many>] {
         get async throws {
             let relation = S.template[keyPath: key]
             let pointingTo = relation.pointingTo
@@ -133,7 +133,7 @@ final class Ref<S: Schema> {
 
     /// a one to one relationship where a single object from another table
     /// is referencing to this one
-    subscript<One: Schema>(dynamicMember key: KeyPath<S, ToOne<One>>) -> Ref<One>? {
+    public subscript<One: Schema>(dynamicMember key: KeyPath<S, ToOne<One>>) -> Ref<One>? {
         get async throws {
             // we are parent, seeking detached children
             let relation = S.template[keyPath: key]
@@ -161,14 +161,14 @@ extension Ref {
 
 // MARK: Save & Update
 
-protocol Saveable {
+public protocol Saveable {
     @discardableResult
     func save() async throws -> Self
 }
 
 extension Array where Element: Saveable {
     @discardableResult
-    func save() async throws -> Self {
+    public func save() async throws -> Self {
         try await asyncForEach { try await $0.save() }
         return self
     }
@@ -177,7 +177,7 @@ extension Array where Element: Saveable {
 /// should this be here?
 extension Ref: Saveable {
     @discardableResult
-    func save() async throws -> Self {
+    public func save() async throws -> Self {
         if self.exists { try await _update() }
         else { try await _save() }
         
@@ -186,7 +186,7 @@ extension Ref: Saveable {
         return self
     }
 
-    private  func _save() async throws {
+    private func _save() async throws {
         /// if object doesn't exist
         let idKey = S.template.primaryKey
         let needsId = idKey != nil && self.backing[idKey!.name] == nil
@@ -204,10 +204,7 @@ extension Ref: Saveable {
         }
 
         guard !self.backing.isEmpty else { return }
-        try await db.insert(into: S.table)
-            .model(self.backing)
-            .run()
-            .commit()
+        try await db._create(in: S.table, self.backing)
 
         guard
             needsId,
@@ -220,11 +217,12 @@ extension Ref: Saveable {
 
     private func _update() async throws {
         let primary = S.template._primaryKey
-        try await self.db.update(S.table)
-            .where(primary.name.sqlid, .equal, backing[primary.name])
-            .set(model: backing)
-            .run()
-            .commit()
+        try await self.db._update(
+            in: S.table,
+            where: primary.name,
+            matches: backing[primary.name],
+            backing
+        )
     }
 
     private func unsafe_lastInsertedRowId() async throws -> Int {

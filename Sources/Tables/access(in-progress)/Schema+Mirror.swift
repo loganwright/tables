@@ -5,7 +5,7 @@ extension Schema {
     /// load the template for a given schema type
     /// loading this way also ensures that labels are set
     /// according to swift properties
-    static var template: Self {
+    public static var template: Self {
         if let existing = _templates[table] as? Self { return existing }
         let new = Self.init()
         /// populates the names of the columns with introspected values
@@ -24,7 +24,8 @@ private var _templates: [String: Schema] = [:]
 
 extension Schema {
     /// these discourage bad things and are confusing, organize when time
-    var columns: [BaseColumn] {
+    // TODO: Only temporarily public
+    public var columns: [BaseColumn] {
         _unsafe_force_hydrate_columns_on(self)
     }
 
@@ -38,10 +39,10 @@ extension Schema {
 // MARK: Introspection
 
 /// a model of mirror reflected properties
-struct Property {
-    let label: String
-    let columntype: Any.Type
-    let val: Any
+public struct Property {
+    public let label: String
+    public let columntype: Any.Type
+    public let val: Any
 
     init(_ label: String, _ val: Any) {
         self.label = label
@@ -60,7 +61,7 @@ struct Property {
 ///
 /// that was when it was nested tho
 ///
-func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
+public func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
     Mirror(reflecting: subject).children.compactMap { child in
         assert(child.label != nil, "expected a label for template property")
         return Property(child.label!, child.value)

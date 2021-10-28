@@ -1,21 +1,33 @@
 import SQLKit
 
 extension Schema {
-    static func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
+    public static func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
         try await db.prepare(Self.self)
     }
 }
 
 extension Array where Element == Schema.Type {
-    func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
+    public func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
         try await self.asyncForEach { try await $0.prepare(in: db) }
     }
 }
 
 /// overkill prolly, lol
 @resultBuilder
-class Preparer {
-    static func buildBlock(_ schema: Schema.Type...) -> [Schema.Type] { schema }
+public class Preparer {
+    public static func buildBlock(_ schema: Schema.Type...) -> [Schema.Type] { schema }
+}
+
+public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: () -> [Schema.Type]) async throws {
+    try await build().prepare()
+}
+
+extension SQLManager {
+    func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
+        let schemas = try build()
+        try await schemas.asyncForEach(db.prepare)
+        Log.info("done preparing.s")
+    }
 }
 
 extension SQLDatabase {

@@ -26,7 +26,7 @@ class CompositeKeyTests: SieqlTersts {
 
     func testUniqueGroup() async throws {
         print("0")
-        try! await db.prepare {
+        try! await Prepare {
             Team.self
             Player.self
         }
@@ -108,7 +108,7 @@ class CompositeKeyTests: SieqlTersts {
     ///
     ///
     func testMultipleForeignAndPrimaryKeys() async {
-        try! await db.prepare {
+        try! await Prepare {
             Guest.self
             Reservation.self
         }

@@ -16,13 +16,13 @@ private var seequel_directory: URL {
 // MARK: Create
 
 extension Schema {
-    static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
+    public static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
         Ref(db)
     }
     
     // TODO: is `insert(into:` better?
     @discardableResult
-    static func new(referencing db: SQLDatabase = SQLManager.shared.db, apply: (Ref<Self>) async throws -> Void) async throws -> Ref<Self> {
+    public static func new(referencing db: SQLDatabase = SQLManager.shared.db, apply: (Ref<Self>) async throws -> Void) async throws -> Ref<Self> {
         let n = Self.new(referencing: db)
         try await apply(n)
         try await n.save()
@@ -34,50 +34,84 @@ extension Schema {
 
 extension Schema {
     
-    // MARK: Load
+    // One
     
-    static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
+    public static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
         try await db.load(id: id)
     }
     
-    static func load(ids: [String], in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.load(ids: ids)
+    public static func load(ids: [String], in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(ids: ids)
     }
     
-    static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
-                                      matches compare: T,
-                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await Self.loadAll(where: Self.template[keyPath: column].name,
-                               matches: compare,
-                               in: db)
-    }
+    // Many
     
-    static func loadAll<T: Encodable>(where key: String,
+    public static func loadAll<T: Encodable>(where key: String,
                                       matches compare: T,
                                       in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
         try await db.loadAll(where: key,
                              matches: compare)
     }
+    public static func loadAll<T: Encodable>(where key: String,
+                                      `in` compare: [T],
+                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: key,
+                             in: compare)
+    }
+    public static func loadAll(where key: String,
+                        contains compare: String,
+                        in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: key,
+                             contains: compare)
+    }
     
-    static func loadAll(in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+    public static func loadAll(in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
         try await db.loadAll()
     }
     
-    static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+    public static func loadFirst<T: Encodable>(where key: String,
                                         matches value: T,
                                         in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
+        try await db.loadFirst(where: key,
+                               matches: value)
+    }
+}
+
+extension Schema {
+    
+    // One
+    
+    public static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+                                               matches value: T,
+                                               in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
         try await loadFirst(where: Self.template[keyPath: column].name,
                             matches: value,
                             in: db)
     }
     
-    static func loadFirst<T: Encodable>(where key: String,
-                                        matches value: T,
-                                        in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        return try await db.loadFirst(where: key, matches: value)
+    // Many
+    
+    public static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+                                             matches compare: T,
+                                             in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: Self.template[keyPath: column].name,
+                             matches: compare)
+    }
+    
+    public static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
+                                             in compare: [T],
+                                             in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: Self.template[keyPath: column].name,
+                             in: compare)
+    }
+    
+    public static func loadAll<T>(where column: KeyPath<Self, Column<T>>,
+                                  contains compare: String,
+                                  in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
+        try await db.loadAll(where: Self.template[keyPath: column].name,
+                             contains: compare)
     }
 }
-
 
 // MARK: Delete
 
@@ -143,39 +177,15 @@ struct SQLRawExecute: SQLExpression {
     }
 }
 
-//private struct SQLTableSchema: SQLExpression {
-//    let table: String
-//
-//    public init(_ table: String) {
-//        self.table = table
-//    }
-//
-//    public func serialize(to serializer: inout SQLSerializer) {
-//        serializer.write("pragma table_info(\(table));")
-//    }
-//}
-
-// MARK: Database
-
-//protocol Databasej {
-//    func save(to table: String, _ body: [String: JSON]) async throws
-//    func save<S>(_ ref: Ref<S>) async throws
-//    func load<S>(id: String) async throws -> Ref<S>?
-//    func load<S>(ids: [String]) async throws -> [Ref<S>]
-//    func loadAll<S: Schema>() async throws -> [Ref<S>]
-//    func loadFirst<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> Ref<S>?
-//    func loadAll<S: Schema, T: Encodable>(where key: String, matches: T) async throws -> [Ref<S>]
-//}
-
 // MARK: Async Extensions
 
 extension Sequence {
-    func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {
+    public func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {
         for e in self {
             try await op(e)
         }
     }
-    func asyncMap<T>(_ op: (Element) async throws -> T) async rethrows -> [T] {
+    public func asyncMap<T>(_ op: (Element) async throws -> T) async rethrows -> [T] {
         var mapped = [T]()
         for e in self {
             let new = try await op(e)
@@ -183,7 +193,7 @@ extension Sequence {
         }
         return mapped
     }
-    func asyncFlatMap<T>(_ op: (Element) async throws -> T?) async rethrows -> [T] {
+    public func asyncFlatMap<T>(_ op: (Element) async throws -> T?) async rethrows -> [T] {
         var mapped = [T]()
         for e in self {
             guard let new = try await op(e) else { continue }

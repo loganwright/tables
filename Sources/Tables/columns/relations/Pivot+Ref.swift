@@ -1,7 +1,7 @@
 import SQLKit
 
 extension Ref {
-    func add<R>(to pivot: KeyPath<S, Pivot<S, R>>, _ new: [Ref<R>]) async throws {
+    public func add<R>(to pivot: KeyPath<S, Pivot<S, R>>, _ new: [Ref<R>]) async throws {
         /// not efficient, and not handling cascades and stuff
         try await new.asyncForEach { incoming in
 //        for incoming in new {
@@ -14,7 +14,7 @@ extension Ref {
         }
     }
 
-    func remove<R>(from pivot: KeyPath<S, Pivot<S, R>>, _ remove: [Ref<R>]) async throws {
+    public func remove<R>(from pivot: KeyPath<S, Pivot<S, R>>, _ remove: [Ref<R>]) async throws {
         let pivot = S.template[keyPath: pivot]
         let schema = pivot.schema
 
@@ -28,7 +28,7 @@ extension Ref {
 }
 
 extension Ref {
-    subscript<R>(dynamicMember key: KeyPath<S, Pivot<S, R>>) -> [Ref<R>] {
+    public subscript<R>(dynamicMember key: KeyPath<S, Pivot<S, R>>) -> [Ref<R>] {
         get async throws {
             // we're not using the pivot object, could contain some meta info
             // for now, this works
@@ -49,7 +49,7 @@ extension Ref {
     }
     
     // TODO: Temporary workaround
-    func set<R>(_ key: KeyPath<S, Pivot<S, R>>, to newValue: [Ref<R>]) async throws {
+    public func set<R>(_ key: KeyPath<S, Pivot<S, R>>, to newValue: [Ref<R>]) async throws {
         try await newValue.asyncForEach { incoming in
             let pivot = PivotSchema<S, R>.new(referencing: db)
             // pivot.left = self

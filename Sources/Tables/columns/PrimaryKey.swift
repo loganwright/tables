@@ -1,20 +1,20 @@
 import SQLiteKit
 
-protocol PrimaryKeyValue: DatabaseValue {}
+public protocol PrimaryKeyValue: DatabaseValue {}
 extension String: PrimaryKeyValue {}
 extension Int: PrimaryKeyValue {}
 
 // MARK: PrimaryKey
 
 @propertyWrapper
-class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
-    var wrappedValue: RawType? { replacedDynamically() }
+public class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
+    public var wrappedValue: RawType? { replacedDynamically() }
 
-    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
+    public init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
         super.init(key, .uuid)
     }
 
-    init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == Int {
+    public init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == Int {
         super.init(key, .int)
     }
 }
@@ -22,8 +22,8 @@ class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
 
 // MARK: PrimaryKey Base
 
-class PrimaryKeyBase: BaseColumn {
-    enum Kind: Equatable {
+public class PrimaryKeyBase: BaseColumn {
+    public enum Kind: Equatable {
         /// combining multiple keys not supported
         case uuid, int
 
@@ -47,9 +47,9 @@ class PrimaryKeyBase: BaseColumn {
     }
 
     // MARK: Attributes
-    let kind: Kind
+    public let kind: Kind
 
-    init(_ key: String = "", _ kind: Kind) {
+    public init(_ key: String = "", _ kind: Kind) {
         self.kind = kind
         super.init(key, kind.sqltype, Later([kind.constraint]))
     }
@@ -63,7 +63,7 @@ extension Schema {
     /// a generic name that will extract
     ///
     /// currently composite primary keys will need to be worked around
-    var primaryKey: PrimaryKeyBase? {
+    public var primaryKey: PrimaryKeyBase? {
         let all = columns.compactMap { $0 as? PrimaryKeyBase }
         assert(0...1 ~= all.count,
                "multiple primary keys not currently supported as property")
@@ -72,7 +72,7 @@ extension Schema {
 
     /// whether a schema is primary keyed
     /// all relations require a schema to be primary keyed
-    var isPrimaryKeyed: Bool {
+    public var isPrimaryKeyed: Bool {
         primaryKey != nil
     }
 

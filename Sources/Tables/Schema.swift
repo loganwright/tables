@@ -1,6 +1,6 @@
 // MARK: Schema
 
-protocol Schema {
+public protocol Schema {
     init()
     static var table: String { get }
 //    static var db: 
@@ -8,33 +8,33 @@ protocol Schema {
 }
 
 extension Schema {
-    static var table: String { "\(Self.self)".lowercased()}
-    var tableConstraints: TableConstraints { TableConstraints { } }
+    public static var table: String { "\(Self.self)".lowercased()}
+    public var tableConstraints: TableConstraints { TableConstraints { } }
 }
 
 import SQLKit
 
-protocol DatabaseValue {
+public protocol DatabaseValue {
     static var sqltype: SQLDataType { get }
 }
 
 extension String: DatabaseValue {
-    static var sqltype: SQLDataType { return .text }
+    public static var sqltype: SQLDataType { return .text }
 }
 
 extension Int: DatabaseValue {
-    static var sqltype: SQLDataType { .int }
+    public static var sqltype: SQLDataType { .int }
 }
 
 import Foundation
 
 extension Data: DatabaseValue {
-    static var sqltype: SQLDataType { .blob }
+    public static var sqltype: SQLDataType { .blob }
 }
 
-protocol OptionalProtocol {
+public protocol OptionalProtocol {
     associatedtype Wrapped
 }
 extension Optional: OptionalProtocol {}
 
-func replacedDynamically() -> Never { fatalError() }
+internal func replacedDynamically() -> Never { fatalError() }

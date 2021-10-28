@@ -9,20 +9,20 @@ import SQLKit
  foreign keys can also go two ways where, two objects both have references to the other
  */
 @propertyWrapper
-class ForeignKey<Foreign: Schema>: Column<Foreign?> {
+public class ForeignKey<Foreign: Schema>: Column<Foreign?> {
     /// the column in the foreign table that is being pointed to
-    @Later var pointingTo: PrimaryKeyBase
+    @Later public var pointingTo: PrimaryKeyBase
     /// in this case, we are referring to the current column
-    var pointingFrom: BaseColumn { self }
+    public var pointingFrom: BaseColumn { self }
     private(set) var onDelete: SQLForeignKeyAction?
     private(set) var onUpdate: SQLForeignKeyAction?
 
-    override var wrappedValue: Foreign? { replacedDynamically() }
+    public override var wrappedValue: Foreign? { replacedDynamically() }
 
-    init(_ name: String = "",
-         pointingTo foreign: Later<PrimaryKeyBase>,
-         onUpdate: SQLForeignKeyAction? = nil,
-         onDelete: SQLForeignKeyAction? = nil) {
+    public init(_ name: String = "",
+                pointingTo foreign: Later<PrimaryKeyBase>,
+                onUpdate: SQLForeignKeyAction? = nil,
+                onDelete: SQLForeignKeyAction? = nil) {
 
         self._pointingTo = foreign
         let type = Later<SQLDataType> { foreign.wrappedValue.kind.sqltype }
@@ -34,27 +34,27 @@ class ForeignKey<Foreign: Schema>: Column<Foreign?> {
 
     // MARK: Type Constrained Primary Keys
 
-    convenience init(_ name: String = "",
-                     pointingTo foreign: KeyPath<Foreign, PrimaryKeyBase>,
-                     onUpdate: SQLForeignKeyAction? = nil,
-                     onDelete: SQLForeignKeyAction? = nil) {
+    public convenience init(_ name: String = "",
+                            pointingTo foreign: KeyPath<Foreign, PrimaryKeyBase>,
+                            onUpdate: SQLForeignKeyAction? = nil,
+                            onDelete: SQLForeignKeyAction? = nil) {
 
         let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
         self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
     }
 
-    convenience init(_ name: String = "",
-                     pointingTo foreign: KeyPath<Foreign, PrimaryKey<Int>>,
-                     onUpdate: SQLForeignKeyAction? = nil,
-                     onDelete: SQLForeignKeyAction? = nil) {
+    public convenience init(_ name: String = "",
+                            pointingTo foreign: KeyPath<Foreign, PrimaryKey<Int>>,
+                            onUpdate: SQLForeignKeyAction? = nil,
+                            onDelete: SQLForeignKeyAction? = nil) {
         let _pointingTo = Later<PrimaryKeyBase> { Foreign.template[keyPath: foreign] }
         self.init(name, pointingTo: _pointingTo, onUpdate: onUpdate, onDelete: onDelete)
     }
 
-    convenience init(_ name: String = "",
-         pointingTo foreign: KeyPath<Foreign, PrimaryKey<String>>,
-         onUpdate: SQLForeignKeyAction? = nil,
-         onDelete: SQLForeignKeyAction? = nil) {
+    public convenience init(_ name: String = "",
+                            pointingTo foreign: KeyPath<Foreign, PrimaryKey<String>>,
+                            onUpdate: SQLForeignKeyAction? = nil,
+                            onDelete: SQLForeignKeyAction? = nil) {
         let _pointingTo = Later<PrimaryKeyBase> {
             Foreign.template[keyPath: foreign]
         }
@@ -77,11 +77,11 @@ protocol ForeignColumnKeyConstraint {
 }
 
 extension ForeignColumnKeyConstraint {
-    var named: String? { nil }
+    public var named: String? { nil }
 }
 
 extension ForeignKey: ForeignColumnKeyConstraint {
-    var pointingToRemoteTable: String { Foreign.table }
+    public var pointingToRemoteTable: String { Foreign.table }
 }
 
 // MARK: Prepare / Create

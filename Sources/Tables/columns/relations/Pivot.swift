@@ -4,13 +4,13 @@ import SQLKit
 
 /// a pivot object for connecting many to many relationships
 @propertyWrapper
-class Pivot<Left: Schema, Right: Schema>: Relation {
-    var wrappedValue: [Ref<Right>] { replacedDynamically() }
+public class Pivot<Left: Schema, Right: Schema>: Relation {
+    public var wrappedValue: [Ref<Right>] { replacedDynamically() }
 
     @Later var lk: PrimaryKeyBase
     @Later var rk: PrimaryKeyBase
 
-    init() {
+    public init() {
         /// this is maybe easier for now, upper version is easier to move to support unique keys
         self._lk = Later { Left.template._primaryKey }
         self._rk = Later { Right.template._primaryKey }
@@ -20,8 +20,8 @@ class Pivot<Left: Schema, Right: Schema>: Relation {
 // MARK: Backing Schema
 
 /// the underlying schema for storing the pivot
-struct PivotSchema<Left: Schema, Right: Schema>: Schema {
-    static var table: String {
+public struct PivotSchema<Left: Schema, Right: Schema>: Schema {
+    public static var table: String {
         [Left.table, Right.table].sorted().joined(separator: "_")
     }
 
@@ -29,7 +29,7 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
     var left: ForeignKey<Left>
     var right: ForeignKey<Right>
 
-    init() {
+    public init() {
         let lpk = \Left._primaryKey
         let rpk = \Right._primaryKey
         let ln = Left.template._pivotIdKey
@@ -42,7 +42,7 @@ struct PivotSchema<Left: Schema, Right: Schema>: Schema {
         self.right = right
     }
 
-    let tableConstraints = TableConstraints {
+    public let tableConstraints = TableConstraints {
         PrimaryKeyGroup(\.left, \.right)
     }
 }

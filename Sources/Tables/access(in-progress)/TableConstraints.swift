@@ -25,18 +25,18 @@
 
 import SQLKit
 
-typealias QueryBuildStep = (SQLCreateTableBuilder) -> (SQLCreateTableBuilder)
+public typealias QueryBuildStep = (SQLCreateTableBuilder) -> (SQLCreateTableBuilder)
 
 @resultBuilder
-struct ListBuilder<T> {
-    static func buildBlock(_ items: T...) -> [T] {
+public struct ListBuilder<T> {
+    public static func buildBlock(_ items: T...) -> [T] {
         items
     }
 }
 
-final class TableConstraints {
+public final class TableConstraints {
     @Later var steps: [QueryBuildStep]
-    init(@ListBuilder<QueryBuildStep> _ build: @escaping () -> [QueryBuildStep]) {
+    public init(@ListBuilder<QueryBuildStep> _ build: @escaping () -> [QueryBuildStep]) {
         self._steps = Later(build)
     }
 
@@ -48,7 +48,7 @@ final class TableConstraints {
 }
 
 extension SQLCreateTableBuilder {
-    func add(tableConstraints: TableConstraints) -> SQLCreateTableBuilder {
+    public func add(tableConstraints: TableConstraints) -> SQLCreateTableBuilder {
         tableConstraints.steps.reduce(self) { prepare, constraint in
             constraint(prepare)
         }
@@ -77,20 +77,20 @@ extension SQLCreateTableBuilder {
 extension Schema {
     // MARK: PRIMARY KEY
 
-    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn>(
+    public static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _primary_key(t.detyped, u.detyped)
     }
 
-    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
+    public static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _primary_key(t.detyped, u.detyped, v.detyped)
     }
 
-    static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
+    public static func PrimaryKeyGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>,
@@ -113,14 +113,14 @@ extension Schema {
 
     // MARK: UNIQUE
 
-    static func UniqueGroup<A: BaseColumn, B: BaseColumn>(
+    public static func UniqueGroup<A: BaseColumn, B: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>
     ) -> (SQLCreateTableBuilder) -> (SQLCreateTableBuilder) {
         _unique_key(t.detyped, u.detyped)
     }
 
-    static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
+    public static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>
@@ -128,7 +128,7 @@ extension Schema {
         _unique_key(t.detyped, u.detyped, v.detyped)
     }
 
-    static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
+    public static func UniqueGroup<A: BaseColumn, B: BaseColumn, C: BaseColumn, D: BaseColumn>(
         _ t: KeyPath<Self, A>,
         _ u: KeyPath<Self, B>,
         _ v: KeyPath<Self, C>,
@@ -149,7 +149,7 @@ extension Schema {
 
     // MARK: FOREIGN KEY
 
-    static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn>(
+    public static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn>(
         _ a_: KeyPath<Self, A>,
         _ b_: KeyPath<Self, B>,
         referencing _a: KeyPath<Foreign, A>,
@@ -160,7 +160,7 @@ extension Schema {
         return _foreign_key(from, referencing: to)
     }
 
-    static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn, C: BaseColumn>(
+    public static func ForeignKeyGroup<Foreign: Schema, A: BaseColumn, B: BaseColumn, C: BaseColumn>(
         _ a_: KeyPath<Self, A>,
         _ b_: KeyPath<Self, B>,
         _ c_: KeyPath<Self, B>,
