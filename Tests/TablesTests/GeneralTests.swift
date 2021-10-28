@@ -78,7 +78,7 @@ final class RelationTests : SieqlTersts {
 
         let booktitless = ["a", "b", "c", "d"]
         let books = try await booktitless.asyncMap { title in
-            try await Book.new() { new in
+            try await Book.new { new in
                 new.title = title
                 new.set(\.author, to: author)
             }
@@ -107,10 +107,10 @@ final class RelationTests : SieqlTersts {
             Phone.self
         }
 
-        let person = Person.new(referencing: db)
+        let person = Person.new()
         try await person.save()
 
-        let phone = Phone.new(referencing: db)
+        let phone = Phone.new()
         phone.set(\.owner, to: person)
 //        phone.owner = person
         try await phone.save()
@@ -146,12 +146,12 @@ final class RelationTests : SieqlTersts {
             Star.self
         }
 
-        let moon = Moon.new(referencing: db)
+        let moon = Moon.new()
         try await moon.save()
         let nosun = try await moon.sunFriend
         XCTAssertNil(nosun)
 
-        let sun = Sun.new(referencing: db)
+        let sun = Sun.new()
         try await sun.save()
 
         moon.set(\.sunFriend, to: sun)
@@ -178,7 +178,7 @@ final class RelationTests : SieqlTersts {
         let fifty = 50
         for int in (1...fifty) {
 //        try (1...fifty).forEach { int in
-            let star = Star.new(referencing: db)
+            let star = Star.new()
             star.id = int
             star.set(\.sunFriend, to: sun)
 //            star.sunFriend = sun
@@ -209,13 +209,11 @@ final class RelationTests : SieqlTersts {
     }
 
     func testManyToMany() async throws {
-        try await SQLManager.shared.destroyDatabase()
-        
-        try await [
-            Course.self,
-            Student.self,
-            PivotSchema<Course, Student>.self,
-        ] .prepare()
+        try await Prepare {
+            Course.self
+            Student.self
+            PivotSchema<Course, Student>.self
+        }
 
         let science = try await Course.new { new in
             new.name = "science"
@@ -231,6 +229,17 @@ final class RelationTests : SieqlTersts {
                 new.name = name
             }
         }
+        
+        try await students.asyncForEach {
+            try await $0.set(\.classes, to: [science])
+        }
+        let yea = try await students[2].classes.contains(where: { $0.id == science.id })
+        XCTAssertTrue(yea)
+        try await students.asyncForEach {
+            try await $0.remove(from: \.classes, [science])
+        }
+        let naw = try await students[2].classes.contains(where: { $0.id == science.id })
+        XCTAssertFalse(naw)
         
         XCTAssertNotNil(students.first?.id)
 
@@ -269,28 +278,15 @@ final class RelationTests : SieqlTersts {
         try? await jorb.add(to: \.classes, [gym, science])
         let c = try await jorb.classes
         XCTAssertEqual(c.count, 2, "shouldn't duplicate")
-//        XCTFail("ignoring test")
     }
 
 
     func testDualForeignKey() {
-        struct Bargle: Schema {
-            let id = PrimaryKey<String>()
-            let a = Column<String>()
-            let b = Pivot<Course, Student>()
-        }
-
-        struct Student: Schema {
-            let id = PrimaryKey<Int>()
-            let name = Column<String>()
-            let classes = Pivot<Student, Course>()
-        }
-
+        // dual foreign key not supported
     }
 }
 
 final class DBTests: SieqlTersts {
-
     func testExtractProperties() {
         let properties = _unsafe_force_Load_properties_on(Item.template)
         let columns = properties.compactMap { $0.val as? BaseColumn }
@@ -313,7 +309,7 @@ final class DBTests: SieqlTersts {
         
         try await Test.prepare(in: db)
 
-        try await Test.new(referencing: db) { new in
+        try await Test.new { new in
             new.favoriteColor = "yellow"
             new.favoriteNumber = 8
             new.favoriteWord = "arbledarble"
@@ -321,7 +317,7 @@ final class DBTests: SieqlTersts {
         }
 
         let e = await expectError {
-            try await Test.new(referencing: db) { no in
+            try await Test.new { no in
                 no.favoriteColor = "yellow"
                 no.favoriteNumber = 4
                 no.favoriteWord = "copycats"
@@ -332,7 +328,7 @@ final class DBTests: SieqlTersts {
         XCTAssert("\(e ?? "")".contains("favoriteColor"))
 
         let n = await expectError {
-            try await Test.new(referencing: db) { new in
+            try await Test.new { new in
                 new.favoriteColor = "orignal-orange"
                 new.favoriteNumber = 8
                 new.favoriteWord = "yarmal"
@@ -344,7 +340,7 @@ final class DBTests: SieqlTersts {
 
 
         let w = await expectError {
-            try await Test.new(referencing: db) { new in
+            try await Test.new { new in
                 new.favoriteColor = "bluelicious"
                 new.favoriteNumber = 43
                 new.favoriteWord = "arbledarble"
@@ -355,7 +351,7 @@ final class DBTests: SieqlTersts {
         XCTAssert("\(w!)".contains("favoriteWord"))
 
 
-        try await Test.new(referencing: db) { orig in
+        try await Test.new { orig in
             orig.favoriteColor = "sknvwob"
             orig.favoriteNumber = 99877
             orig.favoriteWord = "01111110"
@@ -377,7 +373,8 @@ final class DBTests: SieqlTersts {
             let img = Column<Data>()
         }
 
-        try await Blobby.prepare()
+        try await Prepare { Blobby.self }
+        
         let blobster = try await Blobby.new { new in
             new.img = data
         }
@@ -406,8 +403,6 @@ final class DBTests: SieqlTersts {
 
 
     func testPrepareAuto() async throws {
-        try await db.unsafe_fatal_dropAllTables()
-
         try await Prepare {
             Item.self
             Food.self
@@ -433,13 +428,11 @@ final class DBTests: SieqlTersts {
     }
 
     func testParentChild() async throws {
-        try await SQLManager.shared.destroyDatabase()
-        
-        try await [
-            Item.self,
-            Food.self,
-            Hero.self,
-        ] .prepare()
+        try await Prepare {
+            Item.self
+            Food.self
+            Hero.self
+        }
 
         let banana = Food.new()
         XCTAssertFalse(banana.exists)
@@ -455,7 +448,6 @@ final class DBTests: SieqlTersts {
         let lunch = try await lorbo.lunch
         XCTAssertNil(lunch)
         try await lorbo.save()
-//        banana.owner = lorbo
         banana.set(\.owner, to: lorbo)
         try await banana.save()
         let _banan = try await lorbo.lunch
@@ -468,13 +460,11 @@ final class DBTests: SieqlTersts {
     }
 
     func testSave() async throws {
-        try await SQLManager.shared.destroyDatabase()
-
-        try await [
-            Item.self,
-            Food.self,
+        try await Prepare {
+            Item.self
+            Food.self
             Hero.self
-        ] .prepare()
+        }
 
         let sword = Item.new()
         sword.power = 83
@@ -508,11 +498,10 @@ final class DBTests: SieqlTersts {
     }
 
     func testOneToMany() async throws {
-        try await SQLManager.shared.destroyDatabase()
-        try await [
-            ManyOb.self,
+        try await Prepare {
+            ManyOb.self
             One.self
-        ] .prepare()
+        }
 
         let many: [Ref<ManyOb>] = ["a", "b", "c", "d", "e"].map {
             let ref = ManyOb.new()
@@ -545,11 +534,10 @@ final class DBTests: SieqlTersts {
     }
 
     func testMatch() async throws {
-        try await SQLManager.shared.destroyDatabase()
-        try await [
-            Team.self,
+        try await Prepare {
+            Team.self
             SportsFan.self
-        ] .prepare()
+        }
 
         let cats = Team.new()
         cats.name = "the Catz"

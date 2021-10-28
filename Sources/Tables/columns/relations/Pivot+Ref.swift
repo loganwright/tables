@@ -52,12 +52,19 @@ extension Ref {
     public func set<R>(_ key: KeyPath<S, Pivot<S, R>>, to newValue: [Ref<R>]) async throws {
         try await newValue.asyncForEach { incoming in
             let pivot = PivotSchema<S, R>.new(referencing: db)
-            // pivot.left = self
             pivot.set(\.left, to: self)
-            // pivot.right = incoming
             pivot.set(\.right, to: incoming)
             try await pivot.save()
         }
     }
+    
+//    public func set<R>(_ key: KeyPath<S, Pivot<R, S>>, to newValue: [Ref<R>]) async throws {
+//        try await newValue.asyncForEach { incoming in
+//            let pivot = PivotSchema<R, S>.new(referencing: db)
+//            pivot.set(\.left, to: incoming)
+//            pivot.set(\.right, to: self)
+//            try await pivot.save()
+//        }
+//    }
     
 }
