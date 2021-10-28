@@ -103,10 +103,7 @@ final class SQLManager {
     /// create in database, throws on existing
     func _create(in table: String, _ obs: [JSON]) async throws {
         /// lazy for now, more optimized ways buggy, no time
-        for ob in obs {
-            try await _create(in: table, ob)
-        }
-//        try obs.forEach { try await _create(in: table, $0) }
+        try await obs.asyncForEach { try await _create(in: table, $0) }
     }
 
     /// update in database, if exists, otherwise no writes
@@ -122,10 +119,7 @@ final class SQLManager {
     /// update in database, if exists, otherwise no writes
     func _update(in table: String, _ obs: [JSON]) async throws {
         /// lazy for now, more optimized ways buggy, no time
-        for ob in obs {
-            try await _update(in: table, ob)
-        }
-//        obs.forEach { try await _update(in: table, $0) }
+        try await obs.asyncForEach { try await _update(in: table, $0) }
     }
 
     /// remove individual object
@@ -194,9 +188,7 @@ final class SQLManager {
         Log.warn("fatal process deleting all entries")
 //        try unsafe_getAllTables().forEach(_deleteAll)
         let tables = try await unsafe_getAllTables()
-        for table in tables {
-            try await _deleteAll(from: table)
-        }
+        try await tables.asyncForEach(_deleteAll)
     }
 
     func unsafe_fatal_dropAllTables() async throws {
@@ -204,9 +196,7 @@ final class SQLManager {
         /// idk how to just delete all at once
 //        try await unsafe_getAllTables().forEach(unsafe_dropTable)
         let tables = try await unsafe_getAllTables()
-        for table in tables {
-            try await unsafe_dropTable(table)
-        }
+        try await tables.asyncForEach(unsafe_dropTable)
     }
 }
 

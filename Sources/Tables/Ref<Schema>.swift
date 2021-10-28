@@ -209,16 +209,16 @@ import Foundation
 /// should this be here?
 extension Ref {
     @discardableResult
-    func save() throws -> Self {
-        if self.exists { try update() }
-        else { try _save() }
+    func save() async throws -> Self {
+        if self.exists { try await update() }
+        else { try await _save() }
         
         isDirty = false
         exists = true
         return self
     }
 
-    private  func _save() throws {
+    private  func _save() async throws {
         /// if object doesn't exist
         let idKey = S.template.primaryKey
         let needsId = idKey != nil && self.backing[idKey!.name] == nil
@@ -236,39 +236,39 @@ extension Ref {
         }
 
         guard !self.backing.isEmpty else { return }
-        try db!.insert(into: S.table)
+        try await db!.insert(into: S.table)
             .model(self.backing)
             .run()
-            .wait()
+            .commit()
 
         guard
             needsId,
             let pk = idKey,
             pk.kind == .int
             else { return }
-        let id = unsafe_lastInsertedRowId()
+        let id = try await unsafe_lastInsertedRowId()
         self.backing[pk.name] = id.json
     }
 
-    func update() throws {
+    func update() async throws {
         let primary = S.template._primaryKey
-        try self.db!.update(S.table)
+        try await self.db!.update(S.table)
             .where(primary.name.sqlid, .equal, backing[primary.name])
             .set(model: backing)
             .run()
-            .wait()
+            .commit()
     }
 
-    private func unsafe_lastInsertedRowId() -> Int {
+    private func unsafe_lastInsertedRowId() async throws -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try! self.db!.execute(sql: raw) { (row) in
+        try await self.db!.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first
             assert(_id != nil, "sql failed to make rowid")
             id = _id!
-        } .wait()
+        } .commit()
         return id
     }
 }

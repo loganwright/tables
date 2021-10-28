@@ -67,20 +67,21 @@ extension Schema {
     }
 
     @discardableResult
-    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) throws -> Ref<Self> {
+    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) async throws -> Ref<Self> {
         let new = Ref<Self>(db)
         try creator(new)
-        try new.save()
+        // TODO: offer option to background?
+        try await new.save()
         return new
     }
 
     public static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
-                                   rows: [[Any]]) throws -> [Ref<Self>] {
+                                   rows: [[Any]]) async throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
-        return try rows.map { row in
-            try Self.on(db) { new in
+        return try await rows.asyncMap { row in
+            try await Self.on(db) { new in
                 try zip(columns, row).forEach { k, v in
                     let column = template[keyPath: k]
                     let js = try JSON(fuzzy: v)
@@ -93,15 +94,14 @@ extension Schema {
 
     static func make<C: BaseColumn>(on db: SQLDatabase,
                                    with columns: KeyPath<Self, C>...,
-                                   and rows: [[JSON]]) throws -> [Ref<Self>] {
+                                   and rows: [[JSON]]) async throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
-        return try rows.map { row in
-            try Self.on(db) { new in
+        return try await rows.asyncMap { row in
+            try await Self.on(db) { new in
                 zip(columns, row).forEach { k, v in
                     let column = template[keyPath: k]
                     new._unsafe_setBacking(column: column, value: v)
-
                 }
             }
         }
@@ -186,8 +186,31 @@ protocol Database {
 
 extension Database {
     func save<S>(_ refs: [Ref<S>]) async throws {
-        for ref in refs {
-            try await save(ref)
+        try await refs.asyncForEach(save)
+    }
+}
+
+
+extension Sequence {
+    func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {
+        for e in self {
+            try await op(e)
         }
+    }
+    func asyncMap<T>(_ op: (Element) async throws -> T) async rethrows -> [T] {
+        var mapped = [T]()
+        for e in self {
+            let new = try await op(e)
+            mapped.append(new)
+        }
+        return mapped
+    }
+    func asyncFlatMap<T>(_ op: (Element) async throws -> T?) async rethrows -> [T] {
+        var mapped = [T]()
+        for e in self {
+            guard let new = try await op(e) else { continue }
+            mapped.append(new)
+        }
+        return mapped
     }
 }

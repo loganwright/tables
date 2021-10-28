@@ -49,7 +49,7 @@ class CompositeKeyTests: SieqlTersts {
             Player.self
         }
         print("1")
-        let teams = try! Team.make(
+        let teams = try! await Team.make(
             on: db,
             columns: \.name.root, \.id.root,
             rows: [
@@ -62,19 +62,19 @@ class CompositeKeyTests: SieqlTersts {
         print("2")
         XCTAssertEqual(teams.count, 4)
 
-        let joe = try! Player.on(db) { joe in
+        let joe = try! await Player.on(db) { joe in
 //            joe.team = teams[0]
             joe.set(\.team, to: teams[0])
             joe.jerseyNumber = 13
         }
 
-        let jan = try! Player.on(db) { jan in
+        let jan = try! await Player.on(db) { jan in
             jan.set(\.team, to: teams[0])
 //            jan.team = teams[0]
             jan.jerseyNumber = 84
         }
 
-        let ohno = try? Player.on(db) { ohno in
+        let ohno = try? await Player.on(db) { ohno in
 //            ohno.team = teams[0]
             ohno.set(\.team, to: teams[0])
             ohno.jerseyNumber = 84
@@ -131,7 +131,7 @@ class CompositeKeyTests: SieqlTersts {
             Reservation.self
         }
 
-        let guests = try! Guest.make(
+        let guests = try! await Guest.make(
             on: db,
             columns: \.firstName, \.lastName, \.email,
             rows: [
@@ -141,7 +141,7 @@ class CompositeKeyTests: SieqlTersts {
             ]
         )
 
-        let reservations = try! Reservation.make(
+        let reservations = try! await Reservation.make(
             on: db,
             columns: \.guestFirstName, \.guestLastName, \.guestEmail,
             rows: guests.map({[$0.firstName, $0.lastName, $0.email]})

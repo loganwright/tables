@@ -9,11 +9,7 @@ class Preparer {
 extension SQLDatabase {
     func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
         let schemas = try build()
-        for schema in schemas {
-            try await prepare(schema)
-        }
-        
-//        try schemas.forEach(prepare)
+        try await schemas.asyncForEach(prepare)
         Log.info("done preparing.s")
     }
 
