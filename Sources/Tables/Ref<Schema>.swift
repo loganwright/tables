@@ -1,5 +1,6 @@
 import SQLKit
-
+import Foundation
+import SQLiteKit
 /// maybe use some sort of private flag or way to try to enforce early to users
 /// that we should control how 'Ref' types are delivered to try to buffer most of the heavy stuff
 ///
@@ -186,8 +187,7 @@ extension Ref {
     }
 }
 
-import SQLiteKit
-import Foundation
+// MARK: Save & Update
 
 protocol Saveable {
     @discardableResult
@@ -206,7 +206,7 @@ extension Array where Element: Saveable {
 extension Ref: Saveable {
     @discardableResult
     func save() async throws -> Self {
-        if self.exists { try await update() }
+        if self.exists { try await _update() }
         else { try await _save() }
         
         isDirty = false
@@ -246,7 +246,7 @@ extension Ref: Saveable {
         self.backing[pk.name] = id.json
     }
 
-    func update() async throws {
+    private func _update() async throws {
         let primary = S.template._primaryKey
         try await self.db!.update(S.table)
             .where(primary.name.sqlid, .equal, backing[primary.name])

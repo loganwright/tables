@@ -13,6 +13,8 @@ private var seequel_directory: URL {
     return url.appendingPathComponent("database.sqlite", isDirectory: false)
 }
 
+// MARK: Create
+
 extension Schema {
     static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
         Ref(db)
@@ -26,6 +28,11 @@ extension Schema {
         try await n.save()
         return n
     }
+}
+
+// MARK: Retrieve
+
+extension Schema {
     
     // MARK: Load
     
@@ -52,39 +59,30 @@ extension Schema {
                                         matches value: T,
                                         in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
         let column = Self.template[keyPath: column]
-        return try await db.select()
-            .columns(["*"])
-            .where(column._sqlIdentifier, .equal, value)
-            .from(Self.table)
-            .first(decoding: [String: JSON].self)
-            .commit()
-            .flatMap { Ref($0, db, exists: true) }
+        return try await db.loadFirst(where: column.name, matches: value)
     }
-    
-    // MARK:
 }
 
+
+// MARK: Delete
+
+protocol Deletable {
+    func delete() async throws
+}
+
+extension Ref: Deletable {
+    func delete() async throws {
+        try await db?.delete(self)
+    }
+}
+
+extension Array where Element: Deletable {
+    func delete() async throws {
+        try await asyncForEach { try await $0.delete() }
+    }
+}
 ///
 extension Schema {
-//    public static func on(_ db: SQLDatabase) -> Ref<Self> {
-//        return Ref(db)
-//    }
-    
-//    public static func load(id: String, on db: SQLDatabase) async throws -> Ref<Self>? {
-//        try await db.load(id: id)
-//    }
-//
-//    public static func loadAll(on db: SQLDatabase) async throws -> [Ref<Self>] {
-//        try await db.loadAll()
-//    }
-
-//    @discardableResult
-//    public static func on(_ db: SQLDatabase, creator: (Ref<Self>) throws -> Void) async throws -> Ref<Self> {
-//        let new = Self.on(db)
-//        try creator(new)
-//        try await new.save()
-//        return new
-//    }
 
     public static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
