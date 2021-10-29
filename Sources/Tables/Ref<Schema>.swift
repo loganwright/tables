@@ -93,6 +93,14 @@ public final class Ref<S: Schema> {
         }
     }
     
+    public subscript<ForeignTable: Schema>(idFor key: KeyPath<S, ForeignKey<ForeignTable>>) -> String? {
+        get {
+            let referencingKey = S.template[keyPath: key]
+            guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
+            return referencingValue
+        }
+    }
+    
     // TODO: This solution is no good
     public func set<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) {
         let relation = S.template[keyPath: key]
