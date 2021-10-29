@@ -115,18 +115,18 @@ extension Schema {
 
 // MARK: Delete
 
-protocol Deletable {
+public protocol Deletable {
     func delete() async throws
 }
 
 extension Ref: Deletable {
-    func delete() async throws {
+    public func delete() async throws {
         try await db.delete(self)
     }
 }
 
 extension Array where Element: Deletable {
-    func delete() async throws {
+    public func delete() async throws {
         try await asyncForEach { try await $0.delete() }
     }
 }
