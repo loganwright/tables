@@ -85,24 +85,24 @@ public final class Ref<S: Schema> {
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
     ///
-    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
-        get async throws {
-            let referencingKey = S.template[keyPath: key]
-            guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
-            return try await ForeignTable.load(id: referencingValue, in: db)
-        }
+    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> AsyncReadSyncWritable<Ref<ForeignTable>?> {
+        AsyncReadSyncWritable(
+            get: {
+                try await self.foreignGet(key)
+            },
+            set: {
+                try self.foreignSet(key, to: $0)
+            }
+        )
     }
     
-    public subscript<ForeignTable: Schema>(idFor key: KeyPath<S, ForeignKey<ForeignTable>>) -> String? {
-        get {
-            let referencingKey = S.template[keyPath: key]
-            guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
-            return referencingValue
-        }
+    private func foreignGet<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>) async throws -> Ref<ForeignTable>? {
+        let referencingKey = S.template[keyPath: key]
+        guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
+        return try await ForeignTable.load(id: referencingValue, in: db)
     }
     
-    // TODO: This solution is no good
-    public func set<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) {
+    private func foreignSet<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) throws {
         let relation = S.template[keyPath: key]
         let pointingTo = relation.pointingTo
         
@@ -114,7 +114,7 @@ public final class Ref<S: Schema> {
         guard let foreignIdValue = foreigner.backing[pointingTo.name] else {
             /// would be great if we could attach to the 'Ref' object and somehow trigger an update later after saving
             /// maybe queue things into the database
-            fatalError("object: \(foreigner) not ready to be linked.. missing: \(pointingTo.name)")
+            throw "object: \(foreigner) not ready to be linked.. missing: \(pointingTo.name)"
         }
         
         // the caller is the referencing body
@@ -135,7 +135,9 @@ public final class Ref<S: Schema> {
             let pointingTo = relation.pointingTo
             let pointingFrom = relation.pointingFrom
             let id = self.backing[pointingTo.name]
-            return try await Many.loadAll(where: pointingFrom.name, matches: id, in: db)
+//            return try await db.loadAll(where)
+//            return try await Many.loadAll(where: <#T##KeyPath<Schema, Column<Encodable>>#>, matches: <#T##Encodable#>, in: <#T##SQLDatabase#>)
+            return try await self.db.loadAll(where: pointingFrom.name, matches: id)
         }
     }
 
@@ -156,8 +158,53 @@ public final class Ref<S: Schema> {
                 /// we don't have the value that's being pointed to, can't have a child pointing back
                 return nil
             }
-            return try await One.loadFirst(where: pointingFrom.name, matches: id, in: db)
+            return try await db.loadFirst(where: pointingFrom.name, matches: id)
         }
+    }
+}
+
+// MARK: Temporary Async Get/Set Workarounds
+
+/// a workaround to async properties that also require setters (see subclasses)
+public class AsyncReadable<T> {
+    public let asyncGet: () async throws -> T
+    
+    public init(get: @escaping () async throws -> T) {
+        self.asyncGet = get
+    }
+    
+    public var get: T {
+        get async throws {
+            try await asyncGet()
+        }
+    }
+}
+
+/// a workaround for async/throwing read/write properties
+public class AsyncReadWritable<T>: AsyncReadable<T> {
+    public let asyncSet: (T) async throws -> Void
+    
+    public init(get: @escaping () async throws -> T, set: @escaping (T) async throws -> Void) {
+        self.asyncSet = set
+        super.init(get: get)
+    }
+    
+    public func set(_ value: T) async throws {
+        try await self.asyncSet(value)
+    }
+}
+
+/// a workaround with async getters, and throwing setters in a property
+public class AsyncReadSyncWritable<T>: AsyncReadable<T> {
+    public let asyncSet: (T) throws -> Void
+    
+    public init(get: @escaping () async throws -> T, set: @escaping (T) throws -> Void) {
+        self.asyncSet = set
+        super.init(get: get)
+    }
+    
+    public func set(_ value: T) throws {
+        try self.asyncSet(value)
     }
 }
 

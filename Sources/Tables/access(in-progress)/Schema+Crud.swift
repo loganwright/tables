@@ -19,23 +19,11 @@ extension Schema {
     public static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
         Ref(db)
     }
-    
-    // TODO: is `insert(into:` better?
-    @discardableResult
-    public static func new(referencing db: SQLDatabase = SQLManager.shared.db, apply: (Ref<Self>) async throws -> Void) async throws -> Ref<Self> {
-        let n = Self.new(referencing: db)
-        try await apply(n)
-        try await n.save()
-        return n
-    }
 }
 
 // MARK: Retrieve
 
 extension Schema {
-    
-    // One
-    
     public static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
         try await db.load(id: id)
     }
@@ -44,36 +32,8 @@ extension Schema {
         try await db.loadAll(ids: ids)
     }
     
-    // Many
-    
-    public static func loadAll<T: Encodable>(where key: String,
-                                      matches compare: T,
-                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: key,
-                             matches: compare)
-    }
-    public static func loadAll<T: Encodable>(where key: String,
-                                      `in` compare: [T],
-                                      in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: key,
-                             in: compare)
-    }
-    public static func loadAll(where key: String,
-                        contains compare: String,
-                        in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: key,
-                             contains: compare)
-    }
-    
     public static func loadAll(in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
         try await db.loadAll()
-    }
-    
-    public static func loadFirst<T: Encodable>(where key: String,
-                                        matches value: T,
-                                        in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        try await db.loadFirst(where: key,
-                               matches: value)
     }
 }
 
@@ -84,9 +44,8 @@ extension Schema {
     public static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                                matches value: T,
                                                in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        try await loadFirst(where: Self.template[keyPath: column].name,
-                            matches: value,
-                            in: db)
+        try await db.loadFirst(where: Self.template[keyPath: column].name,
+                               matches: value)
     }
     
     // Many
@@ -130,7 +89,9 @@ extension Array where Element: Deletable {
         try await asyncForEach { try await $0.delete() }
     }
 }
-///
+
+/// mass creations
+
 extension Schema {
 
     public static func make<C: BaseColumn>(on db: SQLDatabase,
@@ -139,14 +100,15 @@ extension Schema {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
         return try await rows.asyncMap { row in
-            try await Self.new(referencing: db) { new in
-                try zip(columns, row).forEach { k, v in
-                    let column = template[keyPath: k]
-                    let js = try JSON(fuzzy: v)
-                    new._unsafe_setBacking(column: column, value: js)
+            let new = Self.new(referencing: db)
+            try zip(columns, row).forEach { k, v in
+                let column = template[keyPath: k]
+                let js = try JSON(fuzzy: v)
+                new._unsafe_setBacking(column: column, value: js)
 
-                }
             }
+            try await new.save()
+            return new
         }
     }
 
@@ -156,12 +118,13 @@ extension Schema {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
         return try await rows.asyncMap { row in
-            try await Self.new(referencing: db) { new in
-                zip(columns, row).forEach { k, v in
-                    let column = template[keyPath: k]
-                    new._unsafe_setBacking(column: column, value: v)
-                }
+            let new = Self.new(referencing: db)
+            zip(columns, row).forEach { k, v in
+                let column = template[keyPath: k]
+                new._unsafe_setBacking(column: column, value: v)
             }
+            try await new.save()
+            return new
         }
     }
 }

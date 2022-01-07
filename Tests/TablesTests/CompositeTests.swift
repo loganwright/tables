@@ -44,28 +44,26 @@ class CompositeKeyTests: SieqlTersts {
         print("2")
         XCTAssertEqual(teams.count, 4)
 
-        let joe = try! await Player.new(referencing: db) { joe in
-//            joe.team = teams[0]
-            joe.set(\.team, to: teams[0])
-            joe.jerseyNumber = 13
+        let joe = Player.new(referencing: db)
+        try! joe.team.set(teams[0])
+        joe.jerseyNumber = 13
+        try! await joe.save()
+        
+        let jan = Player.new(referencing: db)
+        try! jan.team.set(teams[0])
+        jan.jerseyNumber = 84
+        try! await jan.save()
+
+        let ohno = Player.new(referencing: db)
+        try! ohno.team.set(teams[0])
+        ohno.jerseyNumber = 84
+        await expectError {
+            try await ohno.save()
         }
 
-        let jan = try! await Player.new(referencing: db) { jan in
-            jan.set(\.team, to: teams[0])
-//            jan.team = teams[0]
-            jan.jerseyNumber = 84
-        }
-
-        let ohno = try? await Player.new(referencing: db) { ohno in
-//            ohno.team = teams[0]
-            ohno.set(\.team, to: teams[0])
-            ohno.jerseyNumber = 84
-        }
-        XCTAssertNil(ohno)
-
-        let pass = try await joe.team?.name == jan.team?.name
+        let pass = try await joe.team.get?.name == jan.team.get?.name
         XCTAssert(pass)
-        let team = try await joe.team
+        let team = try await joe.team.get
         XCTAssertNotNil(team)
     }
 
