@@ -11,7 +11,7 @@ final class AlwaysTests: XCTestCase {
     }
 
     var cancellables = [AnyCancellable]()
-    var published: JSON = .emptyObj {
+    var published: JSON = [:] {
         didSet {
             XCTAssertEqual(published.id, "asfdlkjdsf")
             XCTAssertEqual(published.name, "flia")
@@ -29,7 +29,7 @@ final class AlwaysTests: XCTestCase {
             .publisher
             .compactMap { $0.json?["json"] }
             .catch { _ in
-                Just(JSON.emptyObj)}
+                Just([:])}
             .assign(to: \.published, on: self)
             .store(in: &cancellables)
     }

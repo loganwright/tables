@@ -46,11 +46,11 @@ public final class Ref<S: Schema> {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.name] ?? .null
-            return try! Value(json: json)
+            return try! json.convert()
         }
         set {
             let column = S.template[keyPath: key]
-            backing[column.name] = newValue.json
+            backing[column.name] = try! newValue.convert()
         }
     }
 
@@ -58,11 +58,11 @@ public final class Ref<S: Schema> {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.name] ?? .null
-            return try! Value(json: json)
+            return try! json.convert()
         }
         set {
             let column = S.template[keyPath: key]
-            backing[column.name] = newValue.json
+            backing[column.name] = try! newValue.convert()
         }
     }
 
@@ -70,11 +70,11 @@ public final class Ref<S: Schema> {
         get {
             let pk = S.template[keyPath: key]
             guard let value = backing[pk.name] else { return nil }
-            return try! PK(json: value)
+            return try! value.convert()
         }
         set {
             let pk = S.template[keyPath: key]
-            backing[pk.name] = newValue.json
+            backing[pk.name] = try! newValue?.convert()
         }
     }
 
@@ -135,8 +135,6 @@ public final class Ref<S: Schema> {
             let pointingTo = relation.pointingTo
             let pointingFrom = relation.pointingFrom
             let id = self.backing[pointingTo.name]
-//            return try await db.loadAll(where)
-//            return try await Many.loadAll(where: <#T##KeyPath<Schema, Column<Encodable>>#>, matches: <#T##Encodable#>, in: <#T##SQLDatabase#>)
             return try await self.db.loadAll(where: pointingFrom.name, matches: id)
         }
     }
@@ -251,7 +249,7 @@ extension Ref: Saveable {
                 /// uuid not auto generated, needs to be made
                 Log.info("allow a more general string type for like email")
                 Log.info("this one should be PrimaryKey<UUID>")
-                self.backing[id.name] = UUID().json
+                self.backing[id.name] = try UUID().uuidString.convert()
             case .int:
                 Log.warn("in multi groups, autoincrement fails..")
                 // set automatically after save by sql
@@ -267,7 +265,7 @@ extension Ref: Saveable {
             pk.kind == .int
             else { return }
         let id = try await unsafe_lastInsertedRowId()
-        self.backing[pk.name] = id.json
+        self.backing[pk.name] = try id.convert()
     }
 
     private func _update() async throws {

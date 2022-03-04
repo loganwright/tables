@@ -18,6 +18,44 @@ class SieqlTersts: XCTestCase {
 
 }
 
+struct FlatMap<A: Decodable, B: Decodable>: Decodable {
+    let a: A
+    let b: B
+    
+    init(from decoder: Decoder) throws {
+        self.a = try A(from: decoder)
+        self.b = try B(from: decoder)
+    }
+}
+
+class JoinTests: XCTestCase {
+    struct Car: Schema {
+        let id = PrimaryKey<Int>()
+        let color = Column<String>()
+    }
+
+    struct User: Schema {
+        let id = PrimaryKey<String>()
+        var car = ForeignKey<Car>(pointingTo: \.id)
+        let foo = Column<String>()
+    }
+    
+    func testJoin() async throws {
+        try await Prepare {
+            Car.self
+            User.self
+        }
+
+        
+        let car = Car.new()
+        car.color = "#aaa832"
+        try await car.save()
+        
+        let rob = User.new()
+        
+    }
+}
+
 ///
 ///
 ///
@@ -399,8 +437,6 @@ final class DBTests: SieqlTersts {
     }
 
     func testIncompatiblePropertyWarn() {
-        Log.unsafe_collectDebugLogs = true
-
         struct Foo: Schema {
             var id = PrimaryKey<Int>()
             var ohnooo = "that's not right"
@@ -409,8 +445,8 @@ final class DBTests: SieqlTersts {
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
         let _ = Foo.template.columns
-        XCTAssert(Log.fetchLogs().contains(where: { $0.contains("incompatible schema property") }))
-        XCTAssert(Log.fetchLogs().contains(where: { $0.contains("\(Foo.self)") }))
+        XCTAssert(Log.memoryLogs.contains(where: { $0.msg.contains("incompatible schema property") }))
+        XCTAssert(Log.memoryLogs.contains(where: { $0.msg.contains("\(Foo.self)") }))
     }
 
 
@@ -496,14 +532,20 @@ final class DBTests: SieqlTersts {
         /// 1 to 1, both have a parent relationship
 //        sword.equippedBy = hero
         try sword.equippedBy.set(hero)
+        // try sword.equippedBy.set { hero }
 //        sword.set(\.equippedBy, to: hero)
 //        hero.equipped = sword
         try hero.equipped.set(sword)
 //        hero.set(\.equipped, to: sword)
         try await hero.save()
+        try await sword.save()
 
         XCTAssertFalse(hero.isDirty)
         XCTAssertNotNil(hero.id)
+        
+        let fetched = try await Item.loadFirst(where: \.power, matches: 83)
+        let _ = try await fetched?.equippedBy.get
+        try await XCTAssertEqual(fetched?.equippedBy.get?.id, hero.id)
         
         let _hero = try await Hero.load(id: hero.id!)
         XCTAssertEqual(_hero?.id, hero.id)

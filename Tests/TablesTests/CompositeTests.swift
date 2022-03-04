@@ -66,8 +66,7 @@ class CompositeKeyTests: SieqlTersts {
         let team = try await joe.team.get
         XCTAssertNotNil(team)
     }
-
-
+    
     struct Guest: Schema {
         let firstName = Column<String>()
         let lastName = Column<String>()

@@ -183,6 +183,7 @@ extension SQLDatabase {
             .column("name")
             .from("sqlite_master")
             .where("type", .equal, "table")
+            
             .all(decoding: Table.self)
             .commit()
             .map(\.name)
@@ -268,11 +269,11 @@ extension JSON {
             return .int
         case .double:
             return .real
-        case .str:
+        case .string:
             return .text
         case .bool:
             return .int
-        case .obj:
+        case .object:
             return .text
         case .array:
             return .text
