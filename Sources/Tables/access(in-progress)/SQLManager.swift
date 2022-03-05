@@ -41,109 +41,122 @@ public final class SQLManager {
         ).wait()
     }
     
-    public func destroyDatabase() async throws {
-        try await db.unsafe_fatal_dropAllTables()
+    public func destroyDatabase() throws {
+        try  db.unsafe_fatal_dropAllTables()
     }
 }
 
 // MARK: CRUD
 
 extension SQLDatabase {
-    func _loadFirst<E: Encodable>(from table: String,
+    @TablesActor
+    func __loadFirst<E: Encodable>(from table: String,
                                   where key: String,
                                   equals compare: E,
-                                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [String: JSON]? {
-        try await self.select()
+                                  limitingColumnsTo columns: [String] = ["*"]) throws -> [String: JSON]? {
+        try self.select()
             .columns(columns)
             .where(key._sqlid, .equal, compare)
             .from(table)
             .first(decoding: [String: JSON].self)
-            .commit()
+            .wait()
+    }
+    
+    func _loadFirst<E: Encodable>(from table: String,
+                                  where key: String,
+                                  equals compare: E,
+                                  limitingColumnsTo columns: [String] = ["*"]) throws -> [String: JSON]? {
+        try self.select()
+            .columns(columns)
+            .where(key._sqlid, .equal, compare)
+            .from(table)
+            .first(decoding: [String: JSON].self)
+            .wait()
     }
     
     /// get all objects in table
     func _loadAll(from table: String,
-                  limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
-        try await self.select()
+                  limitingColumnsTo columns: [String] = ["*"]) throws -> [[String: JSON]] {
+        try self.select()
             .columns(columns)
             .from(table)
             .all(decoding: [String: JSON].self)
-            .commit()
+            .wait()
     }
     
     
     func _loadAll<E: Encodable>(from table: String,
                                 where key: String,
                                 equals compare: E,
-                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
-        try await self.select()
+                                limitingColumnsTo columns: [String] = ["*"]) throws -> [[String: JSON]] {
+        try self.select()
             .columns(columns)
             .where(key._sqlid, .equal, compare)
             .from(table)
             .all(decoding: [String: JSON].self)
-            .commit()
+            .wait()
     }
     
     /// get all objects matching a list of ids
     func _loadAll<E: Encodable>(from table: String,
                                 where key: String,
                                 `in` compare: [E],
-                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
-        try await self.select()
+                                limitingColumnsTo columns: [String] = ["*"]) throws -> [[String: JSON]] {
+        try self.select()
             .columns(columns)
             .where(key._sqlid, .in, compare)
             .from(table)
             .all(decoding: [String: JSON].self)
-            .commit()
+            .wait()
     }
     
     /// get all objects where value stored at 'key' contains value
     func _loadAll(from table: String,
                                 where key: String,
                                 contains value: String,
-                                limitingColumnsTo columns: [String] = ["*"]) async throws -> [[String: JSON]] {
-        try await self.select()
+                                limitingColumnsTo columns: [String] = ["*"]) throws -> [[String: JSON]] {
+        try self.select()
             .columns(columns)
             .where(key._sqlid, .like, "%\(value)%")
             .from(table)
             .all(decoding: [String: JSON].self)
-            .commit()
+            .wait()
     }
     
     /// create in database, will throw if already exists
-    func _create(in table: String, _ contents: [String: JSON]) async throws {
-        try await self.insert(into: table)
+    func _create(in table: String, _ contents: [String: JSON]) throws {
+        try self.insert(into: table)
             .model(contents)
             .run()
-            .commit()
+            .wait()
     }
     
     /// create in database, throws on existing
-    func _create(in table: String, _ obs: [[String: JSON]]) async throws {
+    func _create(in table: String, _ obs: [[String: JSON]]) throws {
         /// lazy for now, more optimized ways buggy, no time
-        try await obs.asyncForEach { try await _create(in: table, $0) }
+        try obs.forEach { try _create(in: table, $0) }
     }
     
     /// update in database, if exists, otherwise no writes
     func _update<E: Encodable>(in table: String,
                                where key: String,
                                matches compare: E,
-                               _ json: [String: JSON]) async throws {
-        try await self.update(table)
+                               _ json: [String: JSON]) throws {
+        try self.update(table)
             .where(key._sqlid, .equal, compare)
             .set(model: json)
             .run()
-            .commit()
+            .wait()
     }
     
     /// update in database, if exists, otherwise no writes
     func _update(in table: String,
                  where key: String,
                  matches kp: KeyPath<Dictionary<String, JSON>, JSON?>,
-                 _ obs: [[String: JSON]]) async throws {
+                 _ obs: [[String: JSON]]) throws {
         /// lazy for now, more optimized ways buggy, no time
-        try await obs.asyncForEach {
-            try await _update(
+        try obs.forEach {
+            try _update(
                 in: table,
                 where: key,
                 matches: $0[keyPath: kp],
@@ -154,80 +167,80 @@ extension SQLDatabase {
     }
     
     /// remove individual object
-    func _deleteAll<E: Encodable>(from table: String, where key: String, matches compare: E) async throws {
-        try await self.delete(from: table)
+    func _deleteAll<E: Encodable>(from table: String, where key: String, matches compare: E) throws {
+        try self.delete(from: table)
             .where(key._sqlid, .equal, compare)
             .run()
-            .commit()
+            .wait()
     }
     
     /// remove all objects in a table, maintain schema
-    func _deleteAll(from table: String) async throws {
-        try await self.delete(from: table)
+    func _deleteAll(from table: String) throws {
+        try self.delete(from: table)
             .run()
-            .commit()
+            .wait()
     }
     
     /// delete all objects that match the given ids
-    func _deleteAll(from table: String, where key: String, `in` group: [String]) async throws {
-        try await self.delete(from: table)
+    func _deleteAll(from table: String, where key: String, `in` group: [String]) throws {
+        try self.delete(from: table)
             .where(key._sqlid, .in, group)
             .run()
-            .commit()
+            .wait()
     }
     
     // MARK: SQL Interactors
     
-    public func unsafe_getAllTables() async throws -> [String] {
-        try await self.select()
+    public func unsafe_getAllTables() throws -> [String] {
+        try self.select()
             .column("name")
             .from("sqlite_master")
             .where("type", .equal, "table")
             
             .all(decoding: Table.self)
-            .commit()
+            .wait()
             .map(\.name)
     }
     
-    public func unsafe_tableExists(_ table: String) async throws -> Bool {
+    public func unsafe_tableExists(_ table: String) throws -> Bool {
         // "SELECT * FROM sqlite_master WHERE name ='myTable' and type='table';"
-        try await self.select().column("name")
+        try self.select().column("name")
             .from("sqlite_master")
             .where("name", .equal, table)
             .where("type", .equal, "table")
             .all()
-            .commit()
+            .wait()
             .count == 1
     }
     
-    public func unsafe_dropTable(_ table: String) async throws {
+    public func unsafe_dropTable(_ table: String) throws {
         let disable = SQLRawExecute("PRAGMA foreign_keys = OFF;\n")
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
         
-        try await self.execute(sql: disable) { row in
+        try self.execute(sql: disable) { row in
             Log.warn("disabling foreign key checks: \(row)")
-        } .commit()
+        } .wait()
         
-        try await self.drop(table: table).run()
-            .commit()
+        try self.drop(table: table).run()
+            .wait()
         
-        try await self.execute(sql: enable) { row in
+        try self.execute(sql: enable) { row in
             Log.info("ENABLED foreign key checks: \(row)")
-        } .commit()
+        } .wait()
     }
     
     // MARK: FATAL
     
-    public func unsafe_fatal_deleteAllEntries() async throws {
+    public func unsafe_fatal_deleteAllEntries() throws {
         Log.warn("fatal process deleting all entries")
-        try await unsafe_getAllTables().asyncForEach(_deleteAll)
+        try unsafe_getAllTables().forEach(_deleteAll)
     }
     
-    public func unsafe_fatal_dropAllTables() async throws {
+    public func unsafe_fatal_dropAllTables() throws {
         Log.warn("fatal process deleting tables")
         /// idk how to just delete all at once, maybe delete file?
-        let tables = try await unsafe_getAllTables()
-        try await tables.asyncForEach(unsafe_dropTable)
+        let tables = try unsafe_getAllTables()
+        try tables.forEach(unsafe_dropTable)
     }
 }
 
@@ -250,13 +263,13 @@ private struct Table: Decodable {
 }
 
 extension SQLDatabase {
-    public func unsafe_table_meta(_ table: String) async throws -> [TableColumnMeta] {
+    public func unsafe_table_meta(_ table: String) throws -> [TableColumnMeta] {
         var meta = [TableColumnMeta]()
         let tableInfo = SQLRawExecute("pragma table_info(\(table));\n")
-        try await execute(sql: tableInfo) { (row) in
+        try execute(sql: tableInfo) { (row) in
             let next = try! row.decode(model: TableColumnMeta.self)
             meta.append(next)
-        } .commit()
+        } .wait()
         return meta
     }
 }
@@ -284,9 +297,43 @@ extension JSON {
 }
 
 extension EventLoopFuture {
-    func commit() async throws -> Value {
-        try await withCheckedThrowingContinuation { continuation in
-            self.whenComplete(continuation.resume)
+//    @TablesActor
+//    func wait(timeout: DispatchTime = .distantFuture) throws -> Value {
+//        self.wa
+//        var result: Result<Value, Error> = .failure("result never set")
+//        let group = DispatchGroup()
+//        group.enter()
+//        whenComplete {
+//            result = $0
+//            group.leave()
+//        }
+//        let dispatch = group.wait(timeout: timeout)
+//        guard dispatch == .success else {
+//            throw "event loop future operation timed out"
+//        }
+//        return try result.get()
+//    }
+
+    func commit() throws -> Value { try wait() }
+//    func commit() async throws -> Value {
+//        try await withCheckedThrowingContinuation { continuation in
+//            self.whenComplete(continuation.resume)
+//        }
+//    }
+}
+
+@globalActor
+public struct TablesActor {
+    public actor ActorType {}
+    public static var shared: ActorType = ActorType()
+}
+
+public struct TablesOperation {
+    public func `async`(_ operation: @TablesActor @escaping () throws -> Void) {
+        Task {
+            try await operation()
         }
     }
 }
+
+public let tables = TablesOperation()

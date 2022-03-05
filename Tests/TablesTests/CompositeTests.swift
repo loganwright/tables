@@ -3,6 +3,7 @@ import XCTest
 import Commons
 import Endpoints
 
+@TablesActor
 class CompositeKeyTests: SieqlTersts {
 
     struct Team: Schema {
@@ -26,12 +27,12 @@ class CompositeKeyTests: SieqlTersts {
 
     func testUniqueGroup() async throws {
         print("0")
-        try! await Prepare {
+        try Prepare {
             Team.self
             Player.self
         }
         print("1")
-        let teams = try! await Team.make(
+        let teams = try! Team.make(
             on: db,
             columns: \.name.root, \.id.root,
             rows: [
@@ -45,25 +46,25 @@ class CompositeKeyTests: SieqlTersts {
         XCTAssertEqual(teams.count, 4)
 
         let joe = Player.new(referencing: db)
-        try! joe.team.set(teams[0])
+        try! joe.team = teams[0]
         joe.jerseyNumber = 13
-        try! await joe.save()
+        try! joe.save()
         
         let jan = Player.new(referencing: db)
-        try! jan.team.set(teams[0])
+        try! jan.team = teams[0]
         jan.jerseyNumber = 84
-        try! await jan.save()
+        try! jan.save()
 
         let ohno = Player.new(referencing: db)
-        try! ohno.team.set(teams[0])
+        try! ohno.team = teams[0]
         ohno.jerseyNumber = 84
         await expectError {
-            try await ohno.save()
+            try ohno.save()
         }
 
-        let pass = try await joe.team.get?.name == jan.team.get?.name
+        let pass = try joe.team?.name == jan.team?.name
         XCTAssert(pass)
-        let team = try await joe.team.get
+        let team = try joe.team
         XCTAssertNotNil(team)
     }
     

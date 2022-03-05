@@ -4,10 +4,12 @@ import SQLKit
 
 /// schema fields that are not persisted, but a reference to something
 /// in another table
+@TablesActor
 public protocol Relation {}
 
 /// the key is not stored on this user
 /// they query their id in other tables
+@TablesActor
 public protocol EphemeralRelation: Relation {
     /// the key on the current object to which the external objects are pointing
     var pointingTo: PrimaryKeyBase { get }

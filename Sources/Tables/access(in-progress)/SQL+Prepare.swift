@@ -1,50 +1,73 @@
 import SQLKit
 
 extension Schema {
-    public static func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
-        try await db.prepare(Self.self)
+    @TablesActor
+    public static func prepare(in db: SQLDatabase = SQLManager.shared.db) throws {
+        try db.prepare(Self.self)
     }
 }
 
 extension Array where Element == Schema.Type {
-    public func prepare(in db: SQLDatabase = SQLManager.shared.db) async throws {
-        try await self.asyncForEach { try await $0.prepare(in: db) }
+    @TablesActor
+    public func prepare(in db: SQLDatabase = SQLManager.shared.db) throws {
+        try self.forEach { try $0.prepare(in: db) }
     }
 }
 
 /// overkill prolly, lol
+@TablesActor
 @resultBuilder
 public class Preparer {
     public static func buildBlock(_ schema: Schema.Type...) -> [Schema.Type] { schema }
 }
 
-public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: () -> [Schema.Type]) async throws {
-    try await build().prepare(in: db)
+import Foundation
+
+extension Array: Error where Element: Error {}
+
+@TablesActor
+public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: @TablesActor @escaping () -> [Schema.Type]) throws {
+    try build().prepare(in: db)
+//    let group = DispatchGroup()
+//    group.enter()
+//    actor Store {
+//        var anyErrors = [Error]()
+//        func callAsFunction(_ err: Error) {
+//            anyErrors.append(err)
+//        }
+//    }
+//    let store = Store()
+//    Task {
+//        do {
+//            try await build().prepare(in: db)
+//        } catch {
+//            await store(error)
+//        }
+//        group.leave()
+//    }
+//    group.wait()
+//    guard store.anyErrors.isEmpty else { throw store.anyErrors }
 }
 
-public func Prepare(_ db: SQLDatabase = SQLManager.shared.db, @Preparer _ build: @escaping () -> [Schema.Type]) {
-    Task {
-        try await build().prepare()
-    }
-}
 
-
+@TablesActor
 extension SQLManager {
-    func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
+    func prepare(@Preparer _ build: () throws -> [Schema.Type]) throws {
         let schemas = try build()
-        try await schemas.asyncForEach(db.prepare)
+        try schemas.forEach { try db.prepare($0) }
         Log.info("done preparing.s")
     }
 }
 
+@TablesActor
 extension SQLDatabase {
-    func prepare(@Preparer _ build: () throws -> [Schema.Type]) async throws {
+    func prepare(@Preparer _ build: () throws -> [Schema.Type]) throws {
         let schemas = try build()
-        try await schemas.asyncForEach(prepare)
+        try schemas.forEach { try prepare($0) }
         Log.info("done preparing.s")
     }
 
-    func prepare(_ schema: Schema.Type) async throws {
+    func prepare(_ schema: Schema.Type) throws {
         Log.info("preparing: \(schema.table)")
 
         // INTROSPECT
@@ -81,17 +104,19 @@ extension SQLDatabase {
 
         // EXECUTE
 
-        try await prepare.run().commit()
+        try prepare.run().wait()
     }
 }
 
 extension SQLCreateTableBuilder {
+    @TablesActor
     func add(column: BaseColumn) -> SQLCreateTableBuilder {
         self.column(column.name, type: column.type, column.constraints)
     }
 }
 
 extension SQLCreateTableBuilder {
+    @TablesActor
     func add(custom: (SQLCreateTableBuilder) -> SQLCreateTableBuilder) -> SQLCreateTableBuilder {
         custom(self)
     }

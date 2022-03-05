@@ -66,6 +66,7 @@ public class ForeignKey<Foreign: Schema>: Column<Foreign?> {
 
 /// an object can have multiple foreign key columns as long as each points
 /// to a different table, but they have to be serialized at the end
+@TablesActor
 protocol ForeignColumnKeyConstraint {
     var pointingFrom: BaseColumn { get }
     // todo: support multikeys
@@ -86,6 +87,7 @@ extension ForeignKey: ForeignColumnKeyConstraint {
 
 // MARK: Prepare / Create
 
+@TablesActor
 extension SQLCreateTableBuilder {
     /// There's a lot of subtle differences in how foreign constraints are grouped
     /// for now, it's best to assume foreign keys

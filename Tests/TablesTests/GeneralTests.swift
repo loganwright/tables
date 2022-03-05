@@ -28,6 +28,7 @@ struct FlatMap<A: Decodable, B: Decodable>: Decodable {
     }
 }
 
+
 class JoinTests: XCTestCase {
     struct Car: Schema {
         let id = PrimaryKey<Int>()
@@ -40,8 +41,9 @@ class JoinTests: XCTestCase {
         let foo = Column<String>()
     }
     
+    @TablesActor
     func testJoin() async throws {
-        try await Prepare {
+        try Prepare {
             Car.self
             User.self
         }
@@ -49,7 +51,7 @@ class JoinTests: XCTestCase {
         
         let car = Car.new()
         car.color = "#aaa832"
-        try await car.save()
+        try car.save()
         
         let rob = User.new()
         
@@ -61,6 +63,7 @@ class JoinTests: XCTestCase {
 ///
 ///
 ///
+@TablesActor
 final class RelationTests : SieqlTersts {
 
     struct Car: Schema {
@@ -75,7 +78,7 @@ final class RelationTests : SieqlTersts {
     }
 
     func testForeignKey() async throws {
-        try await Prepare {
+        try Prepare {
             Car.self
             User.self
         }
@@ -83,13 +86,13 @@ final class RelationTests : SieqlTersts {
         let car = Car.new()
         car.color = "#aaa832"
         XCTAssertNil(car.id, "car not yet created")
-        try await car.save()
+        try car.save()
         XCTAssertNotNil(car.id, "testing an option to initialize this way.. not done")
 
         let user = User.new()
-        try user.car.set(car)
+        try user.car = car
         user.foo = "hootie"
-        try await user.save()
+        try user.save()
 
         XCTAssertEqual(user.backing["car"]?.int, car.id)
     }
@@ -106,30 +109,31 @@ final class RelationTests : SieqlTersts {
         let author = ForeignKey<Author>(pointingTo: \.id)
     }
 
+    @TablesActor
     func testOneToManyKey() async throws {
-        try await Prepare {
+        try Prepare {
             Author.self
             Book.self
         }
 
         let author = Author.new()
         author.name = "hughes"
-        try await author.save()
+        try author.save()
 
         let booktitless = ["a", "b", "c", "d"]
-        let books = try await booktitless.asyncMap { title -> Ref<Book> in
+        let books = try booktitless.map { title -> Ref<Book> in
             let book = Book.new()
             book.title = title
-            try book.author.set(author)
-            try await book.save()
+            book.author = author
+            try book.save()
             return book
         }
         
         XCTAssert(books.count == booktitless.count)
-        let ids = try await books.asyncFlatMap { try await $0.author.get?.id }
+        let ids = books.compactMap { $0.author?.id }
         XCTAssert(Set(ids).count == 1)
         XCTAssert(ids.count == booktitless.count)
-        let pass = try await author.books.count == booktitless.count
+        let pass = try author.books.count == booktitless.count
         XCTAssert(pass)
     }
 
@@ -143,23 +147,23 @@ final class RelationTests : SieqlTersts {
     }
 
     func testToOne() async throws {
-        try await Prepare {
+        try Prepare {
             Person.self
             Phone.self
         }
-
+        
         let person = Person.new()
-        try await person.save()
-
+        try person.save()
+        
         let phone = Phone.new()
-        try phone.owner.set(person)
-//        phone.set(\.owner, to: person)
-//        phone.owner = person
-        try await phone.save()
-
-        let ownerId = try await phone.owner.get?.id
+        phone.owner = person
+        //        phone.set(\.owner, to: person)
+        //        phone.owner = person
+        try phone.save()
+        
+        let ownerId = phone.owner?.id
         XCTAssertEqual(ownerId, person.id)
-        XCTAssertNotNil(try await person.phone)
+        XCTAssertNotNil(try person.phone)
     }
 
 
@@ -182,38 +186,38 @@ final class RelationTests : SieqlTersts {
     }
 
     func testOneToOne() async throws {
-        try await Prepare {
+        try Prepare {
             Moon.self
             Sun.self
             Star.self
         }
 
         let moon = Moon.new()
-        try await moon.save()
-        let nosun = try await moon.sunFriend.get
+        try moon.save()
+        let nosun = moon.sunFriend
         XCTAssertNil(nosun)
 
         let sun = Sun.new()
-        try await sun.save()
+        try sun.save()
 
-        try moon.sunFriend.set(sun)
+        moon.sunFriend = sun
 //        moon.set(\.sunFriend, to: sun)
 //        moon.sunFriend = sun
-        XCTAssertNotNil(try await moon.sunFriend.get)
+        XCTAssertNotNil(try moon.sunFriend)
         /// will still be `nil` because we dno't have a child relationship
         /// a child will look in the db for matching keys
         /// a separate foreignKey will be as it is
-        XCTAssertNil(try await sun.moonFriend.get)
+        XCTAssertNil(try sun.moonFriend)
 
 
 //        sun.moonFriend = moon
-        try sun.moonFriend.set(moon)
+        try sun.moonFriend = moon
 //        sun.set(\.moonFriend, to: moon)
-        try await sun.save()
-        try await moon.save()
+        try sun.save()
+        try moon.save()
 
-        XCTAssertNotNil(try await moon.sunFriend.get)
-        XCTAssertNotNil(try await sun.moonFriend.get)
+        XCTAssertNotNil(moon.sunFriend)
+        XCTAssertNotNil(sun.moonFriend)
         let a = try await moon.starFriends.isEmpty
         let b = try await sun.starFriends.isEmpty
         XCTAssert(a)
@@ -224,14 +228,14 @@ final class RelationTests : SieqlTersts {
 //        try (1...fifty).forEach { int in
             let star = Star.new()
             star.id = int
-            try star.sunFriend.set(sun)
-            try star.moonFriend.set(moon)
+            star.sunFriend = sun
+            star.moonFriend = moon
 //            star.set(\.sunFriend, to: sun)
 //            star.sunFriend = sun
 //            star.set(\.moonFriend, to: moon)
 //            star.moonFriend = moon
             print("saving star..")
-            try await star.save()
+            try star.save()
             print("done saving star..")
         }
 
@@ -279,30 +283,30 @@ final class RelationTests : SieqlTersts {
         }
         
         try await students.asyncForEach {
-            try await $0.classes.set([science])
+            try await $0.classes = [science]
         }
-        let yea = try await students[2].classes.get.contains(where: { $0.id == science.id })
+        let yea = try await students[2].classes.contains(where: { $0.id == science.id })
         XCTAssertTrue(yea)
-        try await students.asyncForEach {
-            try await $0.remove(from: \.classes, [science])
+        try students.forEach {
+            try $0.remove(from: \.classes, [science])
         }
-        let naw = try await students[2].classes.get.contains(where: { $0.id == science.id })
+        let naw = try await students[2].classes.contains(where: { $0.id == science.id })
         XCTAssertFalse(naw)
         
         XCTAssertNotNil(students.first?.id)
 
         let student_group_a = Array(students[0...1])
         let student_group_b = Array(students[2...3])
-        try await science.students.set(student_group_a + student_group_b)
-        try await gym.students.set(student_group_b)
+        science.students = student_group_a + student_group_b
+        gym.students = student_group_b
 //        try await science.set(\.students, to: student_group_a + student_group_b)
 //        try await gym.set(\.students, to: student_group_b)
 
-        let science_only = try await student_group_a.asyncFlatMap { try await $0.classes.get }
+        let science_only = try student_group_a.compactMap { $0.classes }
         let allscienc = science_only.flatMap { $0 } .allSatisfy { $0.name == "science" }
         XCTAssert(allscienc == true)
 
-        try await student_group_b.asyncMap { try await $0.classes.get } .forEach { classes in
+        try await student_group_b.map { $0.classes } .forEach { classes in
             let names = classes.map(\.name)
             XCTAssert(names.contains("gym"))
             XCTAssert(names.contains("science"))
@@ -310,23 +314,23 @@ final class RelationTests : SieqlTersts {
         XCTAssert(!student_group_b.isEmpty)
 
         let jorb = students[0]
-        XCTAssertEqual(try await jorb.classes.get.count, 1)
-        try? await jorb.remove(from: \.classes, [gym])
-        XCTAssertEqual(try await jorb.classes.get.count, 1)
-        try? await jorb.remove(from: \.classes, [science])
-        XCTAssertEqual(try await jorb.classes.get.count, 0)
-        try? await jorb.add(to: \.classes, [gym, science])
-        XCTAssertEqual(try await jorb.classes.get.count, 2)
-        try? await gym.add(to: \.students, [jorb])
+        XCTAssertEqual(jorb.classes.count, 1)
+        try? jorb.remove(from: \.classes, [gym])
+        XCTAssertEqual(jorb.classes.count, 1)
+        try? jorb.remove(from: \.classes, [science])
+        XCTAssertEqual(jorb.classes.count, 0)
+        try? jorb.add(to: \.classes, [gym, science])
+        XCTAssertEqual(jorb.classes.count, 2)
+        try? gym.add(to: \.students, [jorb])
 
-        try? await jorb.remove(from: \.classes, [gym, science])
-        let a = try await jorb.classes.get
+        try? jorb.remove(from: \.classes, [gym, science])
+        let a = jorb.classes
         XCTAssertEqual(a.count, 0)
-        try? await jorb.add(to: \.classes, [gym, science])
-        let b = try await jorb.classes.get
+        try? jorb.add(to: \.classes, [gym, science])
+        let b = jorb.classes
         XCTAssertEqual(b.count, 2)
-        try? await jorb.add(to: \.classes, [gym, science])
-        let c = try await jorb.classes.get
+        try? jorb.add(to: \.classes, [gym, science])
+        let c = jorb.classes
         XCTAssertEqual(c.count, 2, "shouldn't duplicate")
     }
 
@@ -336,6 +340,7 @@ final class RelationTests : SieqlTersts {
     }
 }
 
+@TablesActor
 final class DBTests: SieqlTersts {
     func testExtractProperties() {
         let properties = _unsafe_force_Load_properties_on(Item.template)
@@ -476,7 +481,7 @@ final class DBTests: SieqlTersts {
     }
 
     func testParentChild() async throws {
-        try await Prepare {
+        try Prepare {
             Item.self
             Food.self
             Hero.self
@@ -493,22 +498,22 @@ final class DBTests: SieqlTersts {
         let lorbo = Hero.new()
         lorbo.name = "lorbo"
         lorbo.age = 234
-        let lunch = try await lorbo.lunch
+        let lunch = try lorbo.lunch
         XCTAssertNil(lunch)
-        try await lorbo.save()
-        try banana.owner.set(lorbo)
-        try await banana.save()
-        let _banan = try await lorbo.lunch
+        try lorbo.save()
+        banana.owner = lorbo
+        try banana.save()
+        let _banan = try lorbo.lunch
         XCTAssertNotNil(_banan)
         
-        let one = try await Hero.loadFirst(where: \.name, matches: "lorbo")
-        let two = try await Hero.loadFirst(where: \.age, matches: 234)
+        let one = try Hero.loadFirst(where: \.name, matches: "lorbo")
+        let two = try Hero.loadFirst(where: \.age, matches: 234)
         XCTAssertNotNil(two)
         XCTAssertNotNil(one)
     }
 
     func testSave() async throws {
-        try await Prepare {
+        try Prepare {
             Item.self
             Food.self
             Hero.self
@@ -517,7 +522,7 @@ final class DBTests: SieqlTersts {
         let sword = Item.new()
         sword.power = 83
         XCTAssertNil(sword.id)
-        try await sword.save()
+        try sword.save()
         XCTAssertFalse(sword.isDirty)
         XCTAssertNotNil(sword.id)
 
@@ -528,14 +533,14 @@ final class DBTests: SieqlTersts {
 
 
         XCTAssertNil(hero.id)
-        try await hero.save()
+        try hero.save()
         /// 1 to 1, both have a parent relationship
 //        sword.equippedBy = hero
-        try sword.equippedBy.set(hero)
+        try sword.equippedBy = hero
         // try sword.equippedBy.set { hero }
 //        sword.set(\.equippedBy, to: hero)
 //        hero.equipped = sword
-        try hero.equipped.set(sword)
+        try hero.equipped = sword
 //        hero.set(\.equipped, to: sword)
         try await hero.save()
         try await sword.save()
@@ -544,12 +549,12 @@ final class DBTests: SieqlTersts {
         XCTAssertNotNil(hero.id)
         
         let fetched = try await Item.loadFirst(where: \.power, matches: 83)
-        let _ = try await fetched?.equippedBy.get
-        try await XCTAssertEqual(fetched?.equippedBy.get?.id, hero.id)
+        let _ = try await fetched?.equippedBy
+        try await XCTAssertEqual(fetched?.equippedBy?.id, hero.id)
         
         let _hero = try await Hero.load(id: hero.id!)
         XCTAssertEqual(_hero?.id, hero.id)
-        let id = try await _hero?.equipped.get?.id
+        let id = try await _hero?.equipped?.id
         XCTAssertEqual(id, sword.id)
     }
 
@@ -576,22 +581,22 @@ final class DBTests: SieqlTersts {
         
         try await many.asyncForEach { indi in
 //            indi.oneyy = one
-            try indi.oneyy.set(one)
+            try indi.oneyy = one
 //            indi.set(\.oneyy, to: one)
-            try await indi.save()
+            try indi.save()
         }
         
-        let oe2 = try await !one.many.isEmpty
+        let oe2 = try !one.many.isEmpty
         XCTAssert(oe2)
 
-        let two = try await One.load(id: "1")!
-        let tc = try await two.many.count
-        let oc = try await one.many.count
+        let two = try One.load(id: "1")!
+        let tc = try two.many.count
+        let oc = try one.many.count
         XCTAssert(tc == oc)
     }
 
     func testMatch() async throws {
-        try await Prepare {
+        try Prepare {
             Team.self
             SportsFan.self
         }
@@ -600,7 +605,7 @@ final class DBTests: SieqlTersts {
         cats.name = "the Catz"
         cats.mascot = "cats"
         cats.rating = 5
-        try await cats.save()
+        try cats.save()
         XCTAssertNotNil(cats.id)
     }
 }

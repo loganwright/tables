@@ -7,6 +7,8 @@ import SQLiteKit
 /// This class is used to project schema as real objects and interact with them in a way that
 /// is typesafe, and allows more flexibility in terms of database behavior
 ///
+///
+@TablesActor
 @dynamicMemberLookup
 public final class Ref<S: Schema> {
     /// a simple backing for now, could maybe be a protocol or sth faster than json
@@ -85,21 +87,39 @@ public final class Ref<S: Schema> {
     /// for one to many relations, it MUST not be optional, and will instead return empty arrays
     ///
     ///
-    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> AsyncReadSyncWritable<Ref<ForeignTable>?> {
-        AsyncReadSyncWritable(
-            get: {
-                try await self.foreignGet(key)
-            },
-            set: {
-                try self.foreignSet(key, to: $0)
+//    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> AsyncReadSyncWritable<Ref<ForeignTable>?> {
+//        AsyncReadSyncWritable(
+//            get: {
+//                try await self.foreignGet(key)
+//            },
+//            set: {
+//                try self.foreignSet(key, to: $0)
+//            }
+//        )
+//    }
+    
+    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
+        get {
+            do {
+                return try foreignGet(key)
+            } catch {
+                Log.error("failed to load foreign key: \(error)")
+                return nil
             }
-        )
+        }
+        set {
+            do {
+                try foreignSet(key, to: newValue)
+            } catch {
+                Log.error("failed foreign set: \(error)")
+            }
+        }
     }
     
-    private func foreignGet<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>) async throws -> Ref<ForeignTable>? {
+    private func foreignGet<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>) throws -> Ref<ForeignTable>? {
         let referencingKey = S.template[keyPath: key]
         guard let referencingValue = backing[referencingKey.name]?.string else { return nil }
-        return try await ForeignTable.load(id: referencingValue, in: db)
+        return try ForeignTable.load(id: referencingValue, in: db)
     }
     
     private func foreignSet<ForeignTable: Schema>(_ key: KeyPath<S, ForeignKey<ForeignTable>>, to newValue: Ref<ForeignTable>?) throws {
@@ -130,19 +150,19 @@ public final class Ref<S: Schema> {
     /// the relations tests help with the confusion
     ///
     public subscript<Many: Schema>(dynamicMember key: KeyPath<S, ToMany<Many>>) -> [Ref<Many>] {
-        get async throws {
+        get throws {
             let relation = S.template[keyPath: key]
             let pointingTo = relation.pointingTo
             let pointingFrom = relation.pointingFrom
             let id = self.backing[pointingTo.name]
-            return try await self.db.loadAll(where: pointingFrom.name, matches: id)
+            return try self.db.loadAll(where: pointingFrom.name, matches: id)
         }
     }
 
     /// a one to one relationship where a single object from another table
     /// is referencing to this one
     public subscript<One: Schema>(dynamicMember key: KeyPath<S, ToOne<One>>) -> Ref<One>? {
-        get async throws {
+        get throws {
             // we are parent, seeking detached children
             let relation = S.template[keyPath: key]
             // our field that is being pointed to
@@ -156,7 +176,7 @@ public final class Ref<S: Schema> {
                 /// we don't have the value that's being pointed to, can't have a child pointing back
                 return nil
             }
-            return try await db.loadFirst(where: pointingFrom.name, matches: id)
+            return try db.loadFirst(where: pointingFrom.name, matches: id)
         }
     }
 }
@@ -214,15 +234,18 @@ extension Ref {
 
 // MARK: Save & Update
 
+
 public protocol Saveable {
+    @TablesActor
     @discardableResult
-    func save() async throws -> Self
+    func save()  throws -> Self
 }
 
 extension Array where Element: Saveable {
+    @TablesActor
     @discardableResult
-    public func save() async throws -> Self {
-        try await asyncForEach { try await $0.save() }
+    public func save() throws -> Self {
+        try forEach { try $0.save() }
         return self
     }
 }
@@ -230,16 +253,16 @@ extension Array where Element: Saveable {
 /// should this be here?
 extension Ref: Saveable {
     @discardableResult
-    public func save() async throws -> Self {
-        if self.exists { try await _update() }
-        else { try await _save() }
+    public func save() throws -> Self {
+        if self.exists { try _update() }
+        else { try _save() }
         
         isDirty = false
         exists = true
         return self
     }
 
-    private func _save() async throws {
+    private func _save() throws {
         /// if object doesn't exist
         let idKey = S.template.primaryKey
         let needsId = idKey != nil && self.backing[idKey!.name] == nil
@@ -257,20 +280,20 @@ extension Ref: Saveable {
         }
 
         guard !self.backing.isEmpty else { return }
-        try await db._create(in: S.table, self.backing)
+        try db._create(in: S.table, self.backing)
 
         guard
             needsId,
             let pk = idKey,
             pk.kind == .int
             else { return }
-        let id = try await unsafe_lastInsertedRowId()
+        let id = try unsafe_lastInsertedRowId()
         self.backing[pk.name] = try id.convert()
     }
 
-    private func _update() async throws {
+    private func _update() throws {
         let primary = S.template._primaryKey
-        try await self.db._update(
+        try self.db._update(
             in: S.table,
             where: primary.name,
             matches: backing[primary.name],
@@ -278,16 +301,16 @@ extension Ref: Saveable {
         )
     }
 
-    private func unsafe_lastInsertedRowId() async throws -> Int {
+    private func unsafe_lastInsertedRowId() throws -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try await self.db.execute(sql: raw) { (row) in
+        try self.db.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first
             assert(_id != nil, "sql failed to make rowid")
             id = _id!
-        } .commit()
+        } .wait()
         return id
     }
 }

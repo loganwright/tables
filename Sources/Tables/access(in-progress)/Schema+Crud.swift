@@ -24,16 +24,16 @@ extension Schema {
 // MARK: Retrieve
 
 extension Schema {
-    public static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        try await db.load(id: id)
+    public static func load(id: String, in db: SQLDatabase = SQLManager.shared.db) throws -> Ref<Self>? {
+        try db.load(id: id)
     }
     
-    public static func load(ids: [String], in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(ids: ids)
+    public static func load(ids: [String], in db: SQLDatabase = SQLManager.shared.db) throws -> [Ref<Self>] {
+        try db.loadAll(ids: ids)
     }
     
-    public static func loadAll(in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll()
+    public static func loadAll(in db: SQLDatabase = SQLManager.shared.db) throws -> [Ref<Self>] {
+        try db.loadAll()
     }
 }
 
@@ -43,8 +43,8 @@ extension Schema {
     
     public static func loadFirst<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                                matches value: T,
-                                               in db: SQLDatabase = SQLManager.shared.db) async throws -> Ref<Self>? {
-        try await db.loadFirst(where: Self.template[keyPath: column].name,
+                                               in db: SQLDatabase = SQLManager.shared.db) throws -> Ref<Self>? {
+        try db.loadFirst(where: Self.template[keyPath: column].name,
                                matches: value)
     }
     
@@ -52,54 +52,55 @@ extension Schema {
     
     public static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                              matches compare: T,
-                                             in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: Self.template[keyPath: column].name,
+                                             in db: SQLDatabase = SQLManager.shared.db) throws -> [Ref<Self>] {
+        try db.loadAll(where: Self.template[keyPath: column].name,
                              matches: compare)
     }
     
     public static func loadAll<T: Encodable>(where column: KeyPath<Self, Column<T>>,
                                              in compare: [T],
-                                             in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: Self.template[keyPath: column].name,
+                                             in db: SQLDatabase = SQLManager.shared.db) throws -> [Ref<Self>] {
+        try db.loadAll(where: Self.template[keyPath: column].name,
                              in: compare)
     }
     
     public static func loadAll<T>(where column: KeyPath<Self, Column<T>>,
                                   contains compare: String,
-                                  in db: SQLDatabase = SQLManager.shared.db) async throws -> [Ref<Self>] {
-        try await db.loadAll(where: Self.template[keyPath: column].name,
+                                  in db: SQLDatabase = SQLManager.shared.db) throws -> [Ref<Self>] {
+        try db.loadAll(where: Self.template[keyPath: column].name,
                              contains: compare)
     }
 }
 
 // MARK: Delete
 
+@TablesActor
 public protocol Deletable {
-    func delete() async throws
+    func delete() throws
 }
 
 extension Ref: Deletable {
-    public func delete() async throws {
-        try await db.delete(self)
+    public func delete() throws {
+        try db.delete(self)
     }
 }
 
+@TablesActor
 extension Array where Element: Deletable {
-    public func delete() async throws {
-        try await asyncForEach { try await $0.delete() }
+    public func delete() throws {
+        try forEach { try $0.delete() }
     }
 }
 
 /// mass creations
 
 extension Schema {
-
     public static func make<C: BaseColumn>(on db: SQLDatabase,
                                    columns: KeyPath<Self, C>...,
-                                   rows: [[Any]]) async throws -> [Ref<Self>] {
+                                   rows: [[Any]]) throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
-        return try await rows.asyncMap { row in
+        return try rows.map { row in
             let new = Self.new(referencing: db)
             try zip(columns, row).forEach { k, v in
                 let column = template[keyPath: k]
@@ -107,23 +108,23 @@ extension Schema {
                 new._unsafe_setBacking(column: column, value: js)
 
             }
-            try await new.save()
+            try new.save()
             return new
         }
     }
 
     static func make<C: BaseColumn>(on db: SQLDatabase,
                                    with columns: KeyPath<Self, C>...,
-                                   and rows: [[JSON]]) async throws -> [Ref<Self>] {
+                                   and rows: [[JSON]])  throws -> [Ref<Self>] {
         let counts = rows.map(\.count)
         assert(counts.allSatisfy { columns.count == $0 })
-        return try await rows.asyncMap { row in
+        return try rows.map { row in
             let new = Self.new(referencing: db)
             zip(columns, row).forEach { k, v in
                 let column = template[keyPath: k]
                 new._unsafe_setBacking(column: column, value: v)
             }
-            try await new.save()
+            try  new.save()
             return new
         }
     }

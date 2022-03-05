@@ -61,6 +61,7 @@ public struct Property {
 ///
 /// that was when it was nested tho
 ///
+@TablesActor
 public func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
     Mirror(reflecting: subject).children.compactMap { child in
         assert(child.label != nil, "expected a label for template property")
@@ -69,6 +70,7 @@ public func _unsafe_force_Load_properties_on(_ subject: Any) -> [Property] {
 }
 
 /// should this use a base 'Column' protocol? it's nice having them separate at the moment
+@TablesActor
 func _unsafe_force_hydrate_columns_on(_ subject: Any) -> [BaseColumn] {
     let properties = _unsafe_force_Load_properties_on(subject)
     return properties.compactMap { prop in

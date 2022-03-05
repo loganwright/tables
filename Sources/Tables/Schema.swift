@@ -1,5 +1,6 @@
 // MARK: Schema
 
+@TablesActor
 public protocol Schema {
     init()
     static var table: String { get }

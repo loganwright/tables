@@ -2,6 +2,7 @@ import SQLKit
 @_exported import Commons
 
 /// should this be BaseColumn?
+@TablesActor
 public class BaseColumn {
     /// the name of the column
     open var name: String

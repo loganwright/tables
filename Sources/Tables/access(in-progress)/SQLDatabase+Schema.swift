@@ -1,25 +1,26 @@
 import SQLKit
 import SQLiteKit
 
+@TablesActor
 extension SQLDatabase {
     
     // IDs
     
-    func load<S>(id: String) async throws -> Ref<S>? where S : Schema {
-        try await loadFirst(
+    func load<S>(id: String) throws -> Ref<S>? where S : Schema {
+        try loadFirst(
             where: S.template._primaryKey.name,
             matches: id
         )
     }
 
-    func loadAll<S: Schema>(ids: [String]) async throws -> [Ref<S>] {
-        try await loadAll(where: S.template._primaryKey.name, in: ids)
+    func loadAll<S: Schema>(ids: [String]) throws -> [Ref<S>] {
+        try loadAll(where: S.template._primaryKey.name, in: ids)
     }
     
     // One
     
-    func loadFirst<S: Schema, T: Encodable>(where key: String, matches compare: T) async throws -> Ref<S>? {
-        try await _loadFirst(
+    func loadFirst<S: Schema, T: Encodable>(where key: String, matches compare: T) throws -> Ref<S>? {
+        try _loadFirst(
             from: S.table,
             where: key,
             equals: compare
@@ -28,30 +29,30 @@ extension SQLDatabase {
     
     // Many
     
-    func loadAll<S: Schema>() async throws -> [Ref<S>] {
-        try await _loadAll(from: S.table).map {
+    func loadAll<S: Schema>() throws -> [Ref<S>] {
+        try _loadAll(from: S.table).map {
             Ref($0, self, exists: true)
         }
     }
     
-    func loadAll<S: Schema, E: Encodable>(where key: String, matches compare: E) async throws -> [Ref<S>] {
-        try await _loadAll(
+    func loadAll<S: Schema, E: Encodable>(where key: String, matches compare: E) throws -> [Ref<S>] {
+        try _loadAll(
             from: S.table,
             where: key,
             equals: compare
         ) .map { Ref($0, self, exists: true) }
     }
     
-    func loadAll<S: Schema, E: Encodable>(where key: String, `in` compare: [E]) async throws -> [Ref<S>] {
-        try await _loadAll(
+    func loadAll<S: Schema, E: Encodable>(where key: String, `in` compare: [E]) throws -> [Ref<S>] {
+        try _loadAll(
             from: S.table,
             where: key,
             in: compare
         ) .map { Ref($0, self, exists: true) }
     }
     
-    func loadAll<S: Schema>(where key: String, contains compare: String) async throws -> [Ref<S>] {
-        try await _loadAll(
+    func loadAll<S: Schema>(where key: String, contains compare: String) throws -> [Ref<S>] {
+        try _loadAll(
             from: S.table,
             where: key,
             contains: compare
@@ -60,15 +61,15 @@ extension SQLDatabase {
     
     // make
     
-    func create<S: Schema>(_ ref: Ref<S>) async throws {
-        try await _create(in: S.table, ref.backing)
+    func create<S: Schema>(_ ref: Ref<S>) throws {
+        try _create(in: S.table, ref.backing)
     }
     
     // update
 
-    func update<S: Schema>(_ ref: Ref<S>) async throws {
+    func update<S: Schema>(_ ref: Ref<S>) throws {
         let primary = S.template._primaryKey
-        try await _update(
+        try _update(
             in: S.table,
             where: primary.name,
             matches: ref.backing[primary.name],
@@ -78,20 +79,20 @@ extension SQLDatabase {
     
     // delete
     
-    func delete<S: Schema>(_ ref: Ref<S>) async throws {
+    func delete<S: Schema>(_ ref: Ref<S>) throws {
         let idColumn = S.template._primaryKey
         let idValue = ref._id
-        try await _deleteAll(
+        try _deleteAll(
             from: S.table,
             where: idColumn.name,
             matches: idValue
         )
     }
     
-    private func unsafe_lastInsertedRowId() async throws -> Int {
+    private func unsafe_lastInsertedRowId() throws -> Int {
         let raw = SQLRawExecute("select last_insert_rowid();")
         var id: Int = -1
-        try await self.execute(sql: raw) { (row) in
+        try self.execute(sql: raw) { (row) in
             let raw = try! row.decode(model: [String: Int].self)
             assert(raw.values.count == 1, "unexpected sql rowid response")
             let _id = raw.values.first
