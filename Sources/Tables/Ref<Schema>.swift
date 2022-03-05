@@ -44,7 +44,7 @@ public final class Ref<S: Schema> {
     
     // MARK: SubscriptOverloads
 
-    public subscript<Value: Codable>(dynamicMember key: KeyPath<S, Column<Value>>) -> Value {
+    public subscript<TC: TypedColumn>(dynamicMember key: KeyPath<S, TC>) -> TC.Value where TC: BaseColumn, TC.Value: Codable {
         get {
             let column = S.template[keyPath: key]
             let json = backing[column.name] ?? .null
@@ -53,30 +53,6 @@ public final class Ref<S: Schema> {
         set {
             let column = S.template[keyPath: key]
             backing[column.name] = try! newValue.convert()
-        }
-    }
-
-    public subscript<Value: Codable>(dynamicMember key: KeyPath<S, Unique<Value>>) -> Value {
-        get {
-            let column = S.template[keyPath: key]
-            let json = backing[column.name] ?? .null
-            return try! json.convert()
-        }
-        set {
-            let column = S.template[keyPath: key]
-            backing[column.name] = try! newValue.convert()
-        }
-    }
-
-    public subscript<PK: Codable>(dynamicMember key: KeyPath<S, PrimaryKey<PK>>) -> PK? {
-        get {
-            let pk = S.template[keyPath: key]
-            guard let value = backing[pk.name] else { return nil }
-            return try! value.convert()
-        }
-        set {
-            let pk = S.template[keyPath: key]
-            backing[pk.name] = try! newValue?.convert()
         }
     }
 
@@ -184,47 +160,47 @@ public final class Ref<S: Schema> {
 // MARK: Temporary Async Get/Set Workarounds
 
 /// a workaround to async properties that also require setters (see subclasses)
-public class AsyncReadable<T> {
-    public let asyncGet: () async throws -> T
-    
-    public init(get: @escaping () async throws -> T) {
-        self.asyncGet = get
-    }
-    
-    public var get: T {
-        get async throws {
-            try await asyncGet()
-        }
-    }
-}
-
-/// a workaround for async/throwing read/write properties
-public class AsyncReadWritable<T>: AsyncReadable<T> {
-    public let asyncSet: (T) async throws -> Void
-    
-    public init(get: @escaping () async throws -> T, set: @escaping (T) async throws -> Void) {
-        self.asyncSet = set
-        super.init(get: get)
-    }
-    
-    public func set(_ value: T) async throws {
-        try await self.asyncSet(value)
-    }
-}
-
-/// a workaround with async getters, and throwing setters in a property
-public class AsyncReadSyncWritable<T>: AsyncReadable<T> {
-    public let asyncSet: (T) throws -> Void
-    
-    public init(get: @escaping () async throws -> T, set: @escaping (T) throws -> Void) {
-        self.asyncSet = set
-        super.init(get: get)
-    }
-    
-    public func set(_ value: T) throws {
-        try self.asyncSet(value)
-    }
-}
+//public class AsyncReadable<T> {
+//    public let asyncGet: () async throws -> T
+//
+//    public init(get: @escaping () async throws -> T) {
+//        self.asyncGet = get
+//    }
+//
+//    public var get: T {
+//        get async throws {
+//            try await asyncGet()
+//        }
+//    }
+//}
+//
+///// a workaround for async/throwing read/write properties
+//public class AsyncReadWritable<T>: AsyncReadable<T> {
+//    public let asyncSet: (T) async throws -> Void
+//
+//    public init(get: @escaping () async throws -> T, set: @escaping (T) async throws -> Void) {
+//        self.asyncSet = set
+//        super.init(get: get)
+//    }
+//
+//    public func set(_ value: T) async throws {
+//        try await self.asyncSet(value)
+//    }
+//}
+//
+///// a workaround with async getters, and throwing setters in a property
+//public class AsyncReadSyncWritable<T>: AsyncReadable<T> {
+//    public let asyncSet: (T) throws -> Void
+//
+//    public init(get: @escaping () async throws -> T, set: @escaping (T) throws -> Void) {
+//        self.asyncSet = set
+//        super.init(get: get)
+//    }
+//
+//    public func set(_ value: T) throws {
+//        try self.asyncSet(value)
+//    }
+//}
 
 extension Ref {
     func _unsafe_setBacking(column: BaseColumn, value: JSON?) {

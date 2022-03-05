@@ -46,12 +46,12 @@ class CompositeKeyTests: SieqlTersts {
         XCTAssertEqual(teams.count, 4)
 
         let joe = Player.new(referencing: db)
-        try! joe.team = teams[0]
+       joe.team = teams[0]
         joe.jerseyNumber = 13
         try! joe.save()
         
         let jan = Player.new(referencing: db)
-        try! jan.team = teams[0]
+        jan.team = teams[0]
         jan.jerseyNumber = 84
         try! jan.save()
 

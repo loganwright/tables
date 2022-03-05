@@ -2,8 +2,13 @@ import SQLKit
 
 // MARK: Column
 
+@TablesActor
+public protocol TypedColumn {
+    associatedtype Value
+}
+
 @propertyWrapper
-public class Column<Value>: BaseColumn {
+public class Column<Value>: BaseColumn, TypedColumn {
     open var wrappedValue: Value { replacedDynamically() }
 }
 

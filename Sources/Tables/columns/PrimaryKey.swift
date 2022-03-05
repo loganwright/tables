@@ -7,7 +7,9 @@ extension Int: PrimaryKeyValue {}
 // MARK: PrimaryKey
 
 @propertyWrapper
-public class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase {
+public class PrimaryKey<RawType: PrimaryKeyValue>: PrimaryKeyBase, TypedColumn {
+    public typealias Value = RawType?
+    
     public var wrappedValue: RawType? { replacedDynamically() }
 
     public init(_ key: String = "", type: RawType.Type = RawType.self) where RawType == String {
