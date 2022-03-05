@@ -46,48 +46,33 @@ public final class Ref<S: Schema> {
 
     public subscript<TC: TypedColumn>(dynamicMember key: KeyPath<S, TC>) -> TC.Value where TC: BaseColumn, TC.Value: Codable {
         get {
-            let column = S.template[keyPath: key]
-            let json = backing[column.name] ?? .null
-            return try! json.convert()
+            try! self.get(key)
         }
         set {
-            let column = S.template[keyPath: key]
-            backing[column.name] = try! newValue.convert()
+            try! self.set(key, to: newValue)
         }
+    }
+    
+    public func get<TC: TypedColumn>(_ key: KeyPath<S, TC>) throws -> TC.Value where TC: BaseColumn, TC.Value: Codable {
+        let column = S.template[keyPath: key]
+        let json = backing[column.name] ?? .null
+        return try json.convert()
+    }
+    
+    public func set<TC: TypedColumn>(_ key: KeyPath<S, TC>, to newValue: TC.Value) throws where TC: BaseColumn, TC.Value: Codable {
+        let column = S.template[keyPath: key]
+        backing[column.name] = try newValue.convert()
     }
 
     // MARK: Relations
 
-    ///
-    /// for now, the only relations supported are one-to-one where the link MUST be optional
-    /// for one to many relations, it MUST not be optional, and will instead return empty arrays
-    ///
-    ///
-//    public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> AsyncReadSyncWritable<Ref<ForeignTable>?> {
-//        AsyncReadSyncWritable(
-//            get: {
-//                try await self.foreignGet(key)
-//            },
-//            set: {
-//                try self.foreignSet(key, to: $0)
-//            }
-//        )
-//    }
-    
     public subscript<ForeignTable: Schema>(dynamicMember key: KeyPath<S, ForeignKey<ForeignTable>>) -> Ref<ForeignTable>? {
         get {
-            do {
-                return try foreignGet(key)
-            } catch {
-                Log.error("failed to load foreign key: \(error)")
-                return nil
-            }
+            catching { try foreignGet(key) }
         }
         set {
-            do {
+            catching {
                 try foreignSet(key, to: newValue)
-            } catch {
-                Log.error("failed foreign set: \(error)")
             }
         }
     }
