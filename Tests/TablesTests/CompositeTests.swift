@@ -3,28 +3,54 @@ import XCTest
 import Commons
 import Endpoints
 
-@TablesActor
-class CompositeKeyTests: SieqlTersts {
-
+class AltTest: SieqlTersts {
     struct Team: Schema {
         let id = PrimaryKey<Int>()
+        
+        /// unique column is not same as unique row
+        let name = Column<String>()
+    }
+    
+    func testNonActorContext() async throws {
+        try await Prepare {
+            Team.self
+        }
+        
+        let xct = XCTestExpectation(description: "non actor ctxx")
+        tables.async {
+            let new = Team.new()
+            new.name = "blahpolis"
+            try new.save()
+            xct.fulfill()
+        }
+        wait(for: [xct], timeout: 20)
+        let fetched = try await Team.loadFirst(where: \.name, matches: "blahpolis")
+        XCTAssertNotNil(fetched)
+    }
+}
 
+@TablesActor
+class CompositeKeyTests: SieqlTersts {
+    
+    struct Team: Schema {
+        let id = PrimaryKey<Int>()
+        
         /// unique column is not same as unique row
         let name = Unique<String>()
     }
-
+    
     struct Player: Schema {
         let id = PrimaryKey<Int>()
-
+        
         /// must be unique as pair
         let team = ForeignKey<Team>(pointingTo: \.id)
         let jerseyNumber = Column<Int>()
-
+        
         let tableConstraints = TableConstraints {
             UniqueGroup(\.team, \.jerseyNumber)
         }
     }
-
+    
     func testUniqueGroup() async throws {
         print("0")
         try Prepare {
@@ -44,9 +70,9 @@ class CompositeKeyTests: SieqlTersts {
         )
         print("2")
         XCTAssertEqual(teams.count, 4)
-
+        
         let joe = Player.new(referencing: db)
-       joe.team = teams[0]
+        joe.team = teams[0]
         joe.jerseyNumber = 13
         try! joe.save()
         
@@ -54,17 +80,17 @@ class CompositeKeyTests: SieqlTersts {
         jan.team = teams[0]
         jan.jerseyNumber = 84
         try! jan.save()
-
+        
         let ohno = Player.new(referencing: db)
-        try! ohno.team = teams[0]
+        ohno.team = teams[0]
         ohno.jerseyNumber = 84
         await expectError {
             try ohno.save()
         }
-
-        let pass = try joe.team?.name == jan.team?.name
+        
+        let pass = joe.team?.name == jan.team?.name
         XCTAssert(pass)
-        let team = try joe.team
+        let team = joe.team
         XCTAssertNotNil(team)
     }
     
@@ -72,28 +98,28 @@ class CompositeKeyTests: SieqlTersts {
         let firstName = Column<String>()
         let lastName = Column<String>()
         let email = Column<String>()
-
-
+        
+        
         /// I think there's better fits for this in practice, but I couldn't think of an
         let tableConstraints = TableConstraints {
             PrimaryKeyGroup(\.firstName, \.lastName, \.email)
         }
     }
-
+    
     struct Reservation: Schema {
         let id = PrimaryKey<Int>()
-
+        
         let guestFirstName = Column<String>()
         let guestLastName = Column<String>()
         let guestEmail = Column<String>()
-
+        
         /// note,
         let tableConstraints = TableConstraints {
             ForeignKeyGroup(\.guestFirstName, \.guestLastName, \.guestEmail,
-                            referencing: \Guest.firstName, \Guest.lastName, \Guest.email)
+                             referencing: \Guest.firstName, \Guest.lastName, \Guest.email)
         }
     }
-
+    
     ///
     ///
     ///
@@ -106,11 +132,11 @@ class CompositeKeyTests: SieqlTersts {
     ///
     ///
     func testMultipleForeignAndPrimaryKeys() async {
-        try! await Prepare {
+        try! Prepare {
             Guest.self
             Reservation.self
         }
-
+        
         let guests = try! await Guest.make(
             on: db,
             columns: \.firstName, \.lastName, \.email,
@@ -120,27 +146,27 @@ class CompositeKeyTests: SieqlTersts {
                 ["slarni", "kadorpin", "slar.kad@garboogle.come"]
             ]
         )
-
-        let reservations = try! await Reservation.make(
+        
+        let reservations = try! Reservation.make(
             on: db,
             columns: \.guestFirstName, \.guestLastName, \.guestEmail,
             rows: guests.map({[$0.firstName, $0.lastName, $0.email]})
         )
-
+        
         zip(guests, reservations).forEach { guest, reservation in
             XCTAssertEqual(guest.email, reservation.guestEmail)
             XCTAssertEqual(guest.firstName, reservation.guestFirstName)
             XCTAssertEqual(guest.lastName, reservation.guestLastName)
         }
-
-
+        
+        
         let guest = guests[2]
-        let check = try! await db.fetch(Reservation.self,
+        let check = try! db.fetch(Reservation.self,
                                   where: [
                                     \.guestEmail.root,
-                                    \.guestFirstName.root,
-                                    \.guestLastName.root],
-                             equal: [guest.email, guest.firstName, guest.lastName])
+                                     \.guestFirstName.root,
+                                     \.guestLastName.root],
+                                  equal: [guest.email, guest.firstName, guest.lastName])
         XCTAssertEqual(check.count, 1)
     }
 }

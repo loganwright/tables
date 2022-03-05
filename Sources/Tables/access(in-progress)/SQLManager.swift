@@ -329,6 +329,7 @@ public struct TablesActor {
 }
 
 public struct TablesOperation {
+    /// initial interaction to enter tables context 
     public func `async`(_ operation: @TablesActor @escaping () throws -> Void) {
         Task {
             try await operation()

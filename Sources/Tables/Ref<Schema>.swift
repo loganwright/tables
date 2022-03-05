@@ -49,7 +49,9 @@ public final class Ref<S: Schema> {
             try! self.get(key)
         }
         set {
-            try! self.set(key, to: newValue)
+            catching {
+                try self.set(key, to: newValue)
+            }
         }
     }
     
