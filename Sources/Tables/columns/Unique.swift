@@ -12,12 +12,12 @@ public class Unique<Value>: Column<Value> {
 
 extension Unique where Value: DatabaseValue {
     public convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        self.init(key, Value.sqltype, Later(constraints + [.notNull]))
+        self.init(key, Value.sqltype, Later(constraints + [.notNull, .unique]))
     }
 }
 
 extension Unique where Value: OptionalProtocol, Value.Wrapped: DatabaseValue {
     public convenience init(_ key: String = "", _ constraints: [SQLColumnConstraintAlgorithm] = []) {
-        self.init(key, Value.Wrapped.sqltype, Later(constraints))
+        self.init(key, Value.Wrapped.sqltype, Later(constraints + [.unique]))
     }
 }

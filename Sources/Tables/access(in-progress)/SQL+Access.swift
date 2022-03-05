@@ -9,7 +9,7 @@ extension SQLDatabase {
             .where(column._sqlIdentifier, .equal, value)
             .from(S.table)
             .all(decoding: [String: JSON].self)
-            .commit()
+            .wait()
         return results.map { Ref($0, self, exists: true) }
     }
 
@@ -25,7 +25,7 @@ extension SQLDatabase {
             query.where(pair.0, .equal, pair.1)
         }
 
-        let results = try query.all(decoding: [String: JSON].self).commit()
+        let results = try query.all(decoding: [String: JSON].self).wait()
         return results.map { Ref($0, self, exists: true) }
     }
 }

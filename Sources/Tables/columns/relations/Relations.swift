@@ -66,8 +66,8 @@ public class ToOne<One: Schema>: EphemeralRelation {
 }
 
 extension Ref {
-    var _id: String {
-        let id = S.template._primaryKey
+    internal var _id: String {
+        let id = S.template.primaryKey!
         return backing[id.name]!.string!
     }
 }

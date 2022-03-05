@@ -12,8 +12,8 @@ public class Pivot<Left: Schema, Right: Schema>: Relation {
 
     public init() {
         /// this is maybe easier for now, upper version is easier to move to support unique keys
-        self._lk = Later { Left.template._primaryKey }
-        self._rk = Later { Right.template._primaryKey }
+        self._lk = Later { Left.template.primaryKey! }
+        self._rk = Later { Right.template.primaryKey! }
     }
 }
 
@@ -30,8 +30,8 @@ public struct PivotSchema<Left: Schema, Right: Schema>: Schema {
     var right: ForeignKey<Right>
 
     public init() {
-        let lpk = \Left._primaryKey
-        let rpk = \Right._primaryKey
+        let lpk = \Left.primaryKey!
+        let rpk = \Right.primaryKey!
         let ln = Left.template._pivotIdKey
         let rn = Right.template._pivotIdKey
         let left = ForeignKey(ln, pointingTo: lpk)
@@ -49,7 +49,7 @@ public struct PivotSchema<Left: Schema, Right: Schema>: Schema {
 
 extension Schema {
     var _pivotIdKey: String {
-        Self.table + "_" + _primaryKey.name
+        Self.table + "_" + primaryKey!.name
     }
 }
 

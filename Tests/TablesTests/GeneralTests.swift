@@ -372,35 +372,35 @@ final class DBTests: SieqlTersts {
         try new.save()
 
         let e = await expectError {
-            let no = Test.new()
-            no.favoriteColor = "yellow"
-            no.favoriteNumber = 4
-            no.favoriteWord = "copycats"
-            no.boring = 111
-            try no.save()
+            let fail = Test.new()
+            fail.favoriteColor = "yellow"
+            fail.favoriteNumber = 4
+            fail.favoriteWord = "copycats"
+            fail.boring = 111
+            try fail.save()
         }
         XCTAssert("\(e ?? "")".contains("UNIQUE"))
         XCTAssert("\(e ?? "")".contains("favoriteColor"))
 
         let n = await expectError {
-            let new = Test.new()
-            new.favoriteColor = "orignal-orange"
-            new.favoriteNumber = 8
-            new.favoriteWord = "yarmal"
-            new.boring = 111
-            try new.save()
+            let fail = Test.new()
+            fail.favoriteColor = "orignal-orange"
+            fail.favoriteNumber = 8
+            fail.favoriteWord = "yarmal"
+            fail.boring = 111
+            try fail.save()
         }
         XCTAssert("\(n!)".contains("UNIQUE"))
         XCTAssert("\(n!)".contains("favoriteNumber"))
 
 
         let w = await expectError {
-            let new = Test.new()
-            new.favoriteColor = "bluelicious"
-            new.favoriteNumber = 43
-            new.favoriteWord = "arbledarble"
-            new.boring = 111
-            try new.save()
+            let fail = Test.new()
+            fail.favoriteColor = "bluelicious"
+            fail.favoriteNumber = 43
+            fail.favoriteWord = "arbledarble"
+            fail.boring = 111
+            try fail.save()
         }
         XCTAssert("\(w!)".contains("UNIQUE"))
         XCTAssert("\(w!)".contains("favoriteWord"))
@@ -417,7 +417,7 @@ final class DBTests: SieqlTersts {
         XCTAssertEqual(all.count, 2)
     }
 
-    func ignore_too_long_testBlob() async throws {
+    func testBlob() async throws {
         try SQLManager.shared.destroyDatabase()
         let _url = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/440px-Image_created_with_a_mobile_phone.png"
         let url = URL(string: _url)!
@@ -449,7 +449,7 @@ final class DBTests: SieqlTersts {
 
         /// I think we should probably throw or exit on incompatible properties,
         /// but right now just warning
-        let _ = Foo.template.columns
+        let _ = Foo.template
         XCTAssert(Log.memoryLogs.contains(where: { $0.msg.contains("incompatible schema property") }))
         XCTAssert(Log.memoryLogs.contains(where: { $0.msg.contains("\(Foo.self)") }))
     }
@@ -579,7 +579,7 @@ final class DBTests: SieqlTersts {
         let oe = try one.many.isEmpty
         XCTAssert(oe)
         
-        try await many.asyncForEach { indi in
+        try many.forEach { indi in
 //            indi.oneyy = one
             indi.oneyy = one
 //            indi.set(\.oneyy, to: one)

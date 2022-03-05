@@ -2,22 +2,18 @@ import Logging
 import SQLiteKit
 import Foundation
 
-private var seequel_directory: URL {
-    let url = FileManager.default
-        .documentsDir
-        .appendingPathComponent("sqlite", isDirectory: true)
-    try! FileManager.default.createDirectory(
-        at: url,
-        withIntermediateDirectories: true,
-        attributes: nil)
-    return url.appendingPathComponent("database.sqlite", isDirectory: false)
-}
-
 // MARK: Create
 
 extension Schema {
     public static func new(referencing db: SQLDatabase = SQLManager.shared.db) -> Ref<Self> {
         Ref(db)
+    }
+}
+
+extension SQLDatabase {
+    @TablesActor
+    public func new<S: Schema>(_ schema: S.Type) -> Ref<S> {
+        S.new(referencing: self)
     }
 }
 
@@ -106,7 +102,6 @@ extension Schema {
                 let column = template[keyPath: k]
                 let js = try JSON(fuzzy: v)
                 new._unsafe_setBacking(column: column, value: js)
-
             }
             try new.save()
             return new
@@ -130,7 +125,10 @@ extension Schema {
     }
 }
 
-struct SQLRawExecute: SQLExpression {
+/// used to execute raw sql
+/// !!!! use caution !!!!!
+/// possible to circumvent sql safeguards
+internal struct SQLRawExecute: SQLExpression {
     let raw: String
     init(_ raw: String) {
         self.raw = raw
@@ -143,26 +141,41 @@ struct SQLRawExecute: SQLExpression {
 
 // MARK: Async Extensions
 
-extension Sequence {
-    public func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {
-        for e in self {
-            try await op(e)
-        }
+//extension Sequence {
+//    public func asyncForEach(_ op: (Element) async throws -> Void) async rethrows {
+//        for e in self {
+//            try await op(e)
+//        }
+//    }
+//    public func asyncMap<T>(_ op: (Element) async throws -> T) async rethrows -> [T] {
+//        var mapped = [T]()
+//        for e in self {
+//            let new = try await op(e)
+//            mapped.append(new)
+//        }
+//        return mapped
+//    }
+//    public func asyncFlatMap<T>(_ op: (Element) async throws -> T?) async rethrows -> [T] {
+//        var mapped = [T]()
+//        for e in self {
+//            guard let new = try await op(e) else { continue }
+//            mapped.append(new)
+//        }
+//        return mapped
+//    }
+//}
+
+
+// MARK: KeyPath
+
+extension KeyPath where Value: BaseColumn {
+    var detyped: KeyPath<Root, BaseColumn> {
+        appending(path: \.root)
     }
-    public func asyncMap<T>(_ op: (Element) async throws -> T) async rethrows -> [T] {
-        var mapped = [T]()
-        for e in self {
-            let new = try await op(e)
-            mapped.append(new)
-        }
-        return mapped
-    }
-    public func asyncFlatMap<T>(_ op: (Element) async throws -> T?) async rethrows -> [T] {
-        var mapped = [T]()
-        for e in self {
-            guard let new = try await op(e) else { continue }
-            mapped.append(new)
-        }
-        return mapped
+}
+
+extension BaseColumn {
+    var root: BaseColumn {
+        return self
     }
 }

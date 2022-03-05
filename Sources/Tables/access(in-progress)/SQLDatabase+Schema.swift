@@ -68,7 +68,7 @@ extension SQLDatabase {
     // update
 
     func update<S: Schema>(_ ref: Ref<S>) throws {
-        let primary = S.template._primaryKey
+        let primary = try S.template._primaryKey
         try _update(
             in: S.table,
             where: primary.name,
@@ -80,27 +80,13 @@ extension SQLDatabase {
     // delete
     
     func delete<S: Schema>(_ ref: Ref<S>) throws {
-        let idColumn = S.template._primaryKey
+        let idColumn = try S.template._primaryKey
         let idValue = ref._id
         try _deleteAll(
             from: S.table,
             where: idColumn.name,
             matches: idValue
         )
-    }
-    
-    private func unsafe_lastInsertedRowId() throws -> Int {
-        let raw = SQLRawExecute("select last_insert_rowid();")
-        var id: Int = -1
-        try self.execute(sql: raw) { (row) in
-            let raw = try! row.decode(model: [String: Int].self)
-            assert(raw.values.count == 1, "unexpected sql rowid response")
-            let _id = raw.values.first
-            assert(_id != nil, "sql failed to make rowid")
-            id = _id!
-        } .commit()
-        guard id != -1 else { throw "unset" }
-        return id
     }
 }
 

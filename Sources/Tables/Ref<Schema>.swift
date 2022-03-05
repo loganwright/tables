@@ -144,51 +144,6 @@ public final class Ref<S: Schema> {
     }
 }
 
-// MARK: Temporary Async Get/Set Workarounds
-
-/// a workaround to async properties that also require setters (see subclasses)
-//public class AsyncReadable<T> {
-//    public let asyncGet: () async throws -> T
-//
-//    public init(get: @escaping () async throws -> T) {
-//        self.asyncGet = get
-//    }
-//
-//    public var get: T {
-//        get async throws {
-//            try await asyncGet()
-//        }
-//    }
-//}
-//
-///// a workaround for async/throwing read/write properties
-//public class AsyncReadWritable<T>: AsyncReadable<T> {
-//    public let asyncSet: (T) async throws -> Void
-//
-//    public init(get: @escaping () async throws -> T, set: @escaping (T) async throws -> Void) {
-//        self.asyncSet = set
-//        super.init(get: get)
-//    }
-//
-//    public func set(_ value: T) async throws {
-//        try await self.asyncSet(value)
-//    }
-//}
-//
-///// a workaround with async getters, and throwing setters in a property
-//public class AsyncReadSyncWritable<T>: AsyncReadable<T> {
-//    public let asyncSet: (T) throws -> Void
-//
-//    public init(get: @escaping () async throws -> T, set: @escaping (T) throws -> Void) {
-//        self.asyncSet = set
-//        super.init(get: get)
-//    }
-//
-//    public func set(_ value: T) throws {
-//        try self.asyncSet(value)
-//    }
-//}
-
 extension Ref {
     func _unsafe_setBacking(column: BaseColumn, value: JSON?) {
         backing[column.name] = value
@@ -232,13 +187,10 @@ extension Ref: Saveable {
         if needsId, let id = idKey {
             switch id.kind {
             case .uuid:
-                /// uuid not auto generated, needs to be made
-                Log.info("allow a more general string type for like email")
-                Log.info("this one should be PrimaryKey<UUID>")
                 self.backing[id.name] = try UUID().uuidString.convert()
             case .int:
-                Log.warn("in multi groups, autoincrement fails..")
                 // set automatically after save by sql
+                break
             }
         }
 
@@ -255,7 +207,7 @@ extension Ref: Saveable {
     }
 
     private func _update() throws {
-        let primary = S.template._primaryKey
+        let primary = try S.template._primaryKey
         try self.db._update(
             in: S.table,
             where: primary.name,
@@ -274,6 +226,8 @@ extension Ref: Saveable {
             assert(_id != nil, "sql failed to make rowid")
             id = _id!
         } .wait()
+        
+        guard id != -1 else { throw "unable to retrieve id of new object" }
         return id
     }
 }

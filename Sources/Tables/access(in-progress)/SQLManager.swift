@@ -196,7 +196,6 @@ extension SQLDatabase {
             .column("name")
             .from("sqlite_master")
             .where("type", .equal, "table")
-            
             .all(decoding: Table.self)
             .wait()
             .map(\.name)
@@ -204,13 +203,13 @@ extension SQLDatabase {
     
     public func unsafe_tableExists(_ table: String) throws -> Bool {
         // "SELECT * FROM sqlite_master WHERE name ='myTable' and type='table';"
-        try self.select().column("name")
+        try self.select()
+            .column("name")
             .from("sqlite_master")
             .where("name", .equal, table)
             .where("type", .equal, "table")
-            .all()
-            .wait()
-            .count == 1
+            .first()
+            .wait() != nil
     }
     
     public func unsafe_dropTable(_ table: String) throws {
@@ -218,7 +217,7 @@ extension SQLDatabase {
         let enable = SQLRawExecute("PRAGMA foreign_keys = ON;\n")
         
         try self.execute(sql: disable) { row in
-            Log.warn("disabling foreign key checks: \(row)")
+            Log.info("DISABLED foreign key checks: \(row)")
         } .wait()
         
         try self.drop(table: table).run()
@@ -275,53 +274,54 @@ extension SQLDatabase {
 }
 
 
-extension JSON {
-    fileprivate var sqlDataType: SQLDataType {
-        switch self {
-        case .int:
-            return .int
-        case .double:
-            return .real
-        case .string:
-            return .text
-        case .bool:
-            return .int
-        case .object:
-            return .text
-        case .array:
-            return .text
-        case .null:
-            fatalError("unable to infer type from null json")
-        }
-    }
-}
-
-extension EventLoopFuture {
-//    @TablesActor
-//    func wait(timeout: DispatchTime = .distantFuture) throws -> Value {
-//        self.wa
-//        var result: Result<Value, Error> = .failure("result never set")
-//        let group = DispatchGroup()
-//        group.enter()
-//        whenComplete {
-//            result = $0
-//            group.leave()
-//        }
-//        let dispatch = group.wait(timeout: timeout)
-//        guard dispatch == .success else {
-//            throw "event loop future operation timed out"
-//        }
-//        return try result.get()
-//    }
-
-    func commit() throws -> Value { try wait() }
-//    func commit() async throws -> Value {
-//        try await withCheckedThrowingContinuation { continuation in
-//            self.whenComplete(continuation.resume)
+//extension JSON {
+//    fileprivate var sqlDataType: SQLDataType {
+//        switch self {
+//        case .int:
+//            return .int
+//        case .double:
+//            return .real
+//        case .string:
+//            return .text
+//        case .bool:
+//            return .int
+//        case .object:
+//            return .text
+//        case .array:
+//            return .text
+//        case .null:
+//            fatalError("unable to infer type from null json")
 //        }
 //    }
-}
+//}
 
+//extension EventLoopFuture {
+////    @TablesActor
+////    func wait(timeout: DispatchTime = .distantFuture) throws -> Value {
+////        self.wa
+////        var result: Result<Value, Error> = .failure("result never set")
+////        let group = DispatchGroup()
+////        group.enter()
+////        whenComplete {
+////            result = $0
+////            group.leave()
+////        }
+////        let dispatch = group.wait(timeout: timeout)
+////        guard dispatch == .success else {
+////            throw "event loop future operation timed out"
+////        }
+////        return try result.get()
+////    }
+//
+//    func commit() throws -> Value { try wait() }
+////    func commit() async throws -> Value {
+////        try await withCheckedThrowingContinuation { continuation in
+////            self.whenComplete(continuation.resume)
+////        }
+////    }
+//}
+
+/// an empty actor used to synchronize tables interaction
 @globalActor
 public struct TablesActor {
     public actor ActorType {}

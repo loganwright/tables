@@ -72,7 +72,7 @@ extension SQLDatabase {
 
         // INTROSPECT
 
-        let template = schema.init()
+        let template = schema.template
         /// all sql columns to be stored
         let columns = template.columns
         // special handling, multiple foreign columns but not a composite

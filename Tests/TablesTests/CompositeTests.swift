@@ -92,6 +92,13 @@ class CompositeKeyTests: SieqlTersts {
         XCTAssert(pass)
         let team = joe.team
         XCTAssertNotNil(team)
+        
+        let fail = Team.new(referencing: db)
+        fail.name = "snardies"
+        let e = await expectError { try fail.save() }
+        XCTAssertNotNil(e)
+        XCTAssert(e?.display.contains("UNIQUE constraint failed") ?? false)
+        
     }
     
     struct Guest: Schema {
@@ -137,7 +144,7 @@ class CompositeKeyTests: SieqlTersts {
             Reservation.self
         }
         
-        let guests = try! await Guest.make(
+        let guests = try! Guest.make(
             on: db,
             columns: \.firstName, \.lastName, \.email,
             rows: [

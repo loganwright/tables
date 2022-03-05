@@ -82,9 +82,10 @@ extension Schema {
     /// a primary key
     /// currently only one primary key is supported
     var _primaryKey: PrimaryKeyBase {
-        let pk = primaryKey
-        assert(pk != nil, "no primary key found: \(Schema.self)")
-        return pk!
+        get throws {
+            if let pk = primaryKey { return pk }
+            else { throw "no primary key (id) found on: \(Schema.self)" }
+        }
     }
 
     var primaryKeyGroup: Any? {
